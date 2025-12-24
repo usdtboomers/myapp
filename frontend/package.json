@@ -1,0 +1,76 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@radix-ui/react-slot": "^1.2.3",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "axios": "^1.12.2",
+    "class-variance-authority": "^0.7.1",
+    "date-fns": "^4.1.0",
+    "ethers": "^5.7.2",
+    "file-saver": "^2.0.5",
+    "framer-motion": "^12.23.12",
+    "jspdf": "^3.0.4",
+    "lucide-react": "^0.513.0",
+    "papaparse": "^5.5.3",
+    "qrcode.react": "^4.2.0",
+    "react": "^18.2.0",
+    "react-confetti": "^6.4.0",
+    "react-csv": "^2.2.2",
+    "react-datepicker": "^8.4.0",
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.58.1",
+    "react-hot-toast": "^2.5.2",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^6.22.3",
+    "react-scripts": "5.0.1",
+    "react-select": "^5.10.2",
+    "react-toastify": "^11.0.5",
+    "react-tooltip": "^5.29.1",
+    "recharts": "^2.15.4",
+    "tailwind-variants": "^1.0.0",
+    "tailwindcss-animate": "^1.0.7",
+    "web-vitals": "^2.1.4",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "postcss-flexbugs-fixes": "^4.2.1",
+    "postcss-preset-env": "^6.7.2",
+    "tailwindcss": "^2.2.19"
+  },
+  "resolutions": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "proxy": "http://143.198.205.94:5000",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import AdminWithdrawalTable from './AdminWithdrawalTable';
+
+const RequestWithdrawalPage = () => {
+  const [withdrawals, setWithdrawals] = useState([]);
+  const token = localStorage.getItem('adminToken');
+
+  useEffect(() => {
+    fetchPendingWithdrawals();
+  }, []);
+
+ const fetchPendingWithdrawals = async () => {
+  try {
+    const res = await axios.get('http://143.198.205.94:5000/api/admin/withdrawals', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    // Filter only pending withdrawals
+    setWithdrawals(res.data.withdrawals.filter(w => w.status === 'pending'));
+  } catch (err) {
+    console.error('Error fetching pending withdrawals:', err);
+  }
+};
+
+
+  const handleStatusChange = async (withdrawalId, action) => {
+    try {
+      const url =
+        action === 'approve'
+          ? `http://143.198.205.94:5000/api/admin/withdrawals/approve/${withdrawalId}`
+          : `http://143.198.205.94:5000/api/admin/withdrawals/reject/${withdrawalId}`;
+
+      await axios.put(url, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      fetchPendingWithdrawals();
+    } catch (err) {
+      console.error(`Error ${action} withdrawal:`, err);
+    }
+  };
+
+  return (
+    <div className="p-6">
+      <h2 className="text-2xl font-semibold mb-4 text-gray-800">Pending Withdrawal Requests</h2>
+      <AdminWithdrawalTable
+        withdrawals={withdrawals}
+        onStatusChange={handleStatusChange}
+      />
+    </div>
+  );
+};
+
+export default RequestWithdrawalPage;
