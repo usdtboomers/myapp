@@ -122,21 +122,5 @@ async function runDailyPlanIncome() {
 // ---------------------------
 // Mongo Connection + Scheduler
 // ---------------------------
-mongoose
-  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(async () => {
-    console.log("✅ MongoDB connected");
-
-    // Run migration once
-    await migratePlanIncome();
-
-    // Run daily ROI immediately
-    await runDailyPlanIncome();
-
-    // Schedule daily ROI at 00:01 AM
-    cron.schedule("1 0 * * *", runDailyPlanIncome);
-    console.log("⏰ Cron job scheduled for daily execution at 00:01 AM");
-  })
-  .catch(err => console.error("❌ MongoDB connection error:", err));
-
-module.exports = { runDailyPlanIncome };
+ 
+module.exports = { runDailyPlanIncome, migratePlanIncome };

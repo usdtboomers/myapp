@@ -15,7 +15,7 @@ const DirectTeamPage = () => {
 
       try {
         const res = await axios.get(
-          `http://178.128.20.53:5000/api/user/direct-team/${user.userId}`
+          `http://178.128.20.53/api/user/direct-team/${user.userId}`
         );
         setTeam(Array.isArray(res.data.team) ? res.data.team : []);
       } catch (err) {

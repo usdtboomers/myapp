@@ -29,10 +29,10 @@ const AddUser = () => {
 
     try {
       // ✅ Correct backend URL for admin route
-      const backendURL = process.env.REACT_APP_BACKEND_URL || 'http://178.128.20.53:5000/api/admin';
+      const backendURL = process.env.REACT_APP_BACKEND_URL || 'http://178.128.20.53/api/admin';
 
       const res = await axios.post(
-        `${backendURL}/auth/register`, // Full URL: http://178.128.20.53:5000/api/admin/auth/register
+        `${backendURL}/auth/register`, // Full URL: http://178.128.20.53/api/admin/auth/register
         formData,
         {
           headers: {

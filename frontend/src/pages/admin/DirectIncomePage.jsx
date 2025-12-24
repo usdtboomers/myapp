@@ -44,7 +44,7 @@ const DirectIncomePage = () => {
       if (fromDate) params.fromDate = fromDate;
       if (toDate) params.toDate = toDate;
 
-      const res = await axios.get('http://178.128.20.53:5000/api/admin/direct-income', {
+      const res = await axios.get('http://178.128.20.53/api/admin/direct-income', {
         headers: { Authorization: `Bearer ${token}` },
         params,
       });

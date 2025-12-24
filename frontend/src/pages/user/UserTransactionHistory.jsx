@@ -13,7 +13,7 @@ const UserTransactionHistory = ({ userId }) => {
 
   const fetchUserTransactions = async () => {
     try {
-      const res = await axios.get(`http://178.128.20.53:5000/api/transaction/user/${userId}`);
+      const res = await axios.get(`http://178.128.20.53/api/transaction/user/${userId}`);
       setTransactions(res.data);
     } catch (err) {
       console.error("Failed to fetch user transactions:", err);

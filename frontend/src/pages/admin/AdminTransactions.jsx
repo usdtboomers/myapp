@@ -60,7 +60,7 @@ const AdminTransactions = () => {
       const token = localStorage.getItem('adminToken');
       if (!token) throw new Error('Admin token not found');
 
-      const res = await axios.get('http://178.128.20.53:5000/api/admin/transactions', {
+      const res = await axios.get('http://178.128.20.53/api/admin/transactions', {
         headers: { Authorization: `Bearer ${token}` },
       });
 

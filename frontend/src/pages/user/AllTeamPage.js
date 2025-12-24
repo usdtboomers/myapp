@@ -13,7 +13,7 @@ const AllTeamPage = () => {
     if (!user?.userId) return;
     const fetchAllTeam = async () => {
       try {
-        const res = await axios.get(`http://178.128.20.53:5000/api/user/all-team/${user.userId}`);
+        const res = await axios.get(`http://178.128.20.53/api/user/all-team/${user.userId}`);
         setTeam(res.data.team || []);
       } catch (err) {
         console.error("Error fetching all team:", err);

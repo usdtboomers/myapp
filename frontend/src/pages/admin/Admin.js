@@ -26,7 +26,7 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const statsRes = await axios.get('http://178.128.20.53:5000/api/admin/dashboard', {
+      const statsRes = await axios.get('http://178.128.20.53/api/admin/dashboard', {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -46,7 +46,7 @@ const AdminDashboard = () => {
 
   const fetchWithdrawals = async () => {
     try {
-      const res = await axios.get('http://178.128.20.53:5000/api/admin/withdrawals', {
+      const res = await axios.get('http://178.128.20.53/api/admin/withdrawals', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setWithdrawals(res.data || []);

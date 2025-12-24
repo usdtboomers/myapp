@@ -13,7 +13,7 @@ const TransactionDetails = () => {
 
  useEffect(() => {
   if (!userId) return;
-  axios.get(`http://178.128.20.53:5000/api/transaction/transactions/${userId}`)
+  axios.get(`http://178.128.20.53/api/transaction/transactions/${userId}`)
     .then((res) => {
       let sorted = (res.data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 

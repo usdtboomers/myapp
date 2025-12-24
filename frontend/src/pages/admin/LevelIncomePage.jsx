@@ -62,7 +62,7 @@ const LevelIncomePage = () => {
       if (toDate) params.toDate = toDate;
       if (level) params.level = level;
 
-      const res = await axios.get("http://178.128.20.53:5000/api/admin/level-income", {
+      const res = await axios.get("http://178.128.20.53/api/admin/level-income", {
         headers: { Authorization: `Bearer ${token}` },
         params,
       });

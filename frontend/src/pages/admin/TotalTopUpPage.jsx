@@ -34,7 +34,7 @@ const TotalTopUpPage = () => {
         const token = localStorage.getItem('adminToken');
         if (!token) throw new Error('Missing admin token');
 
-        const res = await axios.get('http://178.128.20.53:5000/api/admin/topup-users', {
+        const res = await axios.get('http://178.128.20.53/api/admin/topup-users', {
           headers: { Authorization: `Bearer ${token}` },
         });
 

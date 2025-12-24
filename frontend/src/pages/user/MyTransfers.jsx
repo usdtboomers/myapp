@@ -16,7 +16,7 @@ const MyTransfers = () => {
     if (!userId) return;
     try {
       const res = await axios.get(
-        `http://178.128.20.53:5000/api/transaction/transactions/${userId}?type=transfer`
+        `http://178.128.20.53/api/transaction/transactions/${userId}?type=transfer`
       );
       setTransfers(res.data || []);
     } catch (err) {

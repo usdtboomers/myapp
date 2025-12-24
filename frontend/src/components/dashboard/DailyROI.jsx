@@ -33,7 +33,7 @@ export default function DailyROI() {
   // Refresh user after top-up
   const handleTopUpSuccess = async () => {
     try {
-      const res = await fetch(`http://178.128.20.53:5000/api/user/${user.userId}`, {
+      const res = await fetch(`http://178.128.20.53/api/user/${user.userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();

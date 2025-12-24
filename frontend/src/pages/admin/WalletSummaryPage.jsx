@@ -70,7 +70,7 @@ const AdminWalletHistory = () => {
         return;
       }
 
-      const res = await axios.get("http://178.128.20.53:5000/api/admin/wallet-summary", {
+      const res = await axios.get("http://178.128.20.53/api/admin/wallet-summary", {
         headers: { Authorization: `Bearer ${token}` },
       });
 

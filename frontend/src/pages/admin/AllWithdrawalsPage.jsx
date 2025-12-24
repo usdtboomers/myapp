@@ -21,7 +21,7 @@ const AllWithdrawalsPage = () => {
 
   const fetchAllWithdrawals = useCallback(async () => {
     try {
-    const res = await axios.get('http://178.128.20.53:5000/api/admin/withdrawals?all=true', {
+    const res = await axios.get('http://178.128.20.53/api/admin/withdrawals?all=true', {
   headers: { Authorization: `Bearer ${token}` },
 });
 
