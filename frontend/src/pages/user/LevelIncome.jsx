@@ -14,7 +14,7 @@ const LevelIncome = () => {
   useEffect(() => {
     if (!user?.userId) return;
 
-    axios.get(`http://143.198.205.94:5000/api/transaction/transactions/${user.userId}?type=level_income`)
+    axios.get(`http://178.128.20.53:5000/api/transaction/transactions/${user.userId}?type=level_income`)
       .then((res) => {
         const sorted = (res.data || []).sort((a, b) => new Date(b.date) - new Date(a.date));
         setTransactions(sorted);

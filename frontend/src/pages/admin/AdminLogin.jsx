@@ -25,7 +25,7 @@ const AdminLogin = () => {
       setLoading(true);
 
       const res = await axios.post(
-        "http://143.198.205.94:5000/api/admin/login",
+        "http://178.128.20.53:5000/api/admin/login",
         {
           adminId: formData.adminId.trim(),
           password: formData.password.trim(),

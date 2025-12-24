@@ -37,7 +37,7 @@ const DepositTable = () => {
       const token = localStorage.getItem('adminToken');
       if (!token) return console.error('No admin token found.');
 
-      const res = await axios.get('http://143.198.205.94:5000/api/admin/deposits', {
+      const res = await axios.get('http://178.128.20.53:5000/api/admin/deposits', {
         headers: { Authorization: `Bearer ${token}` },
       });
 

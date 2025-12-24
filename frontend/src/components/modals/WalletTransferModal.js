@@ -25,7 +25,7 @@ const WalletTransferModal = ({ onClose }) => {
     if (!loggedInUser?.userId || !token) return;
     const fetchSenderBalance = async () => {
       try {
-        const res = await axios.get(`http://143.198.205.94:5000/api/user/${loggedInUser.userId}`, {
+        const res = await axios.get(`http://178.128.20.53:5000/api/user/${loggedInUser.userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setSenderBalance(res.data.user.walletBalance || 0);
@@ -42,7 +42,7 @@ const WalletTransferModal = ({ onClose }) => {
     const trimmedId = userId.trim();
     if (!trimmedId) return;
     try {
-      const res = await axios.get(`http://143.198.205.94:5000/api/user/${trimmedId}`, {
+      const res = await axios.get(`http://178.128.20.53:5000/api/user/${trimmedId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUserName(res.data.user?.name || "User not found");
@@ -66,7 +66,7 @@ const WalletTransferModal = ({ onClose }) => {
     setLoading(true);
     try {
       await axios.post(
-        "http://143.198.205.94:5000/api/wallet/transfer",
+        "http://178.128.20.53:5000/api/wallet/transfer",
         { fromUserId: loggedInUser.userId, toUserId: trimmedId, amount: amt, transactionPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );

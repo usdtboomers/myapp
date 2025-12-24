@@ -17,7 +17,7 @@ function UserWithdrawalHistory() {
     const fetchWithdrawals = async () => {
       try {
         const res = await axios.get(
-          `http://143.198.205.94:5000/api/wallet/withdrawals/${userId}`
+          `http://178.128.20.53:5000/api/wallet/withdrawals/${userId}`
         );
         setWithdrawals(res.data.withdrawals || []);
       } catch (error) {

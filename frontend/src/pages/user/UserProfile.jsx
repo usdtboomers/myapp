@@ -87,7 +87,7 @@ function UserProfile() {
       };
 
       const res = await axios.put(
-        `http://143.198.205.94:5000/api/user/${user.userId}`,
+        `http://178.128.20.53:5000/api/user/${user.userId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -138,7 +138,7 @@ function UserProfile() {
 
     try {
       await axios.put(
-        `http://143.198.205.94:5000/api/user/change-password/${user.userId}`,
+        `http://178.128.20.53:5000/api/user/change-password/${user.userId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );

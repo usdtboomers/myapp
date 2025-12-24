@@ -14,7 +14,7 @@ const DirectIncome = () => {
     if (!userId) return;
 
     axios
-      .get(`http://143.198.205.94:5000/api/transaction/transactions/${userId}?type=direct_income`)
+      .get(`http://178.128.20.53:5000/api/transaction/transactions/${userId}?type=direct_income`)
       .then((res) => {
         const sorted = (res.data || [])
           .filter(txn => txn.fromUserId && txn.fromUserId !== userId)

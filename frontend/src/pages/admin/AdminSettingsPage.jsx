@@ -14,7 +14,7 @@ const AdminSettingsPage = () => {
 
   // ✅ Get token directly from localStorage
   const token = localStorage.getItem("adminToken");
-  const API = process.env.REACT_APP_API_URL || "http://143.198.205.94:5000";
+  const API = process.env.REACT_APP_API_URL || "http://178.128.20.53:5000";
 
   // Fetch settings
   const fetchSettings = async () => {

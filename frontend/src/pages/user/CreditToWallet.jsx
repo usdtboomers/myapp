@@ -14,7 +14,7 @@ const CreditToWalletHistory = () => {
     if (!userId) return;
 
     axios
-      .get(`http://143.198.205.94:5000/api/wallet/history/${userId}`)
+      .get(`http://178.128.20.53:5000/api/wallet/history/${userId}`)
       .then((res) => {
         const creditTxs = (res.data || [])
           .filter(

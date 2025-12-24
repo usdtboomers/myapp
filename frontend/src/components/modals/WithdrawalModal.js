@@ -50,7 +50,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
   const fetchData = async () => {
     try {
       // 🔹 Withdrawable balances
-      const res = await axios.get(`http://143.198.205.94:5000/api/wallet/withdrawable/${userId}`);
+      const res = await axios.get(`http://178.128.20.53:5000/api/wallet/withdrawable/${userId}`);
       if (res.data) {
         setBalances({
           walletBalance: res.data.walletBalance || 0,
@@ -65,7 +65,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
       }
 
       // 🔹 User profile for USDT address
-      const profileRes = await axios.get(`http://143.198.205.94:5000/api/user/${userId}`);
+      const profileRes = await axios.get(`http://178.128.20.53:5000/api/user/${userId}`);
       const userData = profileRes.data?.user || {};
       const finalAddress = (userData.walletAddress || "").trim();
       
@@ -138,7 +138,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
         const amount = parseFloat(amountStr);
 
         await axios.post(
-          "http://143.198.205.94:5000/api/wallet/withdraw",
+          "http://178.128.20.53:5000/api/wallet/withdraw",
           {
             userId,
             amount,

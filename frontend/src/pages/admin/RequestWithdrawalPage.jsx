@@ -12,7 +12,7 @@ const RequestWithdrawalPage = () => {
 
  const fetchPendingWithdrawals = async () => {
   try {
-    const res = await axios.get('http://143.198.205.94:5000/api/admin/withdrawals', {
+    const res = await axios.get('http://178.128.20.53:5000/api/admin/withdrawals', {
       headers: { Authorization: `Bearer ${token}` },
     });
     // Filter only pending withdrawals
@@ -27,8 +27,8 @@ const RequestWithdrawalPage = () => {
     try {
       const url =
         action === 'approve'
-          ? `http://143.198.205.94:5000/api/admin/withdrawals/approve/${withdrawalId}`
-          : `http://143.198.205.94:5000/api/admin/withdrawals/reject/${withdrawalId}`;
+          ? `http://178.128.20.53:5000/api/admin/withdrawals/approve/${withdrawalId}`
+          : `http://178.128.20.53:5000/api/admin/withdrawals/reject/${withdrawalId}`;
 
       await axios.put(url, {}, {
         headers: { Authorization: `Bearer ${token}` },

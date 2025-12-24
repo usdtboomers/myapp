@@ -89,7 +89,7 @@ function AppContent() {
 
   useEffect(() => {
     axios
-      .get('http://143.198.205.94:5000/api/setting/public')
+      .get('http://178.128.20.53:5000/api/setting/public')
       .then((res) => {
         setMaintenance(res.data.maintenanceMode);
         setWhitelist(res.data.maintenanceWhitelist || []);

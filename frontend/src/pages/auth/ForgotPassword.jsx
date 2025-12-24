@@ -18,7 +18,7 @@ const ForgotPassword = () => {
     setMessage('');
 
     try {
-      const res = await axios.post('http://143.198.205.94:5000/api/auth/forgot-password', {
+      const res = await axios.post('http://178.128.20.53:5000/api/auth/forgot-password', {
         userId,
       });
       setMessage(res.data.message || 'Check your email for password reset instructions.');

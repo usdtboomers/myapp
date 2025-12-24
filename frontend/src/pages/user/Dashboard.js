@@ -64,11 +64,11 @@ const Dashboard = () => {
 
     try {
        setLoading(true);
-       const userRes = await axios.get(`http://143.198.205.94:5000/api/user/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
+       const userRes = await axios.get(`http://178.128.20.53:5000/api/user/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
        const updatedUser = userRes.data.user;
        setUser(updatedUser); 
        setShowWalletReminder(!updatedUser.walletAddress);
-       const incomeRes = await axios.get(`http://143.198.205.94:5000/api/wallet/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
+       const incomeRes = await axios.get(`http://178.128.20.53:5000/api/wallet/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
        setIncome({ ...incomeRes.data });
     } catch (err) {
       console.error("Failed to fetch user or income:", err);
@@ -97,7 +97,7 @@ const Dashboard = () => {
     try {
       setLoading(true);
       await axios.put(
-        `http://143.198.205.94:5000/api/user/claim-daily/${user.userId}`,
+        `http://178.128.20.53:5000/api/user/claim-daily/${user.userId}`,
         { dayIndex },
         { headers: { Authorization: `Bearer ${token}` } }
       );

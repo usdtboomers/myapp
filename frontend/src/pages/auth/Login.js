@@ -75,7 +75,7 @@ const UserLogin = () => {
 
     try {
       // Real API Call
-      const res = await axios.post('http://143.198.205.94:5000/api/auth/login', {
+      const res = await axios.post('http://178.128.20.53:5000/api/auth/login', {
         userId,
         password,
       });

@@ -63,7 +63,7 @@ const SpinIncomePage = () => {
       if (searchUser) params.userId = searchUser;
 
       const { data } = await axios.get(
-        "http://143.198.205.94:5000/api/admin/spin-income",
+        "http://178.128.20.53:5000/api/admin/spin-income",
         { headers: { Authorization: `Bearer ${token}` }, params }
       );
 

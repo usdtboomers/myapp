@@ -5,7 +5,7 @@
 //   const [withdrawals, setWithdrawals] = useState([]);
 
 //   useEffect(() => {
-//     axios.get('http://143.198.205.94:5000/api/admin/withdrawals')
+//     axios.get('http://178.128.20.53:5000/api/admin/withdrawals')
 //       .then(res => setWithdrawals(res.data))
 //       .catch(err => console.error('Failed to fetch withdrawals:', err));
 //   }, []);

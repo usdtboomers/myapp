@@ -9,7 +9,7 @@ const AllTeamTreePage = () => {
   useEffect(() => {
     const fetchTeamTree = async () => {
       try {
-        const res = await axios.get(`http://143.198.205.94:5000/api/user/team-tree/${user.userId}`);
+        const res = await axios.get(`http://178.128.20.53:5000/api/user/team-tree/${user.userId}`);
         setRootUser(res.data.tree); // You should return { tree: { userId, name, level, children: [...] } }
       } catch (err) {
         console.error("Error loading tree", err);

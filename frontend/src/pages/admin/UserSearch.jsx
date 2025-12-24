@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { Search, Ban, CheckCircle, Save, LogIn } from "lucide-react";
 
-const API_BASE = "http://143.198.205.94:5000";
+const API_BASE = "http://178.128.20.53:5000";
 
 function UserSearch() {
   const [searchId, setSearchId] = useState("");
