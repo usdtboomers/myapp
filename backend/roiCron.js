@@ -123,4 +123,38 @@ async function runDailyPlanIncome() {
 // Mongo Connection + Scheduler
 // ---------------------------
  
+// ---------------------------
+// Mongo Connection + Scheduler (Final Part)
+// ---------------------------
+
+const startCron = async () => {
+  try {
+    // 1. Database Connect karein
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("✅ MongoDB connected for Cron Job");
+
+    // 2. Migration run karein (Ek baar zaroori hai)
+    await migratePlanIncome();
+
+    // 3. Pehli baar manual run (Optional: Server start hote hi chalane ke liye)
+    await runDailyPlanIncome();
+
+    // 4. Cron Schedule: Roz raat 12:05 AM par chalega
+    cron.schedule("5 0 * * *", async () => {
+      console.log("🕒 Cron Triggered: Running Daily Income...");
+      await runDailyPlanIncome();
+    });
+
+    console.log("🚀 Initial Cron tasks completed & Scheduler active.");
+  } catch (err) {
+    console.error("❌ Cron Setup Error:", err);
+    process.exit(1); // Error aane par process band kar dein
+  }
+};
+
+// Agar is file ko direct "node roiCron.js" se chalana hai
+if (require.main === module) {
+  startCron();
+}
+
 module.exports = { runDailyPlanIncome, migratePlanIncome };
