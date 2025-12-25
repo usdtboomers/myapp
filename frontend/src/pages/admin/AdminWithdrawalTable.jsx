@@ -225,11 +225,11 @@ txnHash: w.txnHash ?? '-',
       if (status === 'dummy') {
         const txnHash = prompt('Enter Dummy Transaction Hash:');
         if (!txnHash) return alert('Transaction hash is required.');
-        url = `/api/admin/withdrawals/dummy/${id}`;
+        url = `/admin/withdrawals/dummy/${id}`;
         body = { txnHash };
       } else {
         const normalizedStatus = status === 'approved' ? 'approve' : 'reject';
-        url = `/api/admin/withdrawals/${normalizedStatus}/${id}`;
+        url = `/admin/withdrawals/${normalizedStatus}/${id}`;
       }
       await api.put(url, body, { headers: { Authorization: `Bearer ${token}` } });
       fetchWithdrawals();

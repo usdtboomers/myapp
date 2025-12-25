@@ -46,7 +46,7 @@ const WalletHistory = () => {
             type:"withdrawal", 
             displayAmount:w.grossAmount||0, 
             deductionAmount:w.walletUsed||0, 
-            description:`Withdrawal (${w.status}) - ROI Deduction: $${(w.walletUsed||0).toFixed(2)}`, 
+            description:`Required Wallet Used: $${(w.walletUsed||0).toFixed(2)}`, 
             date:w.createdAt 
           })) 
         : [];

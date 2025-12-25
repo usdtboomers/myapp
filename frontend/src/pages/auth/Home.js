@@ -66,7 +66,7 @@ const Home = () => {
       <div className="fixed inset-0 bg-grid-pattern pointer-events-none"></div>
 
       {/* --- NAVBAR --- */}
-      <nav className={`fixed top-0 w-full text-white z-50 transition-all duration-300 ${scrolled ? 'bg-[#0f172a]/90 backdrop-blur-md border-b border-slate-800 py-3' : 'bg-transparent py-5'}`}>
+      <nav className={`fixed top-0 w-full text-white z-[100] transition-all duration-300 ${scrolled ? 'bg-[#0f172a]/90 backdrop-blur-md border-b border-slate-800 py-3' : 'bg-transparent py-5'}`}>
         <div className="max-w-7xl mx-auto text-white px-6 flex justify-between items-center">
           <div className="flex items-center gap-3">
              <img src={Logo} alt="Logo" className="h-10 md:h-12 drop-shadow-lg" />
@@ -89,6 +89,7 @@ const Home = () => {
         </div>
       </nav>
 
+<div className={`${scrolled ? 'h-[64px]' : 'h-[80px]'} transition-all duration-300`}></div>
       {/* --- HERO SECTION --- */}
       <section className="relative  text-white pt-32 pb-20 md:pt-48 md:pb-32 px-6 overflow-hidden">
         <div className="max-w-7xl text-white mx-auto flex flex-col-reverse lg:flex-row items-center gap-12 lg:gap-20">
@@ -205,7 +206,7 @@ const Home = () => {
                      onChange={handleSupportChange}
                      required
                      placeholder="Your Full Name"
-                     className="w-full bg-slate-800/50 border border-slate-700 text-white rounded-xl py-3 pl-12 pr-4 outline-none focus:border-yellow-500 focus:bg-slate-800 transition-all"
+                     className="w-full bg-slate-800/50 border border-slate-700 text-black rounded-xl py-3 pl-12 pr-4 outline-none focus:border-yellow-500 focus:bg-slate-800 transition-all"
                    />
                 </div>
                 <div className="relative">
@@ -217,7 +218,7 @@ const Home = () => {
                      onChange={handleSupportChange}
                      required
                      placeholder="Email Address"
-                     className="w-full bg-slate-800/50 border border-slate-700 text-white rounded-xl py-3 pl-12 pr-4 outline-none focus:border-yellow-500 focus:bg-slate-800 transition-all"
+                     className="w-full bg-slate-800/50 border border-slate-700 text-black rounded-xl py-3 pl-12 pr-4 outline-none focus:border-yellow-500 focus:bg-slate-800 transition-all"
                    />
                 </div>
              </div>
@@ -231,7 +232,7 @@ const Home = () => {
                   required
                   rows={4}
                   placeholder="How can we help you?"
-                  className="w-full bg-slate-800/50 border border-slate-700 text-white rounded-xl py-3 pl-12 pr-4 outline-none focus:border-yellow-500 focus:bg-slate-800 transition-all resize-none"
+                  className="w-full bg-slate-800/50 border border-slate-700 text-black rounded-xl py-3 pl-12 pr-4 outline-none focus:border-yellow-500 focus:bg-slate-800 transition-all resize-none"
                 />
              </div>
 
@@ -259,29 +260,95 @@ const Home = () => {
       </footer>
 
       {/* --- SUCCESS MODAL --- */}
-      {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/90 backdrop-blur-sm z-[100] p-4 animate-fade-in">
-          <div className="bg-slate-900 border border-emerald-500/30 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center relative">
-            <button 
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-500 hover:text-white"
-            >
-              <X size={24} />
-            </button>
-            <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-               <Zap className="text-emerald-400" size={32} />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">Success!</h3>
-            <p className="text-slate-300 mb-6">{modalMessage}</p>
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold transition-all"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+   {isModalOpen && (
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backdropFilter: 'blur(10px)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100000, // Sabse upar
+  }}>
+    
+    <div style={{
+      backgroundColor: '#0f172a', // Solid Dark Slate
+      border: '1px solid rgba(16, 185, 129, 0.4)', // Emerald Border
+      padding: '40px',
+      borderRadius: '24px',
+      width: '90%',
+      maxWidth: '400px',
+      textAlign: 'center',
+      position: 'relative',
+      boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+      color: 'white'
+    }}>
+      
+      {/* Close Button */}
+      <button 
+        onClick={() => setIsModalOpen(false)}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          background: 'none',
+          border: 'none',
+          color: '#64748b',
+          cursor: 'pointer'
+        }}
+      >
+        <X size={24} />
+      </button>
+
+      {/* Zap Icon Area */}
+      <div style={{
+        width: '80px',
+        height: '80px',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderRadius: '50%',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        margin: '0 auto 24px auto',
+        boxShadow: '0 0 20px rgba(16, 185, 129, 0.2)'
+      }}>
+         <Zap style={{ color: '#10b981' }} size={40} />
+      </div>
+
+      <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '10px' }}>
+        Success!
+      </h3>
+      
+      <p style={{ color: '#94a3b8', marginBottom: '30px', lineHeight: '1.5' }}>
+        {modalMessage || "Operation completed successfully."}
+      </p>
+
+      <button
+        onClick={() => setIsModalOpen(false)}
+        style={{
+          width: '100%',
+          padding: '16px',
+          borderRadius: '12px',
+          backgroundColor: '#10b981',
+          color: 'white',
+          fontWeight: 'bold',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: '16px',
+          transition: '0.3s'
+        }}
+        onMouseOver={(e) => e.target.style.backgroundColor = '#059669'}
+        onMouseOut={(e) => e.target.style.backgroundColor = '#10b981'}
+      >
+        Continue
+      </button>
+    </div>
+  </div>
+)}
 
     </div>
   );
