@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 import ReferralTreeView from '../../components/ReferralTreeView';
 
 const AllTeamTreePage = () => {
@@ -9,7 +9,7 @@ const AllTeamTreePage = () => {
   useEffect(() => {
     const fetchTeamTree = async () => {
       try {
-        const res = await axios.get(`http://178.128.20.53/api/user/team-tree/${user.userId}`);
+        const res = await api.get(`/user/team-tree/${user.userId}`);
         setRootUser(res.data.tree); // You should return { tree: { userId, name, level, children: [...] } }
       } catch (err) {
         console.error("Error loading tree", err);

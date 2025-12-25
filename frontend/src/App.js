@@ -6,7 +6,7 @@ import {
   Navigate,
   useLocation,
 } from 'react-router-dom';
-import axios from 'axios';
+import api from './api/axios';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import RequireUserAuth from './components/RequireUserAuth';
 import RequireAdminAuth from './components/RequireAdminAuth';
@@ -88,8 +88,7 @@ function AppContent() {
   const isAdminPath = path.startsWith('/admin') || path === '/admin-login';
 
   useEffect(() => {
-    axios
-      .get('http://178.128.20.53/api/setting/public')
+    api.get('/setting/public')
       .then((res) => {
         setMaintenance(res.data.maintenanceMode);
         setWhitelist(res.data.maintenanceWhitelist || []);

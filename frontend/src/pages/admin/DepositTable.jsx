@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 
 // 🔹 Helper: Decimal128 / number ko normalize karo
 const getNumericAmount = (amount) => {
@@ -37,7 +37,7 @@ const DepositTable = () => {
       const token = localStorage.getItem('adminToken');
       if (!token) return console.error('No admin token found.');
 
-      const res = await axios.get('http://178.128.20.53/api/admin/deposits', {
+      const res = await api.get('/admin/deposits', {
         headers: { Authorization: `Bearer ${token}` },
       });
 

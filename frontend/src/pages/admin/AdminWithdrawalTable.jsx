@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
 import { FaCopy } from 'react-icons/fa';
@@ -36,7 +36,7 @@ const AdminWithdrawalTable = () => {
       if (fromDate) params.from = format(new Date(fromDate), 'dd-MM-yyyy');
       if (toDate) params.to = format(new Date(toDate), 'dd-MM-yyyy');
 
-      const { data } = await axios.get('/api/admin/withdrawals', {
+      const { data } = await api.get('/admin/withdrawals', {
         headers: { Authorization: `Bearer ${token}` },
         params,
       });
@@ -231,7 +231,7 @@ txnHash: w.txnHash ?? '-',
         const normalizedStatus = status === 'approved' ? 'approve' : 'reject';
         url = `/api/admin/withdrawals/${normalizedStatus}/${id}`;
       }
-      await axios.put(url, body, { headers: { Authorization: `Bearer ${token}` } });
+      await api.put(url, body, { headers: { Authorization: `Bearer ${token}` } });
       fetchWithdrawals();
     } catch (err) {
       console.error(err);

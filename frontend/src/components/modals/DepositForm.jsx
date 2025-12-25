@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ethers } from "ethers";
-import axios from "axios";
+import api from "api/axios";
 import ConnectWallet from "../wallet/ConnectWallet";
 
 const DepositForm = ({ userId, walletAddress, onSuccess }) => {
@@ -32,7 +32,7 @@ const DepositForm = ({ userId, walletAddress, onSuccess }) => {
       const tx = await tokenContract.transfer(walletAddress, amountInWei);
       await tx.wait();
 
-      await axios.post("/api/wallet/web3-deposit", {
+      await api.post("/api/wallet/web3-deposit", {
         userId,
         amount: numericAmount,
         txnHash: tx.hash,

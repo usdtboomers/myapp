@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "api/axios";
 import MessageModal from "./MessageModal";
 import SuccessModal from "./SuccessModal";
 import { useAuth } from "../../context/AuthContext";
@@ -29,7 +29,7 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
   // --- LOGIC: Fetch Data ---
   const fetchAvailable = async () => {
     try {
-      const res = await axios.get(`/api/wallet/withdrawable/${userId}`, {
+      const res = await api.get(`/wallet/withdrawable/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAvailable(res.data || {});
@@ -58,7 +58,7 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
       let totalAmount = 0;
       for (const [source, amount] of entries) {
         
-        const res = await axios.post(
+        const res = await api.post(
           "/api/wallet/credit-to-wallet",
           {
             userId,

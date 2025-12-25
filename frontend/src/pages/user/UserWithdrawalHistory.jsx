@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 
 function UserWithdrawalHistory() {
   const [withdrawals, setWithdrawals] = useState([]);
@@ -16,8 +16,8 @@ function UserWithdrawalHistory() {
   useEffect(() => {
     const fetchWithdrawals = async () => {
       try {
-        const res = await axios.get(
-          `http://178.128.20.53/api/wallet/withdrawals/${userId}`
+        const res = await api.get(
+          `/wallet/withdrawals/${userId}`
         );
         setWithdrawals(res.data.withdrawals || []);
       } catch (error) {

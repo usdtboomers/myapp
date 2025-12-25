@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 import { useNavigate } from 'react-router-dom';
 
 const AdminSettingsPage = () => {
@@ -14,7 +14,7 @@ const AdminSettingsPage = () => {
 
   // ✅ Get token directly from localStorage
   const token = localStorage.getItem("adminToken");
-  const API = process.env.REACT_APP_API_URL || "http://178.128.20.53:5000";
+const API = "";
 
   // Fetch settings
   const fetchSettings = async () => {
@@ -25,7 +25,7 @@ const AdminSettingsPage = () => {
     }
 
     try {
-      const res = await axios.get(`${API}/api/setting`, {
+      const res = await api.get(`${API}/setting`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSettings(res.data);
@@ -75,7 +75,7 @@ const AdminSettingsPage = () => {
     const updatedSettings = { ...settings, maintenanceWhitelist: ids };
 
     try {
-      await axios.put(`${API}/api/setting`, updatedSettings, {
+      await api.put(`${API}/api/setting`, updatedSettings, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSaveStatus("✅ Settings saved successfully!");
@@ -100,7 +100,7 @@ const AdminSettingsPage = () => {
     setSaving(true);
 
     try {
-      await axios.post(
+      await api.post(
         `${API}/api/setting/wallet/credit`,
         { userId: Number(creditUserId), amount: Number(creditAmount), reason: "Admin Credit" },
         { headers: { Authorization: `Bearer ${token}` } }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../../api/axios";
 import { getUserId } from "../../utils/authUtils";
 
 const DirectIncome = () => {
@@ -13,8 +13,7 @@ const DirectIncome = () => {
   useEffect(() => {
     if (!userId) return;
 
-    axios
-      .get(`http://178.128.20.53/api/transaction/transactions/${userId}?type=direct_income`)
+    api.get(`/transaction/transactions/${userId}?type=direct_income`)
       .then((res) => {
         const sorted = (res.data || [])
           .filter(txn => txn.fromUserId && txn.fromUserId !== userId)

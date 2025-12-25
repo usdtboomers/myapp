@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 
 // 🔹 Helpers: Decimal128 / string / number -> safe number + formatted string
 const normalizeAmount = (value) => {
@@ -62,8 +62,8 @@ const SpinIncomePage = () => {
       if (toDate) params.toDate = toDate;
       if (searchUser) params.userId = searchUser;
 
-      const { data } = await axios.get(
-        "http://178.128.20.53/api/admin/spin-income",
+      const { data } = await api.get(
+        "/admin/spin-income",
         { headers: { Authorization: `Bearer ${token}` }, params }
       );
 

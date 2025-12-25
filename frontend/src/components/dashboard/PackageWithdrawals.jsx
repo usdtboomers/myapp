@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import axios from "axios";
+import api from "api/axios";
 import SpinnerOverlay from "../common/SpinnerOverlay";
 
 const API = process.env.REACT_APP_API_URL || "";
@@ -28,8 +28,8 @@ const PackageWithdrawals = () => {
         const headers = { Authorization: `Bearer ${token}` };
 
         const [topupRes, withdrawRes] = await Promise.all([
-          axios.get(url(`/api/wallet/topup-history/${user.userId}`), { headers }),
-          axios.get(url(`/api/wallet/withdrawals/${user.userId}`), { headers }),
+          api.get(url(`/wallet/topup-history/${user.userId}`), { headers }),
+          api.get(url(`/wallet/withdrawals/${user.userId}`), { headers }),
         ]);
 
         /* ---------- Withdrawals ---------- */

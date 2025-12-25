@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { ChevronDown, Menu, Bell, Home, UserCircle2, BadgeDollarSign, History, Banknote, Users, BarChart, Wallet, HelpCircle, LogOut } from "lucide-react";
 
 // ✅ REAL IMPORTS (Jab aap apne project mein use karein to inhein uncomment karein)
@@ -64,11 +64,11 @@ const Dashboard = () => {
 
     try {
        setLoading(true);
-       const userRes = await axios.get(`http://178.128.20.53/api/user/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
+       const userRes = await api.get(`/user/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
        const updatedUser = userRes.data.user;
        setUser(updatedUser); 
        setShowWalletReminder(!updatedUser.walletAddress);
-       const incomeRes = await axios.get(`http://178.128.20.53/api/wallet/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
+       const incomeRes = await api.get(`/wallet/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
        setIncome({ ...incomeRes.data });
     } catch (err) {
       console.error("Failed to fetch user or income:", err);
@@ -96,8 +96,8 @@ const Dashboard = () => {
   const claimDailyROI = async (dayIndex) => {
     try {
       setLoading(true);
-      await axios.put(
-        `http://178.128.20.53/api/user/claim-daily/${user.userId}`,
+      await api.put(
+        `/user/claim-daily/${user.userId}`,
         { dayIndex },
         { headers: { Authorization: `Bearer ${token}` } }
       );

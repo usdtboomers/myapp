@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { useAuth } from "../../context/AuthContext";
 import SuccessModal from "./SuccessModal";
 import MessageModal from "./MessageModal";
@@ -25,7 +25,7 @@ const WalletTransferModal = ({ onClose }) => {
     if (!loggedInUser?.userId || !token) return;
     const fetchSenderBalance = async () => {
       try {
-        const res = await axios.get(`http://178.128.20.53/api/user/${loggedInUser.userId}`, {
+        const res = await api.get(`/user/${loggedInUser.userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setSenderBalance(res.data.user.walletBalance || 0);
@@ -42,7 +42,7 @@ const WalletTransferModal = ({ onClose }) => {
     const trimmedId = userId.trim();
     if (!trimmedId) return;
     try {
-      const res = await axios.get(`http://178.128.20.53/api/user/${trimmedId}`, {
+      const res = await api.get(`/user/${trimmedId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUserName(res.data.user?.name || "User not found");
@@ -65,8 +65,8 @@ const WalletTransferModal = ({ onClose }) => {
 
     setLoading(true);
     try {
-      await axios.post(
-        "http://178.128.20.53/api/wallet/transfer",
+      await api.post(
+        "/wallet/transfer",
         { fromUserId: loggedInUser.userId, toUserId: trimmedId, amount: amt, transactionPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );

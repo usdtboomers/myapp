@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 import { format } from 'date-fns';
 
 const DepositHistory = () => {
@@ -17,9 +17,8 @@ const DepositHistory = () => {
           return;
         }
 
-        const res = await axios.get(
-          `http://localhost:3000/api/wallet/deposit-history/${user.userId}`
-        );
+        const res = await api.get(
+`/api/wallet/deposit-history/${user.userId}`        );
         setDeposits(res.data);
         setFilteredDeposits(res.data); // initially all
       } catch (err) {

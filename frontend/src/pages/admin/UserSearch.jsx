@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { Search, Ban, CheckCircle, Save, LogIn } from "lucide-react";
 
-const API_BASE = "http://178.128.20.53:5000";
+const API_BASE = "http://178.128.20.53";
 
 function UserSearch() {
   const [searchId, setSearchId] = useState("");
@@ -19,7 +19,7 @@ function UserSearch() {
     if (!token) return setMessage("Admin not authenticated");
 
     try {
-      const res = await axios.get(
+      const res = await api.get(
         `${API_BASE}/api/user/${searchId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -48,7 +48,7 @@ function UserSearch() {
         ? `${API_BASE}/api/admin/unblock-user/${user.userId}`
         : `${API_BASE}/api/admin/block-user/${user.userId}`;
 
-      await axios.put(
+      await api.put(
         url,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
@@ -81,7 +81,7 @@ function UserSearch() {
       if (payload.password === user.password) delete payload.password;
       if (payload.txnPassword === user.txnPassword) delete payload.txnPassword;
 
-      const res = await axios.put(
+      const res = await api.put(
         `${API_BASE}/api/admin/${user.userId}`,
         payload,
         {
@@ -104,7 +104,7 @@ function UserSearch() {
   if (!token) return setMessage("Admin not authenticated");
 
   try {
-    const res = await axios.get(
+    const res = await api.get(
       `${API_BASE}/api/admin/impersonate/${user.userId}`,
       {
         headers: { Authorization: `Bearer ${token}` },

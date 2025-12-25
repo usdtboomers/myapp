@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Select from 'react-select';
 import Confetti from 'react-confetti';
@@ -57,7 +57,7 @@ function Register() {
   const fetchSponsorName = async (id) => {
     if (id.length < 3) return;
     try {
-      const res = await axios.get(`/api/user/sponsor-name/${id}`);
+      const res = await api.get(`/api/user/sponsor-name/${id}`);
       setSponsorName(res.data.name);
     } catch {
       setSponsorName('Invalid Sponsor');
@@ -83,7 +83,7 @@ function Register() {
     }
 
     try {
-      const response = await axios.post('/api/auth/register', {
+      const response = await api.post('/auth/register', {
         name, mobile, email, country, password, txnPassword, sponsorId,
       });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "api/axios";
 
 // ----------------------------------------------------------------------
 // ✅ REAL IMPORTS (Jab aap apne project mein use karein to inhein uncomment karein)
@@ -55,7 +55,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
     const fetchBalance = async () => {
       if (!loggedInUser?.userId || !token) return;
       try {
-        const res = await axios.get(`http://178.128.20.53/api/user/${loggedInUser.userId}`, {
+        const res = await api.get(`/user/${loggedInUser.userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setWalletBalance(res.data.user.walletBalance || 0);
@@ -70,7 +70,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   // --- LOGIC: Fetch User ---
   const fetchUser = async () => {
     try {
-      const res = await axios.get(`http://178.128.20.53/api/user/${userId}`, {
+      const res = await api.get(`/user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUserInfo(res.data.user);
@@ -106,8 +106,8 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
 
     setLoading(true);
     try {
-      await axios.put(
-        `http://178.128.20.53/api/user/topup/${Number(userId)}`,
+      await api.put(
+        `/user/topup/${Number(userId)}`,
         { amount: selectedAmount, transactionPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -115,7 +115,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
       setSuccessData({ userId: userInfo.userId, name: userInfo.name, amount: selectedAmount });
       setSuccessModalOpen(true);
 
-      const refreshedRes = await axios.get(`http://178.128.20.53/api/user/${userId}`, {
+      const refreshedRes = await api.get(`/user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const refreshedUser = refreshedRes.data.user;

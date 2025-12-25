@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "api/axios";
 import SuccessModal from "./SuccessModal";
 import MessageModal from "./MessageModal";
 import { useAuth } from "../../context/AuthContext";
@@ -50,7 +50,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
   const fetchData = async () => {
     try {
       // 🔹 Withdrawable balances
-      const res = await axios.get(`http://178.128.20.53/api/wallet/withdrawable/${userId}`);
+      const res = await api.get(`/wallet/withdrawable/${userId}`);
       if (res.data) {
         setBalances({
           walletBalance: res.data.walletBalance || 0,
@@ -65,7 +65,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
       }
 
       // 🔹 User profile for USDT address
-      const profileRes = await axios.get(`http://178.128.20.53/api/user/${userId}`);
+      const profileRes = await api.get(`/user/${userId}`);
       const userData = profileRes.data?.user || {};
       const finalAddress = (userData.walletAddress || "").trim();
       
@@ -137,8 +137,8 @@ const WithdrawalModal = ({ userId, onClose }) => {
       for (const [plan, amountStr] of entries) {
         const amount = parseFloat(amountStr);
 
-        await axios.post(
-          "http://178.128.20.53/api/wallet/withdraw",
+        await api.post(
+          "/wallet/withdraw",
           {
             userId,
             amount,

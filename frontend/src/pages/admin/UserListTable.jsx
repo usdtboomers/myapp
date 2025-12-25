@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 import { saveAs } from 'file-saver';
 import Papa from 'papaparse';
 
@@ -17,7 +17,7 @@ const UserListTable = () => {
       const token = localStorage.getItem('adminToken');
       if (!token) throw new Error('Admin token not found');
 
-      const res = await axios.get('http://178.128.20.53/api/admin/users', {
+      const res = await api.get('/admin/users', {
         headers: {
           Authorization: `Bearer ${token}`,
         },

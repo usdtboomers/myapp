@@ -10,8 +10,7 @@ const sendEmail = require('../utils/sendEmail');
 const checkFeature = require('../middleware/checkFeatureEnabled'); // ✅ correct
 
 const JWT_SECRET = process.env.JWT_SECRET || 'yoursecretkey';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://178.128.20.53';
 // 📌 Generate Unique User ID
 const generateUserId = async () => {
   let id;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { FaUndo } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -66,7 +66,7 @@ const ReverseTransaction = () => {
       const token = localStorage.getItem("adminToken");
       if (!token) throw new Error("Admin not logged in. Please login.");
 
-      const res = await axios.get("/api/admin/transactions", {
+      const res = await api.get("/admin/transactions", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -144,7 +144,7 @@ const ReverseTransaction = () => {
       const token = localStorage.getItem("adminToken");
       if (!token) throw new Error("Admin token missing. Please login.");
 
-      const res = await axios.put(
+      const res = await api.put(
         "/api/admin/transactions/reverse",
         { txIds, reason: reason.trim() },
         { headers: { Authorization: `Bearer ${token}` } }

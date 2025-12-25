@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 import { FaBell, FaTrash } from 'react-icons/fa';
 
 const badge = {
@@ -19,7 +19,7 @@ const AdminCreateNotification = () => {
   const [list, setList] = useState([]);
 
   const fetchList = async () => {
-    const res = await axios.get('/api/admin/notifications/list', {
+    const res = await api.get('/admin/notifications/list', {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
       },
@@ -32,7 +32,7 @@ const AdminCreateNotification = () => {
   }, []);
 
   const submitHandler = async () => {
-    await axios.post('/api/admin/notifications/create', form, {
+    await api.post('/admin/notifications/create', form, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
       },
@@ -42,16 +42,17 @@ const AdminCreateNotification = () => {
     fetchList();
   };
 
-  const deleteHandler = async (id) => {
-    if (!window.confirm('Delete this notification?')) return;
+ // ✅ Sahi Tarika:
+const deleteHandler = async (id) => {
+  if (!window.confirm('Delete this notification?')) return;
 
-    await axios.delete(`/api/admin/notifications/${id}`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
-      },
-    });
-    fetchList();
-  };
+  await api.delete(`/admin/notifications/${id}`, { // <--- AB YE SAHI HAI
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
+    },
+  });
+  fetchList();
+};
 
   return (
     <div className="p-6 max-w-5xl">

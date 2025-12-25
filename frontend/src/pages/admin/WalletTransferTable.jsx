@@ -1,5 +1,5 @@
 // import React, { useEffect, useState } from 'react';
-// import axios from 'axios';
+// import api from 'api/axios';
 
 // const WalletTransferTable = () => {
 //   const [transfers, setTransfers] = useState([]);
@@ -11,7 +11,7 @@
 //     return;
 //   }
 
-//   axios.get('http://178.128.20.53/api/admin/transfers', {
+//   api.get('/admin/transfers', {
 //     headers: {
 //       Authorization: `Bearer ${token}`,
 //     },

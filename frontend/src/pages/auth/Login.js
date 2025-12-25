@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Lock, ArrowRight, Eye, EyeOff, Check } from 'lucide-react';
 
@@ -75,7 +75,7 @@ const UserLogin = () => {
 
     try {
       // Real API Call
-      const res = await axios.post('http://178.128.20.53/api/auth/login', {
+      const res = await api.post('/auth/login', {
         userId,
         password,
       });

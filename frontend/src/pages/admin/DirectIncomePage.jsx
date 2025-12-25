@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 
 // 🔹 Helper: Mongo Decimal128 / normal number / string -> number
 function normalizeAmount(val) {
@@ -44,7 +44,7 @@ const DirectIncomePage = () => {
       if (fromDate) params.fromDate = fromDate;
       if (toDate) params.toDate = toDate;
 
-      const res = await axios.get('http://178.128.20.53/api/admin/direct-income', {
+      const res = await api.get('/admin/direct-income', {
         headers: { Authorization: `Bearer ${token}` },
         params,
       });

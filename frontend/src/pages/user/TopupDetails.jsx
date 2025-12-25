@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { useAuth } from "../../context/AuthContext";
-import axios from "axios";
+import api from "api/axios";
 import BASE_URL from "../../config";
 
 const TopupDetails = () => {
@@ -19,7 +19,7 @@ const TopupDetails = () => {
       }
 
       try {
-        const res = await axios.get(`${BASE_URL}/api/wallet/topup-history/${user.userId}`);
+        const res = await api.get(`${BASE_URL}/api/wallet/topup-history/${user.userId}`);
        if (Array.isArray(res.data)) {
   const userTopups = res.data
     .filter((t) => t.type === "topup")

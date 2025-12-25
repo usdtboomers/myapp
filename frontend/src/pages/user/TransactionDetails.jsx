@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { getUserId } from "../../utils/authUtils";
 
 const TransactionDetails = () => {
@@ -13,7 +13,7 @@ const TransactionDetails = () => {
 
  useEffect(() => {
   if (!userId) return;
-  axios.get(`http://178.128.20.53/api/transaction/transactions/${userId}`)
+  api.get(`/transaction/transactions/${userId}`)
     .then((res) => {
       let sorted = (res.data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 

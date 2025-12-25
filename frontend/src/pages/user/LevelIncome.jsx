@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { useAuth } from '../../context/AuthContext';
 
 const LevelIncome = () => {
@@ -14,7 +14,7 @@ const LevelIncome = () => {
   useEffect(() => {
     if (!user?.userId) return;
 
-    axios.get(`http://178.128.20.53/api/transaction/transactions/${user.userId}?type=level_income`)
+    api.get(`/transaction/transactions/${user.userId}?type=level_income`)
       .then((res) => {
         const sorted = (res.data || []).sort((a, b) => new Date(b.date) - new Date(a.date));
         setTransactions(sorted);

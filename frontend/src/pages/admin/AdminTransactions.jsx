@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 
 // 🔹 Helpers for Decimal / number normalization
 const normalizeAmount = (value) => {
@@ -60,7 +60,7 @@ const AdminTransactions = () => {
       const token = localStorage.getItem('adminToken');
       if (!token) throw new Error('Admin token not found');
 
-      const res = await axios.get('http://178.128.20.53/api/admin/transactions', {
+      const res = await api.get('/admin/transactions', {
         headers: { Authorization: `Bearer ${token}` },
       });
 

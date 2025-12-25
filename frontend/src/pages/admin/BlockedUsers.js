@@ -1,6 +1,6 @@
 // BlockedUsers.jsx
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { FaUnlock } from "react-icons/fa";
 import MessageModal from "../../components/modals/MessageModal";
 
@@ -35,7 +35,7 @@ const BlockedUsers = () => {
   const fetchBlockedUsers = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("/api/admin/blocked-users", {
+      const res = await api.get("/admin/blocked-users", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
         },
@@ -54,8 +54,8 @@ const BlockedUsers = () => {
   const handleUnblock = async (userId) => {
     if (!window.confirm("Are you sure you want to unblock this user?")) return;
     try {
-      await axios.put(
-        `/api/admin/unblock-user/${userId}`,
+      await api.put(
+        `/admin/unblock-user/${userId}`,
         {},
         {
           headers: {

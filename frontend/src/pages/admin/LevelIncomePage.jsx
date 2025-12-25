@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 
 // 🔹 Helpers: Decimal128 / string / number -> safe number + formatted string
 const normalizeAmount = (value) => {
@@ -62,7 +62,7 @@ const LevelIncomePage = () => {
       if (toDate) params.toDate = toDate;
       if (level) params.level = level;
 
-      const res = await axios.get("http://178.128.20.53/api/admin/level-income", {
+      const res = await api.get("/admin/level-income", {
         headers: { Authorization: `Bearer ${token}` },
         params,
       });

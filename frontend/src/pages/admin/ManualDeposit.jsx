@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 
 export default function AdminManualTransaction() {
   const [mode, setMode] = useState('credit'); // 'credit' | 'debit'
@@ -28,7 +28,7 @@ export default function AdminManualTransaction() {
 
   async function fetchTransactions(p = 1) {
     try {
-      const res = await axios.get(`/api/admin/manual-transactions?page=${p}&limit=${pageSize}`, { headers: authHeader() });
+      const res = await api.get(`/admin/manual-transactions?page=${p}&limit=${pageSize}`, { headers: authHeader() });
       setTransactions(res.data.transactions || []);
       setTotalPages(res.data.totalPages || 1);
     } catch (err) {
@@ -74,7 +74,7 @@ export default function AdminManualTransaction() {
         adminNote: adminNote || null,
       };
 
-      const res = await axios.post('/api/admin/manual-transaction', payload, { headers: authHeader() });
+      const res = await api.post('/admin/manual-transaction', payload, { headers: authHeader() });
 
       setMessage(res.data?.message || 'Transaction completed successfully.');
 

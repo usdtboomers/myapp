@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Bell } from "lucide-react";
-import axios from "axios";
+import api from "api/axios";
 
 const TopNav = ({ onHamburgerClick }) => {
   const navigate = useNavigate();
@@ -13,8 +13,8 @@ const TopNav = ({ onHamburgerClick }) => {
   useEffect(() => {
     const fetchNotifCount = async () => {
       try {
-        const res = await axios.get(
-          `/api/admin/notifications/count/${user.userId}`
+        const res = await api.get(
+          `/admin/notifications/count/${user.userId}`
         );
         setNotifCount(res.data.count || 0);
       } catch (err) {

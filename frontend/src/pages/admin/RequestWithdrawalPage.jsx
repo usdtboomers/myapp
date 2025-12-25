@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 import AdminWithdrawalTable from './AdminWithdrawalTable';
 
 const RequestWithdrawalPage = () => {
@@ -12,7 +12,7 @@ const RequestWithdrawalPage = () => {
 
  const fetchPendingWithdrawals = async () => {
   try {
-    const res = await axios.get('http://178.128.20.53/api/admin/withdrawals', {
+    const res = await api.get('/admin/withdrawals', {
       headers: { Authorization: `Bearer ${token}` },
     });
     // Filter only pending withdrawals
@@ -27,10 +27,10 @@ const RequestWithdrawalPage = () => {
     try {
       const url =
         action === 'approve'
-          ? `http://178.128.20.53/api/admin/withdrawals/approve/${withdrawalId}`
-          : `http://178.128.20.53/api/admin/withdrawals/reject/${withdrawalId}`;
+          ? `/admin/withdrawals/approve/${withdrawalId}`
+          : `/admin/withdrawals/reject/${withdrawalId}`;
 
-      await axios.put(url, {}, {
+      await api.put(url, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

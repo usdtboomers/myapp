@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
+import api from "api/axios";
 import moment from "moment";
 import { ChevronDown, ArrowLeft } from "lucide-react"; // Icons for UI
 
@@ -87,7 +87,7 @@ const SpinWin = () => {
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${BASE_URL}/api/spin/history`, {
+      const res = await api.get(`${BASE_URL}/api/spin/history`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data.success) {
@@ -139,7 +139,7 @@ const SpinWin = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.post(`${BASE_URL}/api/spin/`, {}, {
+      const res = await api.post(`${BASE_URL}/api/spin/`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -192,7 +192,7 @@ const SpinWin = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.post(
+      const res = await api.post(
         `${BASE_URL}/api/spin/buy`,
         { quantity: buyQuantity, transactionPassword },
         { headers: { Authorization: `Bearer ${token}` } }

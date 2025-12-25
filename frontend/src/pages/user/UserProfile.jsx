@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from 'api/axios';
 import { ArrowLeftCircle, Save, Lock, User, Mail, Smartphone, Wallet, Key } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import MessageModal from '../../components/modals/MessageModal';
@@ -86,8 +86,8 @@ function UserProfile() {
         oldTxnPassword: profileTxnPassword,
       };
 
-      const res = await axios.put(
-        `http://178.128.20.53/api/user/${user.userId}`,
+      const res = await api.put(
+        `/user/${user.userId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -137,8 +137,8 @@ function UserProfile() {
     }
 
     try {
-      await axios.put(
-        `http://178.128.20.53/api/user/change-password/${user.userId}`,
+      await api.put(
+        `/user/change-password/${user.userId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );

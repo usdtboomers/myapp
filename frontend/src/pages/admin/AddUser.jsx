@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 
 const AddUser = () => {
   const [formData, setFormData] = useState({
@@ -29,10 +29,10 @@ const AddUser = () => {
 
     try {
       // ✅ Correct backend URL for admin route
-      const backendURL = process.env.REACT_APP_BACKEND_URL || 'http://178.128.20.53/api/admin';
+      const backendURL = process.env.REACT_APP_BACKEND_URL || '/admin';
 
-      const res = await axios.post(
-        `${backendURL}/auth/register`, // Full URL: http://178.128.20.53/api/admin/auth/register
+      const res = await api.post(
+        `${backendURL}/auth/register`, // Full URL: /admin/auth/register
         formData,
         {
           headers: {

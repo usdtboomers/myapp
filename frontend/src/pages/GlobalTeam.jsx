@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 
 const GlobalTeam = () => {
   const [users, setUsers] = useState([]);
@@ -8,7 +8,7 @@ const GlobalTeam = () => {
   useEffect(() => {
     const fetchGlobalTeam = async () => {
       try {
-        const res = await axios.get('/api/users/global-team');
+        const res = await api.get('/users/global-team');
         setUsers(res.data.users);
         setTotal(res.data.totalUsers);
       } catch (error) {

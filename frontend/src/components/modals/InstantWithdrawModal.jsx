@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "api/axios";
 import SuccessModal from "./SuccessModal";
 import MessageModal from "./MessageModal";
 import { useAuth } from "../../context/AuthContext";
@@ -37,7 +37,7 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
   // 🔹 Fetch available balances
   const fetchAvailable = async () => {
     try {
-      const res = await axios.get(`/api/wallet/withdrawable/${userId}`);
+      const res = await api.get(`/wallet/withdrawable/${userId}`);
       setAvailable({
         directIncome: res.data.directIncome || 0,
         levelIncome: res.data.levelIncome || 0,
@@ -85,7 +85,7 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
           return showMessage("Error", `Insufficient ${source} balance.`, "error");
         }
 
-        await axios.post("/api/wallet/instant-withdraw", {
+        await api.post("/api/wallet/instant-withdraw", {
           userId,
           amount,
           source, // direct | level | spin | binary

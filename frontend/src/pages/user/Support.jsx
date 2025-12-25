@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { useAuth } from "../../context/AuthContext";
 import SuccessModal from "../../components/modals/SuccessModal";
 
@@ -21,7 +21,7 @@ const Support = () => {
   const fetchMessages = async () => {
     try {
       setFetching(true);
-      const res = await axios.get("/api/support/all", {
+      const res = await api.get("/api/support/all", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const myMessages = res.data.supports.filter(
@@ -50,7 +50,7 @@ const Support = () => {
     setStatusMsg({ type: "", text: "" });
 
     try {
-      const res = await axios.post(
+      const res = await api.post(
         "/api/support/create",
         { message, email: user.email, walletAddress, optional },
         { headers: { Authorization: `Bearer ${token}` } }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 
 const ActivityLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -9,7 +9,7 @@ const ActivityLogs = () => {
     const fetchLogs = async () => {
       try {
         const token = localStorage.getItem('adminToken'); // JWT token
-        const res = await axios.get('/api/admin/activity-logs', {
+        const res = await api.get('/admin/activity-logs', {
           headers: { Authorization: `Bearer ${token}` },
         });
         setLogs(res.data);

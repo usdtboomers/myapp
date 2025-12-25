@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { useAuth } from "../../context/AuthContext";
 import SpinnerOverlay from "../common/SpinnerOverlay";
 
@@ -24,9 +24,9 @@ const BinarySummary = () => {
 
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const url = API ? `${API}/api/user/binary-summary/${user.userId}` : `/api/user/binary-summary/${user.userId}`;
+        const url = API ? `${API}/user/binary-summary/${user.userId}` : `/user/binary-summary/${user.userId}`;
 
-        const res = await axios.get(url, { headers });
+        const res = await api.get(url, { headers });
         setData(res.data);
       } catch (err) {
         if (err?.response?.status === 401) {

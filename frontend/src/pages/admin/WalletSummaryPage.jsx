@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 
 // 🔹 Helper: har type ka amount safely number me convert karo
 const normalizeAmount = (value) => {
@@ -70,7 +70,7 @@ const AdminWalletHistory = () => {
         return;
       }
 
-      const res = await axios.get("http://178.128.20.53/api/admin/wallet-summary", {
+      const res = await api.get("/admin/wallet-summary", {
         headers: { Authorization: `Bearer ${token}` },
       });
 

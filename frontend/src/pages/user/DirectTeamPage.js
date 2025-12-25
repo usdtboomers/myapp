@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { useAuth } from "../../context/AuthContext";
 
 const DirectTeamPage = () => {
@@ -14,8 +14,8 @@ const DirectTeamPage = () => {
       if (!user?.userId) return;
 
       try {
-        const res = await axios.get(
-          `http://178.128.20.53/api/user/direct-team/${user.userId}`
+        const res = await api.get(
+          `/user/direct-team/${user.userId}`
         );
         setTeam(Array.isArray(res.data.team) ? res.data.team : []);
       } catch (err) {

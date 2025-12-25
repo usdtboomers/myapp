@@ -1,5 +1,5 @@
 // import React, { useState, useEffect } from "react";
-// import axios from "axios";
+// import api from "api/axios";
 // import { useAuth } from "../../context/AuthContext"; // ✅ ADD THIS
 
 // const plans = [
@@ -85,8 +85,8 @@
 
 //   const handleTopupConfirm = async (amount) => {
 //     try {
-//       const res = await axios.put(
-//         `http://178.128.20.53/api/user/topup/${user.userId}`,
+//       const res = await api.put(
+//         `/user/topup/${user.userId}`,
 //         { amount },
 //         { headers: { Authorization: `Bearer ${token}` } }
 //       );

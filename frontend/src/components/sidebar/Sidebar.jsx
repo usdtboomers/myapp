@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import jsPDF from "jspdf";
 
@@ -55,8 +55,8 @@ const Sidebar = ({ user }) => {
   useEffect(() => {
     const fetchNotifCount = async () => {
       try {
-        const res = await axios.get(
-          `/api/admin/notifications/count/${user.userId}`
+        const res = await api.get(
+          `/admin/notifications/count/${user.userId}`
         );
         setNotifCount(res.data.count || 0);
       } catch (err) {

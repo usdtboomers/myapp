@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { useAuth } from '../../context/AuthContext';
 
 const MyTransfers = () => {
@@ -15,8 +15,8 @@ const MyTransfers = () => {
   const fetchTransfers = useCallback(async () => {
     if (!userId) return;
     try {
-      const res = await axios.get(
-        `http://178.128.20.53/api/transaction/transactions/${userId}?type=transfer`
+      const res = await api.get(
+        `/transaction/transactions/${userId}?type=transfer`
       );
       setTransfers(res.data || []);
     } catch (err) {

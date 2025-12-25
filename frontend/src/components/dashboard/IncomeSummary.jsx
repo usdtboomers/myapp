@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { 
   Globe, 
   Wallet, 
@@ -54,8 +54,8 @@ const totalIncome =
 
     const fetchBackendCount = async () => {
       try {
-        const res = await axios.get(
-          `/api/user/global-team-count/${user.userId}`
+        const res = await api.get(
+          `/user/global-team-count/${user.userId}`
         );
         if (!isMounted) return;
 

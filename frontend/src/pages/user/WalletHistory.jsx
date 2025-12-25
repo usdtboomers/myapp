@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 import BASE_URL from "../../config";
 
 const WalletHistory = () => {
@@ -34,9 +34,9 @@ const WalletHistory = () => {
   const fetchWalletHistory = async (uid) => {
     try {
       const [txRes, withdrawRes, topupRes] = await Promise.all([
-        axios.get(`${BASE_URL}/api/wallet/history/${uid}`),
-        axios.get(`${BASE_URL}/api/wallet/withdrawals/${uid}`),
-        axios.get(`${BASE_URL}/api/wallet/topup-history/${uid}`),
+        api.get(`${BASE_URL}/api/wallet/history/${uid}`),
+        api.get(`${BASE_URL}/api/wallet/withdrawals/${uid}`),
+        api.get(`${BASE_URL}/api/wallet/topup-history/${uid}`),
       ]);
 
       const txns = Array.isArray(txRes.data) ? txRes.data : [];

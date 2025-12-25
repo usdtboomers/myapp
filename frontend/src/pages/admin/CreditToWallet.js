@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 import BASE_URL from "../../config";
 
 // 🔐 Helper: safely convert Decimal128 / string / number to JS number
@@ -33,9 +33,10 @@ const CreditToWallet = () => {
       const token = localStorage.getItem("adminToken");
       if (!token) return;
 
-      const res = await axios.get(`${BASE_URL}/api/admin/transactions`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+     // ✅ BASE_URL ko hata kar sirf relative path likhein
+const res = await api.get('/admin/transactions', {
+  headers: { Authorization: `Bearer ${token}` },
+});
 
       if (!res.data || !Array.isArray(res.data)) {
         setTransactions([]);

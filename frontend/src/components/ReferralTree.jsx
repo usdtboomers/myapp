@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from 'api/axios';
 
 function ReferralTree() {
   const [userId, setUserId] = useState("");
@@ -20,16 +20,16 @@ function ReferralTree() {
 
     try {
       const [treeRes, allTeamRes] = await Promise.all([
-        axios.get(`http://178.128.20.53/api/user/tree/${userId}`),
-        axios.get(`http://178.128.20.53/api/user/all-team/${userId}`),
+        api.get(`/user/tree/${userId}`),
+        api.get(`/user/all-team/${userId}`),
       ]);
 
       // Add child counts and expanded info
       const childrenWithCounts = await Promise.all(
         (treeRes.data.children || []).map(async (child) => {
           try {
-            const teamRes = await axios.get(
-              `http://178.128.20.53/api/user/all-team/${child.userId}`
+            const teamRes = await api.get(
+              `/user/all-team/${child.userId}`
             );
             return {
               ...child,
@@ -84,15 +84,15 @@ function ReferralTree() {
 
     try {
       const [treeRes, allTeamRes] = await Promise.all([
-        axios.get(`http://178.128.20.53/api/user/tree/${node.userId}`),
-        axios.get(`http://178.128.20.53/api/user/all-team/${node.userId}`),
+        api.get(`/user/tree/${node.userId}`),
+        api.get(`/user/all-team/${node.userId}`),
       ]);
 
       const childrenWithCounts = await Promise.all(
         (treeRes.data.children || []).map(async (child) => {
           try {
-            const teamRes = await axios.get(
-              `http://178.128.20.53/api/user/all-team/${child.userId}`
+            const teamRes = await api.get(
+              `/user/all-team/${child.userId}`
             );
             return {
               ...child,

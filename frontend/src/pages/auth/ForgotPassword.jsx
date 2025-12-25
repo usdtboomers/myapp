@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 import { Link } from 'react-router-dom';
 import { User, ArrowRight, ShieldQuestion } from 'lucide-react';
 
@@ -18,7 +18,7 @@ const ForgotPassword = () => {
     setMessage('');
 
     try {
-      const res = await axios.post('http://178.128.20.53/api/auth/forgot-password', {
+      const res = await api.post('/auth/forgot-password', {
         userId,
       });
       setMessage(res.data.message || 'Check your email for password reset instructions.');

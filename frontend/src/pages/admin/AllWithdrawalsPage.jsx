@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import axios from 'axios';
+import api from 'api/axios';
 import { CSVLink } from 'react-csv';
 import { FaCopy } from 'react-icons/fa';
 import { isSameDay } from 'date-fns';
@@ -21,7 +21,7 @@ const AllWithdrawalsPage = () => {
 
   const fetchAllWithdrawals = useCallback(async () => {
     try {
-    const res = await axios.get('http://178.128.20.53/api/admin/withdrawals?all=true', {
+    const res = await api.get('/admin/withdrawals?all=true', {
   headers: { Authorization: `Bearer ${token}` },
 });
 

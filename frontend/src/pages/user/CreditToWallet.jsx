@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { getUserId } from "../../utils/authUtils";
 
 const CreditToWalletHistory = () => {
@@ -13,8 +13,7 @@ const CreditToWalletHistory = () => {
   useEffect(() => {
     if (!userId) return;
 
-    axios
-      .get(`http://178.128.20.53/api/wallet/history/${userId}`)
+    api.post(`/wallet/history/${userId}`)
       .then((res) => {
         const creditTxs = (res.data || [])
           .filter(

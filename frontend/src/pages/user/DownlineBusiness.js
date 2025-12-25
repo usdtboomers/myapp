@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "api/axios";
 import { useAuth } from "../../context/AuthContext";
 
 const DownlineBusiness = () => {
@@ -17,7 +17,7 @@ const DownlineBusiness = () => {
   useEffect(() => {
     const fetchDownline = async () => {
       try {
-        const res = await axios.get(`/api/user/downline-business/${user.userId}`);
+        const res = await api.get(`/api/user/downline-business/${user.userId}`);
         const team = res.data.team || [];
 
         const allTx = team.flatMap(d =>

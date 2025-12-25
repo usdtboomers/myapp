@@ -1,11 +1,11 @@
 // import React, { useEffect, useState } from 'react';
-// import axios from 'axios';
+// import api from 'api/axios';
 
 // const WithdrawalLogsTable = () => {
 //   const [withdrawals, setWithdrawals] = useState([]);
 
 //   useEffect(() => {
-//     axios.get('http://178.128.20.53/api/admin/withdrawals')
+//     api.get('/admin/withdrawals')
 //       .then(res => setWithdrawals(res.data))
 //       .catch(err => console.error('Failed to fetch withdrawals:', err));
 //   }, []);
