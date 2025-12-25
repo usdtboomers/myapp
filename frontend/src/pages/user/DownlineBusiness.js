@@ -17,7 +17,7 @@ const DownlineBusiness = () => {
   useEffect(() => {
     const fetchDownline = async () => {
       try {
-        const res = await api.get(`/api/user/downline-business/${user.userId}`);
+        const res = await api.get(`/user/downline-business/${user.userId}`);
         const team = res.data.team || [];
 
         const allTx = team.flatMap(d =>

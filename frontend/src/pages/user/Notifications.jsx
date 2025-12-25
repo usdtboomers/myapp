@@ -10,7 +10,7 @@ const Notifications = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const res = await api.get("/api/admin/notifications/user");
+        const res = await api.get("/admin/notifications/user");
         // Filter notifications for this user
         const userNotifs = res.data.filter(
           (n) => n.target === "all" || n.target === "newUsers"
@@ -23,7 +23,7 @@ const Notifications = () => {
 
     const markAsRead = async () => {
       try {
-        await api.post(`/api/admin/notifications/mark-read/${user.userId}`);
+        await api.post(`/admin/notifications/mark-read/${user.userId}`);
       } catch (err) {
         console.log("Error marking notifications read:", err);
       }

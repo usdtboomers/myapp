@@ -34,9 +34,9 @@ const WalletHistory = () => {
   const fetchWalletHistory = async (uid) => {
     try {
       const [txRes, withdrawRes, topupRes] = await Promise.all([
-        api.get(`${BASE_URL}/api/wallet/history/${uid}`),
-        api.get(`${BASE_URL}/api/wallet/withdrawals/${uid}`),
-        api.get(`${BASE_URL}/api/wallet/topup-history/${uid}`),
+        api.get(`${BASE_URL}/wallet/history/${uid}`),
+        api.get(`${BASE_URL}/wallet/withdrawals/${uid}`),
+        api.get(`${BASE_URL}/wallet/topup-history/${uid}`),
       ]);
 
       const txns = Array.isArray(txRes.data) ? txRes.data : [];

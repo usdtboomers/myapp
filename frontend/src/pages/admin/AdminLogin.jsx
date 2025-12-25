@@ -25,7 +25,7 @@ const AdminLogin = () => {
       setLoading(true);
 
       const res = await api.post(
-        "/api/admin/login",
+        "/admin/login",
         {
           adminId: formData.adminId.trim(),
           password: formData.password.trim(),

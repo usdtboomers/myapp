@@ -21,7 +21,7 @@ const Support = () => {
   const fetchMessages = async () => {
     try {
       setFetching(true);
-      const res = await api.get("/api/support/all", {
+      const res = await api.get("/support/all", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const myMessages = res.data.supports.filter(

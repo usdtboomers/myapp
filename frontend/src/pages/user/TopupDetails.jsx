@@ -19,7 +19,7 @@ const TopupDetails = () => {
       }
 
       try {
-        const res = await api.get(`${BASE_URL}/api/wallet/topup-history/${user.userId}`);
+        const res = await api.get(`${BASE_URL}/wallet/topup-history/${user.userId}`);
        if (Array.isArray(res.data)) {
   const userTopups = res.data
     .filter((t) => t.type === "topup")
