@@ -34,9 +34,9 @@ const WalletHistory = () => {
   const fetchWalletHistory = async (uid) => {
     try {
       const [txRes, withdrawRes, topupRes] = await Promise.all([
-        api.get(`${BASE_URL}/wallet/history/${uid}`),
-        api.get(`${BASE_URL}/wallet/withdrawals/${uid}`),
-        api.get(`${BASE_URL}/wallet/topup-history/${uid}`),
+        api.get(`/wallet/history/${uid}`),
+        api.get(`/wallet/withdrawals/${uid}`),
+        api.get(`/wallet/topup-history/${uid}`),
       ]);
 
       const txns = Array.isArray(txRes.data) ? txRes.data : [];
@@ -108,7 +108,7 @@ const WalletHistory = () => {
 
   return (
     <div style={{ padding: 12, fontSize: 12 }}>
-      <h2 style={{ fontSize: 16, fontWeight: "bold", marginBottom: 12 }}>Wallet History</h2>
+      <h2 className="text-white" style={{ fontSize: 16, fontWeight: "bold", marginBottom: 12 }}>Wallet History</h2>
 
       <div style={{
         marginBottom: 12,

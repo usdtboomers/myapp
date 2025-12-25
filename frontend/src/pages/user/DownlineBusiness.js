@@ -99,14 +99,14 @@ const filteredTotal = filtered.reduce(
 
   return (
     <div style={{ padding: 20, fontFamily: "Segoe UI, sans-serif", fontSize: 13 }}>
-      <h3 style={{ marginBottom: 12 }}>📊 Downline Business</h3>
+      <h3 className="text-white font-bold" style={{ marginBottom: 12 }}>📊 Downline Business</h3>
 
       {/* Summary */}
-      <div style={{ marginBottom: 12, fontSize: 13 }}>
+      <div className="text-white" style={{ marginBottom: 12, fontSize: 13 }}>
         <p><strong>Total Team:</strong> {summary.totalTeamCount}</p>
         <p><strong>Direct Count:</strong> {summary.directCount}</p>
         <p><strong>Indirect Count:</strong> {summary.indirectCount}</p>
-        <p><strong>Total Business:</strong> ${Number(summary.totalBusiness).toFixed(2)}</p>
+        <p className="text-yellow-500"><strong className="text-white"> Total Business:</strong> ${Number(summary.totalBusiness).toFixed(2)}</p>
       </div>
 
       {/* Filters */}
@@ -175,7 +175,7 @@ const filteredTotal = filtered.reduce(
               </>
             ) : (
               <tr>
-                <td colSpan="7" style={{ textAlign: "center", padding: 12 }}>No transactions found.</td>
+                <td className="text-white" colSpan="7" style={{ textAlign: "center", padding: 12 }}>No transactions found.</td>
               </tr>
             )}
           </tbody>

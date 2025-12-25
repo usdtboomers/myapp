@@ -152,7 +152,7 @@ const DirectTeamPage = () => {
           ⬅ Prev
         </button>
 
-        <span className="text-gray-700 text-sm sm:text-base">
+        <span className="text-white text-sm sm:text-base">
           Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
         </span>
 

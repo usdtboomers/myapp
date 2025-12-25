@@ -19,7 +19,7 @@ const TopupDetails = () => {
       }
 
       try {
-        const res = await api.get(`${BASE_URL}/wallet/topup-history/${user.userId}`);
+        const res = await api.get(`/wallet/topup-history/${user.userId}`);
        if (Array.isArray(res.data)) {
   const userTopups = res.data
     .filter((t) => t.type === "topup")
@@ -49,8 +49,8 @@ const TopupDetails = () => {
 
   return (
     <div className="p-4 sm:p-6 text-gray-900">
-      <h1 className="text-xl sm:text-2xl font-bold mb-2">💰 Top-Up Details</h1>
-      <p className="text-sm sm:text-base text-gray-600 mb-4">
+      <h1 className="text-xl sm:text-2xl  text-white font-bold mb-2">💰 Top-Up Details</h1>
+      <p className="text-sm sm:text-base text-white mb-4">
         View all your purchased top-up packages below.
       </p>
 

@@ -47,12 +47,12 @@ const LevelIncome = () => {
 
   return (
     <div style={{ padding: 12, fontFamily: "Segoe UI, sans-serif", fontSize: 13 }}>
-      <h2 style={{ marginBottom: 12, fontSize: 16 }}>📈 Level Income</h2>
+      <h2 className="text-white" style={{ marginBottom: 12, fontSize: 16 }}>📈 Level Income</h2>
 
       {/* Stats + Search */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-        <div><b>Total Records:</b> {filtered.length}</div>
-        <div><b>Total Income:</b> ${totalIncome.toFixed(2)}</div>
+        <div><b className="text-white">Total Records:</b> {filtered.length}</div>
+        <div className="text-yellow-400"><b className="text-white">Total Income:</b> ${totalIncome.toFixed(2)}</div>
         <input
           type="text"
           placeholder="Search by user or description..."
@@ -97,7 +97,7 @@ const LevelIncome = () => {
                 </tr>
               );
             }) : (
-              <tr>
+              <tr className="text-white">
                 <td colSpan="8" style={emptyCellStyle}>No level income records found.</td>
               </tr>
             )}

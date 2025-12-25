@@ -42,7 +42,7 @@ const AllTeamPage = () => {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>🌍 All Team (Downline)</h2>
+      <h2 className="text-white font-bold p-1 text-xl" >🌍 All Team (Downline)</h2>
 
       {/* Search + Entries */}
       <div style={styles.controls}>
@@ -103,10 +103,10 @@ const AllTeamPage = () => {
 
       {/* Pagination */}
       <div style={styles.pagination}>
-        <button onClick={handlePrev} disabled={currentPage === 1} style={styles.pageBtn(currentPage === 1)}>
+        <button  onClick={handlePrev} disabled={currentPage === 1} style={styles.pageBtn(currentPage === 1)}>
           ⬅ Prev
         </button>
-        <span style={styles.pageText}>
+        <span className="text-white " style={styles.pageText}>
           Page <strong>{currentPage}</strong> / <strong>{totalPages}</strong>
         </span>
         <button onClick={handleNext} disabled={currentPage === totalPages} style={styles.pageBtn(currentPage === totalPages)}>
@@ -196,7 +196,6 @@ const styles = {
     cursor: disabled ? "not-allowed" : "pointer",
     fontSize: 11,
   }),
-  pageText: { fontSize: 11, color: "#333" },
-};
+ };
 
 export default AllTeamPage;

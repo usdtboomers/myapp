@@ -58,7 +58,7 @@ const CreditToWalletHistory = () => {
     <div
       style={{ padding: 12, fontFamily: "Segoe UI, sans-serif", fontSize: 13 }}
     >
-      <h2 style={{ marginBottom: 12, fontSize: 16 }}>
+      <h2 className="text-white font-bold" style={{ marginBottom: 12, fontSize: 16 }}>
         💰 Credit To Wallet & Binary Income History
       </h2>
 

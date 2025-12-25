@@ -51,12 +51,12 @@ const DirectIncome = () => {
 
   return (
     <div style={{ padding: 12, fontFamily: "Segoe UI, sans-serif", fontSize: 13 }}>
-      <h2 style={{ marginBottom: 12, fontSize: 16 }}>💸 Direct Income</h2>
+      <h2 className="text-white font-bold" style={{ marginBottom: 12, fontSize: 16 }}>💸 Direct Income</h2>
 
       {/* Summary + Search */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-        <div><b>Total Records:</b> {filtered.length}</div>
-        <div><b>Total Income:</b> ${totalIncome.toFixed(2)}</div>
+        <div><b className="text-white">Total Records:</b> {filtered.length}</div>
+        <div className="text-yellow-500"> <b className="text-white">Total Income:</b> ${totalIncome.toFixed(2)}</div>
         <input
           type="text"
           placeholder="Search..."
