@@ -57,7 +57,7 @@ function Register() {
   const fetchSponsorName = async (id) => {
     if (id.length < 3) return;
     try {
-      const res = await api.get(`/api/user/sponsor-name/${id}`);
+      const res = await api.get(`/user/sponsor-name/${id}`);
       setSponsorName(res.data.name);
     } catch {
       setSponsorName('Invalid Sponsor');
@@ -163,7 +163,7 @@ function Register() {
           <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-cyan-200 to-blue-400">
             Create Account
           </h2>
-          <p className="text-blue-200/60 text-sm mt-1">Join the elite community today</p>
+          <p className="text-white text-sm mt-1">Join the elite community today</p>
         </div>
 
         {/* Main Card */}

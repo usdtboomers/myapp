@@ -13,7 +13,7 @@ const CreditToWalletHistory = () => {
   useEffect(() => {
     if (!userId) return;
 
-    api.post(`/wallet/history/${userId}`)
+    api.get(`/wallet/history/${userId}`)
       .then((res) => {
         const creditTxs = (res.data || [])
           .filter(
@@ -59,7 +59,7 @@ const CreditToWalletHistory = () => {
       style={{ padding: 12, fontFamily: "Segoe UI, sans-serif", fontSize: 13 }}
     >
       <h2 className="text-white font-bold" style={{ marginBottom: 12, fontSize: 16 }}>
-        💰 Credit To Wallet & Binary Income History
+        💰 Credit To Wallet 
       </h2>
 
       {/* Search */}
