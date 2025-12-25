@@ -1,9 +1,8 @@
+require("dotenv").config(); 
 const mongoose = require("mongoose");
 const cron = require("node-cron");
 const User = require("./models/User");
 const Transaction = require("./models/Transaction");
-require("dotenv").config();
-
 // ---------------------------
 // Migrate old numeric planIncome → object
 // ---------------------------
