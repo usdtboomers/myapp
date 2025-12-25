@@ -51,7 +51,7 @@ const Support = () => {
 
     try {
       const res = await api.post(
-        "/api/support/create",
+        "/support/create",
         { message, email: user.email, walletAddress, optional },
         { headers: { Authorization: `Bearer ${token}` } }
       );

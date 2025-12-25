@@ -87,7 +87,7 @@ const SpinWin = () => {
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await api.get(`${BASE_URL}/api/spin/history`, {
+      const res = await api.get(`${BASE_URL}/spin/history`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data.success) {
@@ -139,7 +139,7 @@ const SpinWin = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await api.post(`${BASE_URL}/api/spin/`, {}, {
+      const res = await api.post(`${BASE_URL}/spin/`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -193,7 +193,7 @@ const SpinWin = () => {
     try {
       const token = localStorage.getItem("token");
       const res = await api.post(
-        `${BASE_URL}/api/spin/buy`,
+        `${BASE_URL}/spin/buy`,
         { quantity: buyQuantity, transactionPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );

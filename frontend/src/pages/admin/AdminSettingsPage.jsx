@@ -75,7 +75,7 @@ const API = "";
     const updatedSettings = { ...settings, maintenanceWhitelist: ids };
 
     try {
-      await api.put(`${API}/api/setting`, updatedSettings, {
+      await api.put(`${API}/setting`, updatedSettings, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSaveStatus("✅ Settings saved successfully!");
@@ -101,7 +101,7 @@ const API = "";
 
     try {
       await api.post(
-        `${API}/api/setting/wallet/credit`,
+        `${API}/setting/wallet/credit`,
         { userId: Number(creditUserId), amount: Number(creditAmount), reason: "Admin Credit" },
         { headers: { Authorization: `Bearer ${token}` } }
       );
