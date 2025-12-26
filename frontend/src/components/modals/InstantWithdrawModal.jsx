@@ -85,7 +85,7 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
           return showMessage("Error", `Insufficient ${source} balance.`, "error");
         }
 
-        await api.post("/api/wallet/instant-withdraw", {
+        await api.post("/wallet/instant-withdraw", {
           userId,
           amount,
           source, // direct | level | spin | binary

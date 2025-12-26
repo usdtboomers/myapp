@@ -59,7 +59,7 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
       for (const [source, amount] of entries) {
         
         const res = await api.post(
-          "/api/wallet/credit-to-wallet",
+          "/wallet/credit-to-wallet",
           {
             userId,
             amount: Number(amount),
