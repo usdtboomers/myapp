@@ -10,7 +10,6 @@ import { useAuth } from "../../context/AuthContext";
 
 // --- CONFIGURATION ---
 const packages = [10, 25, 50, 100, 200, 500, 1000];
-
 const packageNames = {
   10: "Bronze",
   25: "Silver",
@@ -23,14 +22,69 @@ const packageNames = {
 
 // UI Details for cards
 const packageDetails = {
-  10: { title: "Plan 1", subtitle: "Minimum Entry", features: ["Daily  Income", "Duration: 10 Days", "24/7 Support"] },
-  25: { title: "Plan 2", subtitle: "Basic Growth", features: ["Daily  Income", "Duration: 10 Days", "Level Income"] },
-  50: { title: "Plan 3", subtitle: "Standard", features: ["Daily  Income", "Duration: 10 Days", "Binary Eligibility"] },
-  100: { title: "Plan 4", subtitle: "Silver Package", isPopular: true, features: ["Higher Daily Income", "Duration: 10 Days", "All Incomes Unlocked"] },
-  200: { title: "Plan 5", subtitle: "Gold Package", features: ["Daily  Income", "Duration: 10 Days", "Gold Badge"] },
-  500: { title: "Plan 6", subtitle: "Diamond Package", features: ["Daily  Income", "Duration: 10 Days", "Diamond Support"] },
-  1000: { title: "Plan 7 (VIP)", subtitle: "The Ultimate Investment Package", isVip: true, features: ["Maximum Daily Cap", "Priority Withdrawal", "VIP Support Manager"] },
+  10: {
+    title: "Plan 1",
+    subtitle: "Bronze",
+    features: ["Daily Income", "Duration: 10 Days", "24/7 Support"],
+  },
+  25: {
+    title: "Plan 2",
+    subtitle: "Silver",
+    features: ["Daily Income", "Duration: 10 Days", "Silver Badge"],
+  },
+  50: {
+    title: "Plan 3",
+    subtitle: "Gold",
+    features: [
+      "Higher Daily Income",
+      "Duration: 10 Days",
+       "Gold Badge",    ],
+  },
+  100: {
+    title: "Plan 4",
+    subtitle: "Platinum",
+    isPopular: true,
+    features: [
+      "Higher Daily Income",
+      "Duration: 10 Days",
+       "Platinum Badge",
+     ],
+  },
+  200: {
+    title: "Plan 5",
+    subtitle: "Diamond",
+    features: [
+      "Maximum Daily Income",
+      "Duration: 10 Days",
+      "Diamond Badge",
+     ],
+  },
+  500: {
+    title: "Plan 6",
+    subtitle: "Elite",
+    features: [
+      "Maximum Daily Cap",
+      "Duration: 10 Days",
+      "Elite Badge",
+     ],
+  },
+  1000: {
+    title: "Plan 7 (VIP)",
+    subtitle: "Infinity",
+    isVip: true,
+    features: [
+      "Ultimate Daily Cap",
+      "Duration: 10 Days",
+      "Infinity Badge",
+      "All Bonuses Unlocked",
+      "Priority Instant Withdrawals",
+      " VIP Support Manager",
+      "Exclusive Events Access",
+    ],
+  },
 };
+
+
 
 const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   // --- STATE & AUTH ---
@@ -368,7 +422,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
              </button>
           </div>
           <div className="text-center mt-3 text-xs text-gray-600">
-             Secure SSL Payment • 10 Days ROI Validity
+             Secure SSL Payment  
           </div>
         </div>
 

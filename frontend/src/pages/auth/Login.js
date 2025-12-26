@@ -142,9 +142,42 @@ const UserLogin = () => {
       {/* Background Grid */}
       <div className="fixed inset-0 bg-grid-pattern pointer-events-none"></div>
 
+
+
       {/* --- MAIN CONTAINER --- */}
-      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-700 rounded-3xl shadow-2xl p-8 md:p-10 relative z-10 animate-in fade-in zoom-in duration-500">
+      <div className="w-full max-w-md bg-slate-900/80 mt-20 backdrop-blur-xl border border-slate-700 rounded-3xl shadow-2xl p-8 md:p-10 relative z-10 animate-in fade-in zoom-in duration-500">
         
+
+<nav className="fixed text-white  top-0 left-0 w-full z-50 bg-black border-b border-[#D4AF37]/30 px-6 py-1 shadow-lg shadow-black/50">
+  <div className="max-w-7xl mx-auto flex items-center justify-between">
+    
+    {/* Brand */}
+    <span className="text-yellow-400 pr-2 font-extrabold text-2xl tracking-wide">
+      ELITE INFINITY
+    </span>
+
+    {/* Right Buttons */}
+    <div className="flex items-center">
+      <Link
+        to="/"
+        className="bg-yellow-400 text-black font-bold py-2 px-6 rounded-lg mx-2 hover:bg-yellow-300 transition"
+      >
+        Home
+      </Link>
+
+      <Link
+        to="/register"
+        className="bg-yellow-500 text-black font-bold py-2 px-4 rounded-lg mx-2 hover:bg-yellow-400 transition"
+      >
+        REGISTER
+      </Link>
+    </div>
+
+  </div>
+</nav>
+
+
+
         {/* Logo Section */}
         <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-slate-800/80 mb-6 animate-float animate-glow border border-slate-700 shadow-xl overflow-hidden p-3">

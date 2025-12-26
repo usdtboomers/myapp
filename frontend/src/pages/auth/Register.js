@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from 'api/axios';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation,Link } from 'react-router-dom';
 import Select from 'react-select';
 import Confetti from 'react-confetti';
 
@@ -40,6 +40,7 @@ function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showTxnPassword, setShowTxnPassword] = useState(false);
 
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -144,16 +145,49 @@ function Register() {
     placeholder: (base) => ({ ...base, color: 'rgba(255,255,255,0.4)' }),
   };
 
-  return (
-    <div className="min-h-screen bg-[#0a1f44] text-black flex items-center justify-center p-4 relative overflow-hidden font-sans selection:bg-cyan-500 selection:text-black">
+ return (
+    // CHANGE 1: 'flex-col' aur 'pt-32' lagaya hai taaki content upar se niche khiske
+    <div className="min-h-screen bg-[#0a1f44] text-black flex flex-col items-center justify-start p-4 pt-32 relative overflow-hidden font-sans selection:bg-cyan-500 selection:text-black">
       
+      {/* --- NEW NAVBAR START (Logo ke upar) --- */}
+<nav className="fixed text-white  top-0 left-0 w-full z-50 bg-black border-b border-[#D4AF37]/30 px-6 py-1 shadow-lg shadow-black/50">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          {/* Brand Logo */}
+<span className="text-yellow-400 pr-4 font-extrabold text-2xl tracking-wide">
+  ELITE INFINITY
+</span>
+         
+
+          <Link
+  to="/"
+  className="bg-yellow-400 text-black  font-bold py-2 px-6 rounded-lg mx-2 hover:bg-yellow-300 transition"
+>
+  Home
+</Link>
+
+<Link
+  to="/login"
+  className="bg-yellow-500 text-black font-bold py-2 px-6 rounded-lg mx-2 hover:bg-yellow-400 transition"
+>
+  LOGIN
+</Link>
+
+          
+
+        
+        </div>
+        
+        
+      </nav>
+ 
       {/* Background Glows */}
       <div className="fixed top-[-10%] left-[-10%] w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob"></div>
       <div className="fixed bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-2000"></div>
 
+      {/* Main Content Wrapper */}
       <div className="w-full max-w-lg relative z-10">
         
-        {/* Logo Section */}
+        {/* Aapka Form wala Logo Section */}
         <div className="text-center mb-6">
            <img
               src="/eliteinfinitylogo.png"
@@ -208,7 +242,7 @@ function Register() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-10 text-black focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all"
-                        placeholder="John Doe"
+                        placeholder="Name"
                       />
                       <div className="absolute left-3 top-3.5 text-black/40 group-focus-within:text-cyan-400 transition-colors">
                         <UserIcon />
@@ -223,7 +257,7 @@ function Register() {
                         value={mobile}
                         onChange={(e) => setMobile(e.target.value)}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-10 text-black focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all"
-                        placeholder="98765..."
+                        placeholder="Mobile Number"
                       />
                       <div className="absolute left-3 top-3.5 text-black/40 group-focus-within:text-cyan-400 transition-colors">
                         <PhoneIcon />
@@ -292,7 +326,7 @@ function Register() {
             )}
 
             <div className="pt-2 space-y-3">
-              <button className="w-full py-4 text-white rounded-xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black shadow-lg shadow-cyan-500/25 transform hover:-translate-y-1 transition-all duration-200 tracking-wide">
+              <button className="w-full py-4  bg-yellow-600 rounded-xl font-bold text-lg bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-400 hover:to-yellow-800 text-black shadow-lg shadow-cyan-500/25 transform hover:-translate-y-1 transition-all duration-200 tracking-wide">
                 REGISTER NOW
               </button>
               
