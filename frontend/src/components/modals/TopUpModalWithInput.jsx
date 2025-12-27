@@ -422,7 +422,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
              </button>
           </div>
           <div className="text-center mt-3 text-xs text-gray-600">
-             Secure SSL Payment  
+             Secure SSL Payment.  
           </div>
         </div>
 
