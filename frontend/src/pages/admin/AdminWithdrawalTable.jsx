@@ -134,7 +134,7 @@ return Swal.fire('Error', 'MetaMask or Trust Wallet not detected!', 'error');
       if (status === 'dummy') {
         const { value: txnHash } = await Swal.fire({
           title: 'Dummy Transaction',
-          text: 'Transaction Hash paste karein:',
+          text: 'Transaction Hash here:',
           input: 'text',
           inputPlaceholder: '0x...',
           showCancelButton: true,

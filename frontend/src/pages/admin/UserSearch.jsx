@@ -2,8 +2,7 @@ import React, { useState } from "react";
 import api from "api/axios";
 import { Search, Ban, CheckCircle, Save, LogIn } from "lucide-react";
 
-const API_BASE = "http://178.128.20.53";
-
+const API_BASE = "https://eliteinfinity.live"; // ✅ Fixed: IP ki jagah domain aur https
 function UserSearch() {
   const [searchId, setSearchId] = useState("");
   const [user, setUser] = useState(null);
