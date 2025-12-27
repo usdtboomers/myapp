@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import api from "../../api/axios"; // ✅ API Import kiya (Path check karlena)
 import DepositModal from "./DepositModal";
 import WalletTransferModal from "./WalletTransferModal";
 import WithdrawalModal from "./WithdrawalModal";
@@ -10,6 +11,25 @@ import SpinButton from "./SpinButton";
 
 const Modals = ({ user, modalState, setModalState, setUser }) => {
   const [successData, setSuccessData] = useState(null);
+  const [adminWalletAddress, setAdminWalletAddress] = useState(""); // ✅ Address store karne ke liye state
+
+  // ✅ 1. Backend se Admin Wallet Address mangwana
+  useEffect(() => {
+    const fetchWalletAddress = async () => {
+      try {
+        // Backend se address mango
+        const res = await api.get("/wallet/admin-address");
+        if (res.data.address) {
+          setAdminWalletAddress(res.data.address);
+          console.log("✅ Admin Wallet Loaded:", res.data.address);
+        }
+      } catch (err) {
+        console.error("❌ Failed to load admin wallet:", err);
+      }
+    };
+
+    fetchWalletAddress();
+  }, []);
 
   const closeModal = (modalName) =>
     setModalState((prev) => ({ ...prev, [modalName]: false }));
@@ -33,7 +53,10 @@ const Modals = ({ user, modalState, setModalState, setUser }) => {
           isOpen={modalState.showDeposit}
           onClose={() => closeModal("showDeposit")}
           userId={user.userId}
-          walletAddress="0x1111111111111111111111111111111111111111"
+          
+          // ✅ 2. Ab yahan Dynamic Address pass kar rahe hain
+          walletAddress={adminWalletAddress || ""} 
+          
           onDepositSuccess={(amount) => {
             closeModal("showDeposit");
             setSuccessData({ userId: user.userId, amount, type: "deposit" });
