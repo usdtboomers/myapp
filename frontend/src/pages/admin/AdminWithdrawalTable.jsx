@@ -3,12 +3,12 @@ import api from 'api/axios';
 import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
 import { FaCopy } from 'react-icons/fa';
-import { ethers } from 'ethers'; // 👈 Ye add kiya
-
+import { ethers } from 'ethers';
+import Swal from 'sweetalert2'; // ✅ Professional Alerts
 
 const AdminWithdrawalTable = () => {
   const token = localStorage.getItem('adminToken');
-  const todayStr = format(new Date(), 'yyyy-MM-dd'); // Today's date
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   const [withdrawals, setWithdrawals] = useState([]);
   const [search, setSearch] = useState('');
@@ -22,76 +22,146 @@ const AdminWithdrawalTable = () => {
   const [statusFilter, setStatusFilter] = useState('pending'); 
   const [loading, setLoading] = useState(false);
 
-const handleBlockchainApprove = async (item) => {
+  // ----------------- 1. Professional Blockchain Approve -----------------
+  const handleBlockchainApprove = async (item) => {
     try {
-      if (!window.ethereum) return alert("MetaMask/Trust Wallet extension nahi mila!");
+      if (!window.ethereum) {
+return Swal.fire('Error', 'MetaMask or Trust Wallet not detected!', 'error');
+      }
       
       const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+      // --- Network Check ---
+      const { chainId } = await provider.getNetwork();
+      if (chainId !== 56) {
+        const switchNet = await Swal.fire({
+          title: 'Wrong Network',
+          text: 'Aapka wallet BSC par nahi hai. Switch karein?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Switch to BSC'
+        });
+        if (switchNet.isConfirmed) {
+          try {
+            await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x38' }] });
+          } catch (e) { return Swal.fire('Error', 'Network switch failed.', 'error'); }
+        } else return;
+      }
+
       await provider.send("eth_requestAccounts", []);
       const signer = provider.getSigner();
 
+      // USDT Contract Config
       const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
-      const USDT_ABI = ["function transfer(address to, uint amount) returns (bool)"];
+      const USDT_ABI = [
+        "function transfer(address to, uint amount) returns (bool)",
+        "function balanceOf(address owner) view returns (uint256)"
+      ];
       const contract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, signer);
 
+      // --- BALANCE CHECK LOGIC ---
+      const adminAddress = await signer.getAddress();
+      const balance = await contract.balanceOf(adminAddress);
       const amountInWei = ethers.utils.parseUnits(item.netAmount.toString(), 18);
-      alert(`Confirming Payment: ${item.netAmount} USDT to ${item.walletAddress}`);
 
-      // 💳 Wallet Popup Trigger
+     if (balance.lt(amountInWei)) {
+  return Swal.fire({
+    title: 'Insufficient Balance',
+    text: `Your wallet only has ${ethers.utils.formatUnits(balance, 18)} USDT, but the required amount is ${item.netAmount} USDT.`,
+    icon: 'error',
+    confirmButtonColor: '#3085d6'
+  });
+}
+
+      // --- Show Loading Spinner ---
+      Swal.fire({
+        title: 'Processing...',
+        text: 'Wallet popup mein transaction confirm karein.',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
+
       const tx = await contract.transfer(item.walletAddress, amountInWei);
-      alert("Transaction Sent! Confirmation ka intezar karein...");
+      
+      // Update text to show transaction is pending on blockchain
+      Swal.update({ text: 'Blockchain confirmation ka intezar hai...' });
+      
       const receipt = await tx.wait(); 
 
-      // 🌐 Backend Update (Ab ye hash bhejega)
-      const url = `/admin/withdrawals/approve/${item._id}`;
-      await api.put(url, { txnHash: receipt.transactionHash }, { 
+      // --- Backend Update ---
+      const idToUpdate = item.withdrawalId || item._id;
+      await api.put(`/admin/withdrawals/approve/${idToUpdate}`, { txnHash: receipt.transactionHash }, { 
         headers: { Authorization: `Bearer ${token}` } 
       });
 
-      alert("✅ Payment Successful & DB Updated!");
+      Swal.fire('Success!', 'Payment successfully bhej di gayi hai.', 'success');
       fetchWithdrawals();
+
     } catch (err) {
       console.error(err);
-      alert("❌ Payment Failed: " + (err.reason || err.message));
+      let msg = err.reason || err.message;
+      if (err.code === 4001) msg = "Transaction cancel kar di gayi.";
+      if (msg.includes("insufficient funds")) msg = "Fees (BNB) ke liye balance kam hai!";
+      
+      Swal.fire('Failed', msg, 'error');
     }
   };
 
-  // 2. 👇 MODIFIED UPDATE STATUS (Isko dhyaan se dekho)
- // 🛑 Isse replace karein (id ki jagah item likhein)
-const updateStatus = async (item, status) => {
-  if (status === 'approved') {
-    // Ab item.netAmount aur item.walletAddress sahi se dikhega
-    const confirmPay = window.confirm(`Pay ${item.netAmount} USDT to ${item.walletAddress} via Wallet?`);
-    if (confirmPay) {
-      handleBlockchainApprove(item);
-    }
-    return;
-  }
-
-  // Reject aur Dummy ke liye (Yahan item._id use hoga)
-  try {
-    let url, body = {};
-    const actualId = item._id || item; // Safety check
-
-    if (status === 'dummy') {
-      const txnHash = prompt('Enter Dummy Transaction Hash:');
-      if (!txnHash) return;
-      url = `/admin/withdrawals/dummy/${actualId}`;
-      body = { txnHash };
-    } else {
-      url = `/admin/withdrawals/reject/${actualId}`;
-    }
-    
-    await api.put(url, body, { headers: { Authorization: `Bearer ${token}` } });
-    fetchWithdrawals();
-  } catch (err) {
-    alert(`Failed: ${err.message}`);
-  }
-};
-
-
+  // ----------------- 2. Modern Update Status -----------------
+  const updateStatus = async (item, status) => {
+   if (status === 'approved') {
+  const result = await Swal.fire({
+    title: 'Confirm Withdrawal Approval?',
+    text: `Are you sure you want to transfer ${item.netAmount} USDT to the user's wallet?`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#10b981', // Green color
+    cancelButtonColor: '#ef4444',  // Red color
+    confirmButtonText: 'Yes, Process Payment',
+    cancelButtonText: 'Cancel'
+  });
   
-  // ----------------- Helpers -----------------
+  if (result.isConfirmed) {
+    handleBlockchainApprove(item);
+  }
+  return;
+}
+
+    try {
+      let url, body = {};
+      const actualId = item._id || item;
+
+      if (status === 'dummy') {
+        const { value: txnHash } = await Swal.fire({
+          title: 'Dummy Transaction',
+          text: 'Transaction Hash paste karein:',
+          input: 'text',
+          inputPlaceholder: '0x...',
+          showCancelButton: true,
+          inputValidator: (value) => {
+if (!value) return 'Transaction hash is required!';
+          }
+        });
+        
+        if (!txnHash) return;
+        url = `/admin/withdrawals/dummy/${actualId}`;
+        body = { txnHash };
+      } else {
+        url = `/admin/withdrawals/reject/${actualId}`;
+      }
+      
+      // Loader for normal updates
+      Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+      
+      await api.put(url, body, { headers: { Authorization: `Bearer ${token}` } });
+      Swal.fire('Updated', 'Status changed!!!.', 'success');
+      fetchWithdrawals();
+    } catch (err) {
+      Swal.fire('Error', err.response?.data?.message || err.message, 'error');
+    }
+  };
+
+  // ----------------- Helpers & Core Logic (SAME) -----------------
   const normalizeDate = (d) => {
     if (!d) return null;
     const n = new Date(d);
@@ -99,7 +169,6 @@ const updateStatus = async (item, status) => {
     return n;
   };
 
-  // ----------------- Fetch Withdrawals -----------------
   const fetchWithdrawals = async () => {
     try {
       setLoading(true);
@@ -124,7 +193,6 @@ const updateStatus = async (item, status) => {
     fetchWithdrawals();
   }, [fromDate, toDate]);
 
-  // ----------------- Flatten withdrawals -----------------
   const flattenedData = useMemo(() => {
     return withdrawals.flatMap(w => {
       const schedule = Array.isArray(w.schedule) ? w.schedule : [];
@@ -143,21 +211,19 @@ const updateStatus = async (item, status) => {
           const net = parseFloat((gross - fee).toFixed(2));
           accumulatedFee += fee;
           accumulatedGross += gross;
-
           const createdAt = d.date ? new Date(d.date) : new Date(w.createdAt);
 
           return {
-            _id: `${w._id}-${createdAt.toISOString()}`,
+            _id: `${w._id}-${idx}`, // Unique ID for table row
+            withdrawalId: w._id,     // Parent ID
             userId: w.userId ?? '-',
             name: w.name ?? '-',
             source: w.source ?? 'ROI',
             grossAmount: gross,
             fee: fee,
             netAmount: net,
-walletAddress: d.walletAddress || 'No Wallet',
-
-
-              txnHash: w.txnHash ?? '-',
+            walletAddress: d.walletAddress || w.walletAddress || 'No Wallet',
+            txnHash: w.txnHash ?? '-',
             status: d.status ?? 'pending',
             createdAt,
           };
@@ -170,15 +236,15 @@ walletAddress: d.walletAddress || 'No Wallet',
 
         return [{
           _id: w._id,
+          withdrawalId: w._id,
           userId: w.userId ?? '-',
           name: w.name ?? '-',
           source: w.source ?? 'ROI',
           grossAmount: gross,
           fee: fee,
           netAmount: net,
-walletAddress: w.walletAddress || w.walletAddress || 'No Wallet',
-
-txnHash: w.txnHash ?? '-',
+          walletAddress: w.walletAddress || 'No Wallet',
+          txnHash: w.txnHash ?? '-',
           status: w.status ?? 'pending',
           createdAt,
         }];
@@ -186,7 +252,6 @@ txnHash: w.txnHash ?? '-',
     });
   }, [withdrawals]);
 
-  // ----------------- Filtered Data -----------------
   const filteredData = useMemo(() => {
     return flattenedData.filter(w => {
       const createdAt = normalizeDate(new Date(w.createdAt));
@@ -204,7 +269,6 @@ txnHash: w.txnHash ?? '-',
     });
   }, [flattenedData, search, statusFilter, fromDate, toDate]);
 
-  // ----------------- Sorting -----------------
   const sortedData = useMemo(() => {
     const sorted = [...filteredData];
     if (!sortConfig.key) return sorted;
@@ -224,57 +288,40 @@ txnHash: w.txnHash ?? '-',
     return sorted;
   }, [filteredData, sortConfig]);
 
-  // ----------------- Pagination -----------------
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * entriesPerPage;
     return sortedData.slice(start, start + entriesPerPage);
   }, [sortedData, currentPage, entriesPerPage]);
 
-  // ----------------- Totals -----------------
   const totals = useMemo(() => {
     const filtered = paginatedData.length ? paginatedData : filteredData;
 
     return filtered.reduce(
       (acc, w) => {
-        acc.totalCount += 1;
-        acc.totalGross += w.grossAmount || 0;
-        acc.totalFee += w.fee || 0;
-        acc.totalNet += w.netAmount || 0;
-
         if (w.status === 'pending') {
           acc.pendingCount += 1;
           acc.pendingGross += w.grossAmount || 0;
           acc.pendingFee += w.fee || 0;
           acc.pendingNet += w.netAmount || 0;
         }
-
         return acc;
       },
-      {
-        totalCount: 0,
-        totalGross: 0,
-        totalFee: 0,
-        totalNet: 0,
-        pendingCount: 0,
-        pendingGross: 0,
-        pendingFee: 0,
-        pendingNet: 0,
-      }
+      { pendingCount: 0, pendingGross: 0, pendingFee: 0, pendingNet: 0 }
     );
   }, [paginatedData, filteredData]);
 
-  // ----------------- Copy Handler -----------------
-  const handleCopy = (value, type) => {
+  const handleCopy = (value) => {
     navigator.clipboard.writeText(value);
-    if (type === 'hash') setCopiedHash(value);
-    else setCopiedAddress(value);
-    setTimeout(() => {
-      if (type === 'hash') setCopiedHash('');
-      else setCopiedAddress('');
-    }, 2000);
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Copied!',
+      showConfirmButton: false,
+      timer: 1500
+    });
   };
 
-  // ----------------- Sorting Handler -----------------
   const handleSort = header => {
     const field =
       header === 'Gross Amount' ? 'grossAmount' :
@@ -289,22 +336,14 @@ txnHash: w.txnHash ?? '-',
     );
   };
 
-  // ----------------- Update Status -----------------
-   
-
-  // ----------------- CSV Export -----------------
   const exportCSV = () => {
     if (!paginatedData.length) return alert('No data to export.');
     const rows = paginatedData.map((w, idx) => ({
       'Sr. No.': idx + 1 + (currentPage - 1) * entriesPerPage,
       'User ID': w.userId,
       Name: w.name,
-      Source: w.source,
-      'Gross Amount': `$${(w.grossAmount || 0).toFixed(2)}`,
-      Fee: `$${(w.fee || 0).toFixed(2)}`,
       'Net Amount': `$${(w.netAmount || 0).toFixed(2)}`,
       'Wallet Address': w.walletAddress,
-      'Txn Hash': w.txnHash,
       Status: w.status.toUpperCase(),
       Date: format(new Date(w.createdAt), 'dd/MM/yyyy HH:mm:ss'),
     }));
@@ -315,135 +354,117 @@ txnHash: w.txnHash ?? '-',
 
   return (
     <div className="p-6 bg-white rounded-lg shadow">
-      <h2 className="text-2xl font-semibold mb-6">💸 Withdrawal Requests</h2>
+      <h2 className="text-2xl font-semibold mb-6 text-gray-800">💸 Withdrawal Requests</h2>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 mb-4">
         <input
           type="text"
-          placeholder="Search by name or ID"
+          placeholder="Search name/ID"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-2 w-64"
+          className="border border-gray-300 rounded px-3 py-2 w-48"
         />
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
           className="border px-3 py-2 rounded"
         >
-          <option value="all">All</option>
+          <option value="all">All Status</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
         </select>
-        <select
-          value={entriesPerPage}
-          onChange={e => { setEntriesPerPage(Number(e.target.value)); setCurrentPage(1); }}
-          className="border px-3 py-2 rounded"
-        >
-          {[10,50,100,200].map(num => <option key={num} value={num}>{num}</option>)}
-        </select>
         <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border px-3 py-2 rounded" />
         <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border px-3 py-2 rounded" />
-        <button onClick={fetchWithdrawals} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Refresh</button>
-        <button onClick={exportCSV} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Export CSV</button>
+        <button onClick={fetchWithdrawals} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Refresh</button>
+        <button onClick={exportCSV} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Export</button>
       </div>
 
-      {/* Totals */}
-      <div className="mb-4 p-4 bg-gray-50 rounded-lg flex flex-wrap gap-6 text-sm font-medium">
-        <div>Pending Withdrawals: <span className="text-blue-600">{totals.pendingCount}</span></div>
-        <div>Total Gross: <span className="text-green-600">${totals.pendingGross.toFixed(2)}</span></div>
-        <div>Total Fee: <span className="text-red-600">${totals.pendingFee.toFixed(2)}</span></div>
-        <div>Total Net: <span className="text-purple-600">${totals.pendingNet.toFixed(2)}</span></div>
+      {/* Stats Summary */}
+      <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg flex flex-wrap gap-6 text-sm font-medium">
+        <div>Pending: <span className="text-blue-600">{totals.pendingCount}</span></div>
+        <div>Total Net (Pending): <span className="text-purple-600">${totals.pendingNet.toFixed(2)}</span></div>
       </div>
 
       {/* Table */}
       <div className="overflow-auto border rounded-lg">
-        {loading ? (
-          <p className="p-4 text-center">Loading...</p>
-        ) : (
-          <table className="min-w-full text-sm table-auto">
-            <thead className="bg-gray-50 text-left">
-              <tr>
-                {['Sr. No.', 'User ID', 'Name', 'Source', 'Gross Amount', 'Fee', 'Net Amount', 'Wallet', 'Txn Hash', 'Status', 'Date', 'Actions'].map(h => (
-                  <th
-                    key={h}
-                    className={`px-4 py-2 border-b font-semibold ${['Gross Amount','Fee','Net Amount','Date'].includes(h) ? 'cursor-pointer hover:text-blue-600' : ''}`}
-                    onClick={() => handleSort(h)}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedData.length === 0 ? (
-                <tr><td colSpan={12} className="text-center py-4 text-gray-500">No data found</td></tr>
-              ) : (
-                paginatedData.map((w, idx) => (
-                  <tr key={w._id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-2">{(currentPage-1)*entriesPerPage + idx + 1}</td>
-                    <td className="px-4 py-2">{w.userId}</td>
-                    <td className="px-4 py-2">{w.name || '-'}</td>
-                    <td className="px-4 py-2">{w.source}</td>
-                    <td className="px-4 py-2">${(w.grossAmount || 0).toFixed(2)}</td>
-                    <td className="px-4 py-2">${(w.fee || 0).toFixed(2)}</td>
-                    <td className="px-4 py-2">${(w.netAmount || 0).toFixed(2)}</td>
-                   <td className="px-4 py-2 flex items-center gap-2">
-  {w.walletAddress && w.walletAddress !== 'No Wallet' ? (
-    <>
-      <span title={w.walletAddress} className="truncate max-w-[150px]">
-        {w.walletAddress.slice(0,6)}...{w.walletAddress.slice(-4)}
-      </span>
-      <FaCopy className="cursor-pointer text-gray-500 hover:text-white" onClick={() => handleCopy(w.walletAddress,'address')} />
-      {copiedAddress === w.walletAddress && <span className="text-green-600 text-xs">Copied!</span>}
-    </>
+  {loading ? (
+    <div className="p-10 text-center text-gray-500">Loading withdrawals...</div>
   ) : (
-    <span className="text-red-500">No Wallet — <a href={`/admin/user/${w.userId}`} className="text-blue-600 underline">Open profile</a></span>
-  )}
-</td>
+    <table className="min-w-full text-sm table-auto">
+      <thead className="bg-gray-100 text-left text-gray-700">
+        <tr>
+          {/* Header mein 'Source' add kiya */}
+          {['Sr.', 'User ID', 'Name', 'Source', 'Gross', 'Fee', 'Net', 'Wallet', 'Status', 'Date', 'Actions'].map(h => (
+            <th key={h} className="px-4 py-3 border-b font-bold uppercase tracking-wider">{h}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200">
+        {paginatedData.length === 0 ? (
+          <tr><td colSpan={11} className="text-center py-10 text-gray-400">No withdrawals found.</td></tr>
+        ) : (
+          paginatedData.map((w, idx) => (
+            <tr key={w._id} className="hover:bg-gray-50 transition">
+              <td className="px-4 py-3">{(currentPage-1)*entriesPerPage + idx + 1}</td>
+              <td className="px-4 py-3 font-medium text-gray-900">{w.userId}</td>
+              <td className="px-4 py-3">{w.name}</td>
+              
+              {/* Source Data Row */}
+              <td className="px-4 py-3">
+                <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold">
+                  {w.source || 'ROI'}
+                </span>
+              </td>
 
-                    <td className="px-4 py-2">
-                      {w.txnHash ? (
-                        <div className="flex items-center gap-2">
-                          <span className="truncate max-w-[100px]">{w.txnHash.slice(0,6)}...{w.txnHash.slice(-4)}</span>
-                          <FaCopy className="cursor-pointer text-gray-500 hover:text-white" onClick={() => handleCopy(w.txnHash,'hash')} />
-                          {copiedHash === w.txnHash && <span className="text-green-600 text-xs">Copied!</span>}
-                        </div>
-                      ) : '-'}
-                    </td>
-                    <td className="px-4 py-2 capitalize">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${w.status==='pending'?'bg-yellow-100 text-yellow-800':w.status==='approved'?'bg-green-100 text-green-800':'bg-red-100 text-red-800'}`}>{w.status}</span>
-                    </td>
-                    <td className="px-4 py-2">{format(new Date(w.createdAt),'dd/MM/yyyy HH:mm')}</td>
-                    <td className="px-4 py-2 space-y-1">
-                      {w.status==='pending' && (
-                        <div className="space-y-1">
-                          <button onClick={() => updateStatus(w,'approved')} className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded w-full">✅ Approve</button>
-                          <button onClick={() => updateStatus(w._id,'dummy')} className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded w-full">🛠 Dummy Txn</button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+              <td className="px-4 py-3">${w.grossAmount.toFixed(2)}</td>
+              <td className="px-4 py-3 text-red-500">${w.fee.toFixed(2)}</td>
+              <td className="px-4 py-3 font-bold text-green-600">${w.netAmount.toFixed(2)}</td>
+              
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600 font-mono text-xs">{w.walletAddress.slice(0,6)}...{w.walletAddress.slice(-4)}</span>
+                  <FaCopy className="cursor-pointer text-gray-400 hover:text-blue-600" onClick={() => handleCopy(w.walletAddress)} />
+                </div>
+              </td>
+              
+              <td className="px-4 py-3">
+                <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${
+                  w.status==='pending' ? 'bg-yellow-100 text-yellow-700' : 
+                  w.status==='approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>{w.status}</span>
+              </td>
+              
+              <td className="px-4 py-3 text-gray-500">{format(new Date(w.createdAt), 'dd/MM/yy HH:mm')}</td>
+              
+              <td className="px-4 py-3">
+                {w.status==='pending' && (
+                  <div className="flex flex-col gap-1">
+                    <button onClick={() => updateStatus(w,'approved')} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs font-bold shadow-sm">APPROVE</button>
+                    <button onClick={() => updateStatus(w,'dummy')} className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded text-xs font-bold shadow-sm">DUMMY</button>
+                  </div>
+                )}
+              </td>
+            </tr>
+          ))
         )}
-      </div>
- 
+      </tbody>
+    </table>
+  )}
+</div>
 
       {/* Pagination */}
-      <div className="mt-4 flex justify-between items-center text-sm">
-        <p>Showing {(currentPage-1)*entriesPerPage+1} to {Math.min(currentPage*entriesPerPage, filteredData.length)} of {filteredData.length} entries</p>
+      <div className="mt-6 flex justify-between items-center text-sm text-gray-600">
+        <p>Showing {paginatedData.length} records</p>
         <div className="flex gap-2">
-          <button onClick={() => setCurrentPage(p => Math.max(p-1,1))} className="px-3 py-1 border rounded hover:bg-gray-100">Prev</button>
-          <span className="px-3 py-1 border rounded">{currentPage}</span>
-          <button onClick={() => setCurrentPage(p => Math.min(p+1, Math.ceil(filteredData.length/entriesPerPage)))} className="px-3 py-1 border rounded hover:bg-gray-100">Next</button>
+          <button onClick={() => setCurrentPage(p => Math.max(p-1,1))} className="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50">Previous</button>
+          <span className="px-4 py-2 bg-blue-50 text-blue-600 font-bold border border-blue-200 rounded-md">{currentPage}</span>
+          <button onClick={() => setCurrentPage(p => p + 1)} className="px-4 py-2 border rounded-md hover:bg-gray-100">Next</button>
         </div>
       </div>
     </div>
   );
 };
 
-export default AdminWithdrawalTable
+export default AdminWithdrawalTable;

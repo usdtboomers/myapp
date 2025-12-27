@@ -15,21 +15,16 @@ const { ethers } = require('ethers');
 require('dotenv').config();
 
 // Load environment variables
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const BSC_NODE_URL = process.env.BSC_NODE_URL;
+ const BSC_NODE_URL = process.env.BSC_NODE_URL;
 const USDT_CONTRACT_ADDRESS = process.env.USDT_CONTRACT_ADDRESS;
 
-const provider = new ethers.providers.JsonRpcProvider(BSC_NODE_URL);
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-
-
+  
 const tokenABI = [
   "function balanceOf(address owner) view returns (uint256)",
   "function transfer(address to, uint amount) returns (bool)",
 ];
 
-const tokenContract = new ethers.Contract(USDT_CONTRACT_ADDRESS, tokenABI, wallet);
- 
+  
 
  
 // Admin impersonate user
@@ -916,25 +911,48 @@ router.put('/withdrawals/approve/:id', verifyAdmin, async (req, res) => {
 
 
 // APPROVE a dummy txn with txnHash
+// ✅ Dummy Transaction Route (Fixed for Schedule IDs)
 router.put('/withdrawals/dummy/:id', verifyAdmin, async (req, res) => {
   try {
     const { txnHash } = req.body;
     if (!txnHash) return res.status(400).json({ message: 'Transaction hash required' });
 
-    const withdrawal = await Withdrawal.findById(req.params.id);
+    const fullId = req.params.id;
+    let actualId = fullId;
+    let dayIndex = null;
+
+    // 1. Agar ID mein '-' hai, toh asli ID aur index nikaalo
+    if (fullId.includes('-')) {
+      const parts = fullId.split('-');
+      actualId = parts[0];
+      dayIndex = parseInt(parts[1]);
+    }
+
+    const withdrawal = await Withdrawal.findById(actualId);
     if (!withdrawal) return res.status(404).json({ message: 'Withdrawal not found' });
 
-    if (Array.isArray(withdrawal.schedule)) {
-      withdrawal.schedule = withdrawal.schedule.map(day => ({ ...day, status: 'approved' }));
+    // 2. Agar schedule hai, toh sirf us specific din ko approve karo
+    if (dayIndex !== null && withdrawal.schedule && withdrawal.schedule[dayIndex]) {
+      withdrawal.schedule[dayIndex].status = 'approved';
+      withdrawal.schedule[dayIndex].walletAddress = withdrawal.schedule[dayIndex].walletAddress || withdrawal.walletAddress;
+      
+      // Check agar saare days done hain
+      const allDone = withdrawal.schedule.every(day => day.status === 'approved');
+      if (allDone) {
+        withdrawal.status = 'approved';
+        withdrawal.txnHash = txnHash;
+      }
+    } else {
+      // 3. Normal withdrawal ke liye
+      withdrawal.status = 'approved';
+      withdrawal.txnHash = txnHash;
     }
-    withdrawal.status = 'approved';
-    withdrawal.txnHash = txnHash;
-    await withdrawal.save();
 
+    await withdrawal.save();
     res.json({ success: true, message: 'Dummy transaction approved' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("Dummy Approve Error:", err);
+    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
   }
 });
 
