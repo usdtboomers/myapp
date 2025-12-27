@@ -39,7 +39,7 @@ const DepositForm = ({ userId, walletAddress, onSuccess }) => {
       await tx.wait(); // Wait for block
 
       // 2. Backend Verification
-      const res = await api.post("/api/wallet/web3-deposit", {
+      const res = await api.post("/wallet/web3-deposit", {
         userId,
         amount: numericAmount,
         txnHash: tx.hash,
