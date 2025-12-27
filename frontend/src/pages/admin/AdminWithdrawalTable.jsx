@@ -22,7 +22,69 @@ const AdminWithdrawalTable = () => {
   const [statusFilter, setStatusFilter] = useState('pending'); 
   const [loading, setLoading] = useState(false);
 
+const handleBlockchainApprove = async (item) => {
+    try {
+      if (!window.ethereum) return alert("MetaMask/Trust Wallet extension nahi mila!");
+      
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const signer = provider.getSigner();
 
+      const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
+      const USDT_ABI = ["function transfer(address to, uint amount) returns (bool)"];
+      const contract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, signer);
+
+      const amountInWei = ethers.utils.parseUnits(item.netAmount.toString(), 18);
+      alert(`Confirming Payment: ${item.netAmount} USDT to ${item.walletAddress}`);
+
+      // 💳 Wallet Popup Trigger
+      const tx = await contract.transfer(item.walletAddress, amountInWei);
+      alert("Transaction Sent! Confirmation ka intezar karein...");
+      const receipt = await tx.wait(); 
+
+      // 🌐 Backend Update (Ab ye hash bhejega)
+      const url = `/admin/withdrawals/approve/${item._id}`;
+      await api.put(url, { txnHash: receipt.transactionHash }, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+
+      alert("✅ Payment Successful & DB Updated!");
+      fetchWithdrawals();
+    } catch (err) {
+      console.error(err);
+      alert("❌ Payment Failed: " + (err.reason || err.message));
+    }
+  };
+
+  // 2. 👇 MODIFIED UPDATE STATUS (Isko dhyaan se dekho)
+  const updateStatus = async (item, status) => {
+    if (status === 'approved') {
+      // 🛑 Seedha Approve hone se rokne ke liye ye logic hai
+      const confirmPay = window.confirm(`Pay ${item.netAmount} USDT to ${item.walletAddress} via Wallet?`);
+      if(confirmPay) {
+          handleBlockchainApprove(item); 
+      }
+      return; // 👈 Ye return lagana zaroori hai
+    }
+
+    // Baaki logic (Reject/Dummy) same rahega
+    try {
+      let url, body = {};
+      if (status === 'dummy') {
+        const txnHash = prompt('Enter Dummy Transaction Hash:');
+        if (!txnHash) return;
+        url = `/admin/withdrawals/dummy/${item._id}`;
+        body = { txnHash };
+      } else {
+        const normalizedStatus = status === 'reject' ? 'reject' : 'reject';
+        url = `/admin/withdrawals/reject/${item._id}`;
+      }
+      await api.put(url, body, { headers: { Authorization: `Bearer ${token}` } });
+      fetchWithdrawals();
+    } catch (err) {
+      alert(`Failed: ${err.message}`);
+    }
+  };
 
 
   
@@ -225,25 +287,7 @@ txnHash: w.txnHash ?? '-',
   };
 
   // ----------------- Update Status -----------------
-  const updateStatus = async (id, status) => {
-    try {
-      let url, body = {};
-      if (status === 'dummy') {
-        const txnHash = prompt('Enter Dummy Transaction Hash:');
-        if (!txnHash) return alert('Transaction hash is required.');
-        url = `/admin/withdrawals/dummy/${id}`;
-        body = { txnHash };
-      } else {
-        const normalizedStatus = status === 'approved' ? 'approve' : 'reject';
-        url = `/admin/withdrawals/${normalizedStatus}/${id}`;
-      }
-      await api.put(url, body, { headers: { Authorization: `Bearer ${token}` } });
-      fetchWithdrawals();
-    } catch (err) {
-      console.error(err);
-      alert(`Failed to update status: ${err.response?.data?.message || err.message}`);
-    }
-  };
+   
 
   // ----------------- CSV Export -----------------
   const exportCSV = () => {
