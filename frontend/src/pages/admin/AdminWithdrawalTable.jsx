@@ -57,34 +57,37 @@ const handleBlockchainApprove = async (item) => {
   };
 
   // 2. 👇 MODIFIED UPDATE STATUS (Isko dhyaan se dekho)
-  const updateStatus = async (item, status) => {
-    if (status === 'approved') {
-      // 🛑 Seedha Approve hone se rokne ke liye ye logic hai
-      const confirmPay = window.confirm(`Pay ${item.netAmount} USDT to ${item.walletAddress} via Wallet?`);
-      if(confirmPay) {
-          handleBlockchainApprove(item); 
-      }
-      return; // 👈 Ye return lagana zaroori hai
+ // 🛑 Isse replace karein (id ki jagah item likhein)
+const updateStatus = async (item, status) => {
+  if (status === 'approved') {
+    // Ab item.netAmount aur item.walletAddress sahi se dikhega
+    const confirmPay = window.confirm(`Pay ${item.netAmount} USDT to ${item.walletAddress} via Wallet?`);
+    if (confirmPay) {
+      handleBlockchainApprove(item);
     }
+    return;
+  }
 
-    // Baaki logic (Reject/Dummy) same rahega
-    try {
-      let url, body = {};
-      if (status === 'dummy') {
-        const txnHash = prompt('Enter Dummy Transaction Hash:');
-        if (!txnHash) return;
-        url = `/admin/withdrawals/dummy/${item._id}`;
-        body = { txnHash };
-      } else {
-        const normalizedStatus = status === 'reject' ? 'reject' : 'reject';
-        url = `/admin/withdrawals/reject/${item._id}`;
-      }
-      await api.put(url, body, { headers: { Authorization: `Bearer ${token}` } });
-      fetchWithdrawals();
-    } catch (err) {
-      alert(`Failed: ${err.message}`);
+  // Reject aur Dummy ke liye (Yahan item._id use hoga)
+  try {
+    let url, body = {};
+    const actualId = item._id || item; // Safety check
+
+    if (status === 'dummy') {
+      const txnHash = prompt('Enter Dummy Transaction Hash:');
+      if (!txnHash) return;
+      url = `/admin/withdrawals/dummy/${actualId}`;
+      body = { txnHash };
+    } else {
+      url = `/admin/withdrawals/reject/${actualId}`;
     }
-  };
+    
+    await api.put(url, body, { headers: { Authorization: `Bearer ${token}` } });
+    fetchWithdrawals();
+  } catch (err) {
+    alert(`Failed: ${err.message}`);
+  }
+};
 
 
   
@@ -416,7 +419,7 @@ txnHash: w.txnHash ?? '-',
                     <td className="px-4 py-2 space-y-1">
                       {w.status==='pending' && (
                         <div className="space-y-1">
-                          <button onClick={() => updateStatus(w._id,'approved')} className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded w-full">✅ Approve</button>
+                          <button onClick={() => updateStatus(w,'approved')} className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded w-full">✅ Approve</button>
                           <button onClick={() => updateStatus(w._id,'dummy')} className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded w-full">🛠 Dummy Txn</button>
                         </div>
                       )}
