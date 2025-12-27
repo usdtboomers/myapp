@@ -869,53 +869,47 @@ router.get('/withdrawals', verifyAdmin, async (req, res) => {
 
 
 // APPROVE a withdrawal (single withdrawal record)
+// Sirf status update karne ke liye
 router.put('/withdrawals/approve/:id', verifyAdmin, async (req, res) => {
   try {
-    const idParam = req.params.id;
+    const fullId = req.params.id;
+    const { txnHash } = req.body;
 
-    if (idParam.includes('-')) {
-      const [withdrawalId, dayIndex] = idParam.split('-');
-      const withdrawal = await Withdrawal.findById(withdrawalId);
-      if (!withdrawal) return res.status(404).json({ message: 'Withdrawal not found' });
+    // 1. Agar ID mein '-' hai (matlab schedule wali row hai), toh asli ID alag karo
+    let actualId = fullId;
+    let dayIndex = null;
 
-      const index = parseInt(dayIndex);
-      if (!withdrawal.schedule[index]) {
-        return res.status(400).json({ message: 'Invalid schedule day' });
-      }
-
-      withdrawal.schedule[index].status = "approved";
-
-      // 🔐 WALLET LOCK
-      withdrawal.schedule[index].walletAddress =
-        withdrawal.schedule[index].walletAddress ||
-        withdrawal.walletAddress;
-
-      if (withdrawal.schedule.every(d => d.status === "approved")) {
-        withdrawal.status = "approved";
-      }
-
-      await withdrawal.save();
-      return res.json({ success: true, message: "Approved", withdrawal });
+    if (fullId.includes('-')) {
+      const parts = fullId.split('-');
+      actualId = parts[0]; // Ye asli MongoDB ID hogi
+      dayIndex = parseInt(parts[1]); // Ye schedule ka index hoga
     }
 
-    // FULL approve
-    const withdrawal = await Withdrawal.findById(idParam);
+    const withdrawal = await Withdrawal.findById(actualId);
     if (!withdrawal) return res.status(404).json({ message: 'Withdrawal not found' });
 
-    withdrawal.schedule = withdrawal.schedule.map(d => ({
-      ...d,
-      status: "approved",
-      walletAddress: d.walletAddress || withdrawal.walletAddress
-    }));
+    // 2. Agar schedule hai, toh sirf us din ko approve karo
+    if (dayIndex !== null && withdrawal.schedule && withdrawal.schedule[dayIndex]) {
+      withdrawal.schedule[dayIndex].status = "approved";
+      
+      // Agar saare days approve ho gaye, toh main status bhi approve kar do
+      const allDone = withdrawal.schedule.every(d => d.status === "approved");
+      if (allDone) {
+        withdrawal.status = "approved";
+        withdrawal.txnHash = txnHash;
+      }
+    } else {
+      // 3. Normal withdrawal (binna schedule wala)
+      withdrawal.status = "approved";
+      withdrawal.txnHash = txnHash;
+    }
 
-    withdrawal.status = "approved";
     await withdrawal.save();
-
-    res.json({ success: true, message: "Approved", withdrawal });
+    res.json({ success: true, message: "Approved successfully", withdrawal });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Approve Error:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
