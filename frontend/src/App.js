@@ -42,10 +42,6 @@ import Notifications from "./pages/user/Notifications";
 
 import UserLayout from "./components/layout/UserLayout";
 
-
- 
-
-
 // 🔹 Admin Pages
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminLayout from './pages/admin/AdminLayout';
@@ -84,8 +80,11 @@ function AppContent() {
   const [whitelist, setWhitelist] = useState([]);
 
   const isAdmin = !!localStorage.getItem('adminToken');
+  
+  // 🔥 UPDATE 1: Logic me 'super-panal' kar diya taaki maintenance me access mile
+  const isAdminPath = path.startsWith('/admin') || path.startsWith('/super-panal') || path === '/community-access';
+  
   const isPublicPath = ['/', '/login', '/register'].includes(path);
-  const isAdminPath = path.startsWith('/admin') || path === '/admin-login';
 
   useEffect(() => {
     api.get('/setting/public')
@@ -107,7 +106,6 @@ function AppContent() {
   // ✅ Check if user is allowed during maintenance
   const isAllowed = !maintenance || isPublicPath || isAdmin || isAdminPath || whitelist.includes(currentUserId);
 
-  // Loading State with Dark Theme
   if (!checked) return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center text-white">
       <div className="flex flex-col items-center gap-4">
@@ -121,7 +119,6 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-200 font-sans selection:bg-yellow-500/30">
-      {/* --- GLOBAL STYLES FOR THEME --- */}
       <style>{`
         body { background-color: #0f172a; margin: 0; }
         .bg-pattern {
@@ -129,14 +126,12 @@ function AppContent() {
             background-image: radial-gradient(#334155 1px, transparent 1px);
             background-size: 24px 24px;
         }
-        /* Custom Scrollbar Global */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
       `}</style>
 
-      {/* Main Wrapper with Background Pattern */}
       <div className="bg-pattern min-h-screen">
         <ScrollToTop />
         <Routes>
@@ -148,119 +143,36 @@ function AppContent() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* 🔐 User Routes */}
-          <Route path="/dashboard" element={
-            <RequireUserAuth>
-              <UserLayout><Dashboard /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/dashboard/:userId" element={
-            <RequireUserAuth>
-              <UserLayout><Dashboard /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/settings" element={
-            <RequireUserAuth>
-              <UserLayout><Settings /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/profile" element={
-            <RequireUserAuth>
-              <UserLayout><UserProfile /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/withdrawals" element={
-            <RequireUserAuth>
-              <UserLayout><UserWithdrawalHistory /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/notifications" element={
-            <RequireUserAuth>
-              <UserLayout><Notifications/></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/wallet-history" element={
-            <RequireUserAuth>
-              <UserLayout><WalletHistory /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/direct-team" element={
-            <RequireUserAuth>
-              <UserLayout><DirectTeamPage /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/all-team" element={
-            <RequireUserAuth>
-              <UserLayout><AllTeamPage /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/team-tree" element={
-            <RequireUserAuth>
-              <UserLayout><AllTeamTreePage /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/direct-income" element={
-            <RequireUserAuth>
-              <UserLayout><DirectIncome /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/level-income" element={
-            <RequireUserAuth>
-              <UserLayout><LevelIncome /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/daily-roi" element={
-            <RequireUserAuth>
-              <UserLayout><DailyROIIncome /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/my-transfers" element={
-            <RequireUserAuth>
-              <UserLayout><MyTransfers /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/deposit-history" element={
-            <RequireUserAuth>
-              <UserLayout><DepositHistory /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/topup-details" element={
-            <RequireUserAuth>
-              <UserLayout><TopupDetails /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/support" element={
-            <RequireUserAuth>
-              <UserLayout><Support /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/spin-income" element={
-            <RequireUserAuth>
-              <UserLayout><SpinIncome /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/transaction-details" element={
-            <RequireUserAuth>
-              <UserLayout><TransactionDetails /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/downline-business" element={
-            <RequireUserAuth>
-              <UserLayout><DownlineBusiness /></UserLayout>
-            </RequireUserAuth>
-          } />
-          <Route path="/credit-to-wallet" element={
-            <RequireUserAuth>
-              <UserLayout><CreditToWallet /></UserLayout>
-            </RequireUserAuth>
-          } />
- 
-
-
+          <Route path="/dashboard" element={<RequireUserAuth><UserLayout><Dashboard /></UserLayout></RequireUserAuth>} />
+          <Route path="/dashboard/:userId" element={<RequireUserAuth><UserLayout><Dashboard /></UserLayout></RequireUserAuth>} />
+          <Route path="/settings" element={<RequireUserAuth><UserLayout><Settings /></UserLayout></RequireUserAuth>} />
+          <Route path="/profile" element={<RequireUserAuth><UserLayout><UserProfile /></UserLayout></RequireUserAuth>} />
+          <Route path="/withdrawals" element={<RequireUserAuth><UserLayout><UserWithdrawalHistory /></UserLayout></RequireUserAuth>} />
+          <Route path="/notifications" element={<RequireUserAuth><UserLayout><Notifications/></UserLayout></RequireUserAuth>} />
+          <Route path="/wallet-history" element={<RequireUserAuth><UserLayout><WalletHistory /></UserLayout></RequireUserAuth>} />
+          <Route path="/direct-team" element={<RequireUserAuth><UserLayout><DirectTeamPage /></UserLayout></RequireUserAuth>} />
+          <Route path="/all-team" element={<RequireUserAuth><UserLayout><AllTeamPage /></UserLayout></RequireUserAuth>} />
+          <Route path="/team-tree" element={<RequireUserAuth><UserLayout><AllTeamTreePage /></UserLayout></RequireUserAuth>} />
+          <Route path="/direct-income" element={<RequireUserAuth><UserLayout><DirectIncome /></UserLayout></RequireUserAuth>} />
+          <Route path="/level-income" element={<RequireUserAuth><UserLayout><LevelIncome /></UserLayout></RequireUserAuth>} />
+          <Route path="/daily-roi" element={<RequireUserAuth><UserLayout><DailyROIIncome /></UserLayout></RequireUserAuth>} />
+          <Route path="/my-transfers" element={<RequireUserAuth><UserLayout><MyTransfers /></UserLayout></RequireUserAuth>} />
+          <Route path="/deposit-history" element={<RequireUserAuth><UserLayout><DepositHistory /></UserLayout></RequireUserAuth>} />
+          <Route path="/topup-details" element={<RequireUserAuth><UserLayout><TopupDetails /></UserLayout></RequireUserAuth>} />
+          <Route path="/support" element={<RequireUserAuth><UserLayout><Support /></UserLayout></RequireUserAuth>} />
+          <Route path="/spin-income" element={<RequireUserAuth><UserLayout><SpinIncome /></UserLayout></RequireUserAuth>} />
+          <Route path="/transaction-details" element={<RequireUserAuth><UserLayout><TransactionDetails /></UserLayout></RequireUserAuth>} />
+          <Route path="/downline-business" element={<RequireUserAuth><UserLayout><DownlineBusiness /></UserLayout></RequireUserAuth>} />
+          <Route path="/credit-to-wallet" element={<RequireUserAuth><UserLayout><CreditToWallet /></UserLayout></RequireUserAuth>} />
 
 
           {/* 🔐 Admin Routes */}
-          <Route path="/admin-login" element={<AdminLogin />} />
-          <Route path="/admin" element={<RequireAdminAuth><AdminLayout /></RequireAdminAuth>}>
+          
+          {/* Login Path */}
+          <Route path="/community-access" element={<AdminLogin />} />
+
+           {/* 🔥 UPDATE 2: Route path ko '/super-panal' kar diya */}
+           <Route path="/super-panal" element={<RequireAdminAuth><AdminLayout /></RequireAdminAuth>}>
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<UserListTable />} />
             <Route path="topups" element={<TotalTopUpPage />} />
@@ -268,7 +180,8 @@ function AppContent() {
             <Route path="withdrawals/request" element={<RequestWithdrawalPage />} />
             <Route path="withdrawals/all" element={<AllWithdrawalsPage />} />
             <Route path="direct-income" element={<DirectIncomePage />} />
-            <Route path="/admin/notifications" element={<AdminNotifications />} />
+            
+            <Route path="notifications" element={<AdminNotifications />} />
             <Route path="level-income" element={<LevelIncomePage />} />
             <Route path="wallet-summary" element={<WalletSummaryPage />} />
             <Route path="spin-income" element={<AdminSpinIncome />} />
@@ -277,9 +190,10 @@ function AppContent() {
             <Route path="transactions" element={<AdminTransactions />} />
             <Route path="settings" element={<AdminSettingsPage />} />
             <Route path="transactions/reverse" element={<ReverseTransaction />} />
-            <Route path="/admin/add-user" element={<AddUser />} />
-            <Route path="/admin/manual-deposit" element={<ManualDeposit />} />
-            <Route path="/admin/support" element={<AdminSupport />} />
+            
+            <Route path="add-user" element={<AddUser />} />
+            <Route path="manual-deposit" element={<ManualDeposit />} />
+            <Route path="support" element={<AdminSupport />} />
           </Route>
 
           {/* 🚧 Fallback */}
@@ -290,10 +204,8 @@ function AppContent() {
   );
 }
 
-// ✅ Auth-Ready Wrapper
 function AppWithAuthReady() {
   const { ready } = useAuth();
-  // Matching loading style
   if (!ready) return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center text-white">
       <div className="flex flex-col items-center gap-4">
@@ -305,7 +217,6 @@ function AppWithAuthReady() {
   return <AppContent />;
 }
 
-// ✅ Final Export
 export default function App() {
   return (
     <AuthProvider>

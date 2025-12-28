@@ -8,6 +8,10 @@ export default function AdminManualTransaction() {
   const [txHash, setTxHash] = useState('');
   const [reason, setReason] = useState('');
   const [adminNote, setAdminNote] = useState('');
+  
+  // 🔥 1. Password state add kiya
+  const [password, setPassword] = useState(''); 
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
@@ -54,10 +58,18 @@ export default function AdminManualTransaction() {
       setError(v);
       return;
     }
+    // 🔥 2. Jab confirm box khule, password field clear kar do
+    setPassword('');
     setShowConfirm(true);
   }
 
   async function submit() {
+    // 🔥 3. Check karo ki password dala hai ya nahi
+    if (!password) {
+      alert("Please enter your Admin Password to confirm.");
+      return;
+    }
+
     setShowConfirm(false);
     setLoading(true);
     setMessage(null);
@@ -72,6 +84,8 @@ export default function AdminManualTransaction() {
         txHash: txHash || null,
         reason: reason || (mode === 'credit' ? 'Manual credit by admin' : 'Manual debit by admin'),
         adminNote: adminNote || null,
+        // 🔥 4. Backend ko password bhejo verify karne ke liye
+        adminPassword: password 
       };
 
       const res = await api.post('/admin/manual-transaction', payload, { headers: authHeader() });
@@ -84,13 +98,15 @@ export default function AdminManualTransaction() {
       setTxHash('');
       setReason('');
       setAdminNote('');
+      setPassword(''); // 🔥 Reset password
 
       // refresh transactions list
       fetchTransactions(1);
       setPage(1);
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || 'Something went wrong.');
+      // 🔥 Error message me hint do agar password galat ho
+      setError(err.response?.data?.message || 'Transaction failed. Check your password.');
     } finally {
       setLoading(false);
     }
@@ -216,16 +232,38 @@ export default function AdminManualTransaction() {
             <div className="bg-white rounded-lg shadow-lg w-full max-w-lg p-6">
               <h3 className="text-lg font-semibold mb-2">Confirm {mode === 'credit' ? 'Credit' : 'Debit'}</h3>
               <p className="text-sm text-gray-600 mb-4">Please confirm the details below. This action will be recorded.</p>
-              <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
+              
+              <div className="grid grid-cols-2 gap-2 mb-4 text-sm bg-gray-50 p-3 rounded">
                 <div><strong>User ID</strong><div className="text-gray-700">{userId}</div></div>
                 <div><strong>Amount</strong><div className="text-gray-700">${parseFloat(amount).toFixed(2)}</div></div>
                 <div><strong>Type</strong><div className="text-gray-700">{mode.toUpperCase()}</div></div>
                 <div><strong>Tx Hash</strong><div className="text-gray-700">{txHash || '—'}</div></div>
                 <div className="md:col-span-2"><strong>Reason</strong><div className="text-gray-700">{reason || '—'}</div></div>
               </div>
+
+              {/* 🔥 5. Password Input Field Add Kiya */}
+              <div className="mb-4">
+                <label className="block text-sm font-bold mb-1 text-gray-700">Admin Password <span className="text-red-500">*</span></label>
+                <input 
+                    type="password"
+                    placeholder="Enter your login password to confirm"
+                    className="w-full p-2 border border-gray-300 rounded focus:border-indigo-500 focus:outline-none"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoFocus
+                />
+              </div>
+
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowConfirm(false)} className="px-4 py-2 rounded border">Cancel</button>
-                <button onClick={submit} disabled={loading} className="px-4 py-2 rounded bg-green-600 text-white">{loading ? 'Working...' : 'Confirm'}</button>
+                {/* 🔥 Button disable agar password khali hai */}
+                <button 
+                    onClick={submit} 
+                    disabled={loading || !password} 
+                    className={`px-4 py-2 rounded text-white ${!password ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+                >
+                    {loading ? 'Verifying...' : 'Confirm'}
+                </button>
               </div>
             </div>
           </div>
