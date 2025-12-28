@@ -4,16 +4,17 @@ import Sidebar from './Sidebar';
 
 const AdminLayout = () => {
   return (
-    <div className="flex">
-      {/* Fixed Sidebar */}
-      <div className="fixed top-0 left-0 h-screen w-64 z-50">
-        <Sidebar />
-      </div>
+    <div className="relative min-h-screen bg-gray-50">
+      
+      {/* Sidebar: Ye ab fixed overlay hai, isliye isse alag wrapper ki zaroorat nahi */}
+      <Sidebar />
 
-      {/* Main content with left margin equal to sidebar width */}
-      <div className="ml-64 flex-1 bg-gray-100 p-6 min-h-screen overflow-y-auto">
+      {/* Main Content */}
+      {/* Maine 'ml-64' hata diya hai taaki ye full screen le */}
+      <div className="w-full h-full">
         <Outlet />
       </div>
+
     </div>
   );
 };

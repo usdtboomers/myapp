@@ -56,17 +56,13 @@ const AdminDashboard = () => {
   };
 
   return (
-    // 🔥 CHANGE 1: min-w-[1280px]
-    // Isse mobile screen par bhi ye 1280px chauda banega (Desktop Mode)
-    // Mobile user ko side me scroll karna padega ya zoom out dikhega
-    <div className="min-w-[1280px] min-h-screen bg-gray-50 p-6 pt-20">
+    <div className="w-full min-h-screen bg-gray-50 p-4 md:p-6 pt-20">
       
       {/* Stats Cards */}
       <DashboardCards stats={stats} />
 
-      {/* 🔥 CHANGE 2: Force 2 Columns (grid-cols-2) */}
-      {/* Pehle 'grid-cols-1' tha mobile ke liye, wo hata diya */}
-      <div className="grid grid-cols-2 gap-6 mt-6">
+      {/* Grid Layout for Search & Tree */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
         <div className="bg-white p-4 rounded-lg shadow">
             <UserSearch />
         </div>
@@ -79,9 +75,17 @@ const AdminDashboard = () => {
       <div className="mt-8 bg-white rounded-lg shadow p-4">
          <h3 className="text-lg font-bold text-gray-700 mb-4">Recent Withdrawals</h3>
          
-         {/* 🔥 CHANGE 3: Scroll Wrapper Hataya */}
-         {/* Kyunki ab pura page hi 1280px ka hai, to table apne aap fit aayegi */}
-         <AdminWithdrawalTable withdrawals={withdrawals} refreshWithdrawals={fetchWithdrawals} />
+         {/* 🔥 SCROLL FIX START */}
+         {/* overflow-x-auto: Scrollbar laane ke liye */}
+         <div className="w-full overflow-x-auto pb-2">
+            
+            {/* min-w-[1000px]: Table ko zabardasti chauda (wide) rakhega taaki scroll kaam kare */}
+            <div className="min-w-[1000px]"> 
+                <AdminWithdrawalTable withdrawals={withdrawals} refreshWithdrawals={fetchWithdrawals} />
+            </div>
+
+         </div>
+         {/* 🔥 SCROLL FIX END */}
          
       </div>
 
