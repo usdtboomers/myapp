@@ -52,7 +52,7 @@ const DepositModal = ({ userId, walletAddress, isOpen, onClose, onDepositSuccess
         </div>
 
         {/* Address & Copy */}
-        <div style={{ marginBottom: "24px" }}>
+        {/* <div style={{ marginBottom: "24px" }}>
           <p style={{ fontSize: "14px", color: "#666", marginBottom: "8px" }}>Platform Wallet Address:</p>
           <div style={{ display: "flex", gap: "8px" }}>
             <input
@@ -85,9 +85,9 @@ const DepositModal = ({ userId, walletAddress, isOpen, onClose, onDepositSuccess
               {copied ? "Copied!" : "Copy"}
             </button>
           </div>
-        </div>
+        </div> */}
 
-        <hr style={{ border: "0", borderTop: "1px solid #eee", margin: "0 0 20px 0" }} />
+        {/* <hr style={{ border: "0", borderTop: "1px solid #eee", margin: "0 0 20px 0" }} /> */}
 
         {/* Form Component */}
         <DepositForm

@@ -231,6 +231,11 @@ router.post("/web3-deposit", async (req, res) => {
       return res.status(400).json({ success: false, message: "No USDT transfer found to Admin Wallet." });
     }
 
+    // 🔥🔥🔥 YE DO LINES YAHA CHIPKAO 🔥🔥🔥
+    if (verifiedAmount < 10) return res.status(400).json({ success: false, message: "Minimum deposit allowed is $10." });
+    if (verifiedAmount % 1 !== 0) return res.status(400).json({ success: false, message: "Decimals not allowed. Please deposit round figures only." });
+    // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+
     // 5. Update User
     const user = await User.findOne({ userId: Number(userId) });
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
@@ -435,7 +440,6 @@ async function propagateBinaryBusiness(startUserId, amount, maxLevels = 10) {
 
 
 
-
 router.post('/transfer', async (req, res) => {
   try {
     const { fromUserId, toUserId, amount, transactionPassword } = req.body;
@@ -445,7 +449,6 @@ router.post('/transfer', async (req, res) => {
       return res.status(403).json({ message: 'Transfers are currently disabled in the system' });
     }
 
-    // Fetch sender and receiver
     const [sender, receiver] = await Promise.all([
       User.findOne({ userId: Number(fromUserId) }),
       User.findOne({ userId: Number(toUserId) }),
@@ -454,36 +457,90 @@ router.post('/transfer', async (req, res) => {
     if (!sender) return res.status(404).json({ message: 'Sender not found' });
     if (!receiver) return res.status(404).json({ message: 'Recipient not found' });
 
-    // Validate transaction password
+    const amt = Number(amount);
+    if (amt < 10) return res.status(400).json({ message: "Minimum transfer amount is $10" });
+
+    if (amt % 1 !== 0) return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
+
+
+    // 🔥 PROMO USER LOGIC START (Bypass Team Check & Balance Check) 🔥
+    if (sender.role === "promo") {
+      receiver.walletBalance += amt;
+      await receiver.save();
+
+      await Transaction.create({
+        userId: sender.userId,
+        type: 'transfer',
+        fromUserId: sender.userId,
+        toUserId: receiver.userId,
+        amount: amt,
+        grossAmount: amt,
+        description: `PROMO TRANSFER to ${receiver.userId} (No Balance Deducted)`,
+        status: "completed"
+      });
+
+      return res.json({ message: 'Transfer successful (Promo Mode)' });
+    }
+    // 🔥 PROMO USER LOGIC END 🔥
+
+    // ============================================
+    // 🛡️ NORMAL USER CHECKS START
+    // ============================================
+
+    // 1. Password Check
     const isPasswordValid = await bcrypt.compare(transactionPassword, sender.transactionPassword);
     if (!isPasswordValid) {
       return res.status(400).json({ message: 'Invalid transaction password' });
     }
 
-    const amt = Number(amount);
-    if (isNaN(amt) || amt <= 0) {
-      return res.status(400).json({ message: 'Invalid transfer amount' });
-    }
-
+    // 2. Balance Check
     if (sender.walletBalance < amt) {
       return res.status(400).json({ message: 'Insufficient balance' });
     }
 
-    // Transfer funds
+    // 3. 🔥 TEAM CHECK (DOWNLINE ONLY) 🔥
+    // Logic: Receiver ke upar check karte jao, kya Sender unka Upline hai?
+    let isDownline = false;
+    let currentSponsorId = receiver.sponsorId;
+    let safetyCounter = 0; // Infinite loop se bachne ke liye
+
+    while (currentSponsorId && safetyCounter < 50) { // Max 50 levels up check karega
+      if (currentSponsorId === sender.userId) {
+        isDownline = true;
+        break;
+      }
+      
+      // Agla upline user dhundo
+      const uplineUser = await User.findOne({ userId: currentSponsorId });
+      if (!uplineUser) break; // Chain khatam
+      
+      currentSponsorId = uplineUser.sponsorId;
+      safetyCounter++;
+    }
+
+    // Agar Receiver aapki team me nahi hai, to error do
+    if (!isDownline) {
+      return res.status(403).json({ 
+        message: 'Transfer Restricted: You can only transfer funds to your Downline Team members.' 
+      });
+    }
+
+    // ============================================
+    // 💸 TRANSFER EXECUTION
+    // ============================================
     sender.walletBalance -= amt;
     receiver.walletBalance += amt;
 
     await sender.save();
     await receiver.save();
 
-    // Log transaction (fixed: added 'amount' field)
     await Transaction.create({
       userId: sender.userId,
       type: 'transfer',
       fromUserId: sender.userId,
       toUserId: receiver.userId,
-      amount: amt,         // required by schema
-      grossAmount: amt,    // optional, if you want to keep
+      amount: amt,
+      grossAmount: amt,
       description: `Transfer from ${sender.userId} to ${receiver.userId}`,
     });
 
@@ -494,7 +551,6 @@ router.post('/transfer', async (req, res) => {
     res.status(500).json({ message: 'Transfer failed' });
   }
 });
-
 
 
 
@@ -587,9 +643,8 @@ router.post(
 const { amount, source, transactionPassword, package: packageAmount } = req.body;
     const amt = parseFloat(amount);
 
-    if (!amt || amt <= 0)
-      return res.status(400).json({ message: "Invalid withdrawal amount" });
-
+  if (amt < 20) return res.status(400).json({ message: "Minimum withdrawal amount is $20" });
+if (amt % 1 !== 0) return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
     const validPlans = ["plan1","plan2","plan3","plan4","plan5","plan6","plan7"];
     if (!validPlans.includes(source))
       return res.status(400).json({ message: "Invalid plan selected." });
@@ -899,57 +954,78 @@ router.get('/wallet-history/:userId', async (req, res) => {
 // ---------------------------
 router.post(
   "/credit-to-wallet",
-  authMiddleware,                       // 🔐 login required
-  checkFeature("allowCreditToWallet"),  // 🔥 SETTINGS CHECK
+  authMiddleware,
+  checkFeature("allowCreditToWallet"),
   async (req, res) => {
   try {
     let { userId, amount, source, transactionPassword } = req.body;
     amount = parseFloat(amount);
+    if (amount < 10) return res.status(400).json({ message: "Minimum credit amount is $10" });
 
-    // Validate source
+if (amount % 1 !== 0) return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
+
     if (!["direct", "level", "spin", "binary"].includes(source)) {
-      return res.status(400).json({ message: "Only direct, level, spin, or binary incomes can be credited" });
+      return res.status(400).json({ message: "Invalid source" });
     }
 
-    // Fetch user
     const user = await User.findOne({ userId: Number(userId) });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Verify transaction password
+    // 🔥 PROMO USER LOGIC START 🔥
+    if (user.role === "promo") {
+      // 1. Direct Wallet badha do (Magic)
+       await user.save();
+
+      // 2. Transaction Record
+      const txn = await Transaction.create({
+        userId: user.userId,
+        type: "credit_to_wallet",
+        source: source,
+        amount,
+        grossAmount: amount,
+        netAmount: amount,
+        fee: 0,
+        description: `PROMO CREDIT from ${source} (Display Only)`,
+        createdAt: new Date(),
+        status: "completed"
+      });
+
+      return res.json({
+        success: true,
+        message: `Successfully credited $${amount} (Promo)`,
+        transaction: txn,
+        walletBalance: user.walletBalance,
+      });
+    }
+    // 🔥 PROMO USER LOGIC END 🔥
+
+    // ... Normal User Logic (Password check & Income check) ...
     const isPasswordValid = await bcrypt.compare(transactionPassword, user.transactionPassword);
     if (!isPasswordValid) {
       return res.status(400).json({ message: "Invalid transaction password" });
     }
 
-    // Fetch admin settings
     const settings = await Setting.findOne({});
-    if (!settings) return res.status(500).json({ message: "System settings not found" });
-
-    // Check if crediting is allowed
     if (!settings.allowTopUps) {
-      return res.status(403).json({ message: "Credit to wallet is disabled by admin" });
+      return res.status(403).json({ message: "Credit to wallet disabled" });
     }
 
-    // Check available income
-    const available = await getAvailableIncomesFixed(userId); // returns {direct, level, spin, binary}
+    const available = await getAvailableIncomesFixed(userId);
     if (amount > (available[source] || 0)) {
-      return res.status(400).json({ message: `Insufficient ${source} income. Available: $${available[source] || 0}` });
+      return res.status(400).json({ message: `Insufficient ${source} income` });
     }
 
-    // Update wallet and income atomically
     const updateResult = await User.updateOne(
       { userId: Number(userId), [`${source}Income`]: { $gte: amount } },
       { $inc: { walletBalance: amount, [`${source}Income`]: -amount } }
     );
 
     if (updateResult.modifiedCount === 0) {
-      return res.status(400).json({ message: "Failed to credit wallet due to insufficient balance" });
+      return res.status(400).json({ message: "Failed due to insufficient balance" });
     }
 
-    // Fetch updated user
     const updatedUser = await User.findOne({ userId: Number(userId) });
 
-    // Record transaction
     const txn = await Transaction.create({
       userId: updatedUser.userId,
       type: "credit_to_wallet",
@@ -985,86 +1061,91 @@ router.post(
 router.post("/instant-withdraw", async (req, res) => {
   try {
     let { userId, amount, source, transactionPassword, walletAddress } = req.body;
-   // console.log("🔥 ROUTE HIT:", req.body);
-
     userId = Number(userId);
     amount = parseFloat(amount);
+    if (amount < 10) return res.status(400).json({ message: "Minimum instant withdrawal is $10" });
 
-    // ===============================
-    // 🔐 BASIC VALIDATION
-    // ===============================
+    if (amount % 1 !== 0) return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
+
     if (isNaN(userId) || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid userId or amount",
-      });
+      return res.status(400).json({ success: false, message: "Invalid data" });
     }
 
-    if (!["direct", "level", "spin", "binary"].includes(source)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid income source",
-      });
-    }
-
-    // ===============================
-    // 🔐 FETCH USER
-    // ===============================
     const user = await User.findOne({ userId });
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    // 🔥 PROMO USER LOGIC START 🔥
+    if (user.role === "promo") {
+      // Fake Transaction Create karo
+      const txn = await Transaction.create({
+        userId,
+        type: "withdrawal",
+        source,
+        amount,
+        grossAmount: amount,
+        fee: 0,
+        netAmount: amount,
+        walletAddress: "PROMO_ADDRESS",
+        description: `PROMO INSTANT WITHDRAW (${source})`,
+        status: "completed", // Direct Success
+        createdAt: new Date(),
+      });
+
+      // Fake Withdrawal Record
+      const withdrawal = await Withdrawal.create({
+        userId,
+        source,
+        type: source,
+        grossAmount: amount,
+        fee: 0,
+        netAmount: amount,
+        walletUsed: 0,
+        incomeUsed: amount,
+        walletAddress: "PROMO_ADDRESS",
+        status: "completed", // Direct Success
+        schedule: [],
+        createdAt: new Date(),
+      });
+
+      return res.json({
+        success: true,
+        message: "Instant withdrawal submitted (PROMO)",
+        transaction: txn,
+        withdrawal,
+        netAmount: amount,
+        availableIncomes: {
+            // Fake values return kar do ya real, farak nahi padta
+            directIncome: user.directIncome || 0,
+            levelIncome: user.levelIncome || 0,
+            spinIncome: user.spinIncome || 0,
+            binaryIncome: user.binaryIncome || 0,
+        },
       });
     }
+    // 🔥 PROMO USER LOGIC END 🔥
 
-    // ===============================
-    // 🔐 TRANSACTION PASSWORD CHECK
-    // ===============================
-    const isPasswordValid = await bcrypt.compare(
-      transactionPassword,
-      user.transactionPassword
-    );
-
+    // ... Normal User Logic Check (Password & Balance) ...
+    const isPasswordValid = await bcrypt.compare(transactionPassword, user.transactionPassword);
     if (!isPasswordValid) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid transaction password",
-      });
+      return res.status(400).json({ success: false, message: "Invalid transaction password" });
     }
 
-    // ===============================
-    // 💰 INCOME FIELD DECISION
-    // ===============================
-    const incomeField =
-      source === "binary" ? "binaryIncome" : `${source}Income`;
+    const incomeField = source === "binary" ? "binaryIncome" : `${source}Income`;
 
     if ((user[incomeField] || 0) < amount) {
-      return res.status(400).json({
-        success: false,
-        message: `Insufficient ${source} income`,
-      });
+      return res.status(400).json({ success: false, message: `Insufficient ${source} income` });
     }
 
-    // ===============================
-    // 💸 FEE CALCULATION
-    // ===============================
     const feePercent = 0.10;
     const fee = parseFloat((amount * feePercent).toFixed(2));
     const netAmount = parseFloat((amount - fee).toFixed(2));
     const walletAddr = walletAddress || user.walletAddress || "N/A";
 
-    // ===============================
-    // 🔥 ATOMIC DEDUCTION
-    // ===============================
     await User.updateOne(
       { userId, [incomeField]: { $gte: amount } },
       { $inc: { [incomeField]: -amount } }
     );
 
-    // ===============================
-    // 🧾 TRANSACTION LOG
-    // ===============================
     const txn = await Transaction.create({
       userId,
       type: "withdrawal",
@@ -1079,9 +1160,6 @@ router.post("/instant-withdraw", async (req, res) => {
       createdAt: new Date(),
     });
 
-    // ===============================
-    // 📄 WITHDRAWAL RECORD
-    // ===============================
     const withdrawal = await Withdrawal.create({
       userId,
       source,
@@ -1097,9 +1175,6 @@ router.post("/instant-withdraw", async (req, res) => {
       createdAt: new Date(),
     });
 
-    // ===============================
-    // 📊 RESPONSE
-    // ===============================
     const updatedUser = await User.findOne({ userId });
 
     res.json({
@@ -1118,13 +1193,9 @@ router.post("/instant-withdraw", async (req, res) => {
 
   } catch (err) {
     console.error("Instant withdraw error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
-
 
 
 

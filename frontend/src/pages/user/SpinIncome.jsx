@@ -415,7 +415,7 @@ const SpinWin = () => {
           min={1}
           value={buyQuantity}
           onChange={(e) => setBuyQuantity(Number(e.target.value))}
-          className="w-20 bg-transparent text-right text-lg font-bold text-white outline-none border-b border-slate-600 focus:border-yellow-500"
+          className="w-20 bg-transparent text-right text-lg pr-4 font-bold text-white outline-none border-b border-slate-600 focus:border-yellow-500"
         />
       </div>
 

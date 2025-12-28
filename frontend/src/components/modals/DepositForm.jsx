@@ -157,7 +157,8 @@ const styles = {
     borderRadius: "8px",
     fontWeight: "600",
     fontSize: "14px",
-    marginBottom: "15px",
+    marginBottom: "5px",
+    marginTop: "35px",
     textAlign: "center",
     border: "1px solid #c8e6c9"
   },
@@ -199,7 +200,7 @@ const styles = {
   // Notification Styles
   notification: {
     position: "absolute", // Change to 'fixed' and top: 20px for global alert
-    top: "-50px", // Animates down
+    top: "0px", // Animates down
     left: "50%",
     transform: "translateX(-50%)",
     padding: "12px 20px",
@@ -211,7 +212,7 @@ const styles = {
     zIndex: 100,
     width: "90%",
     textAlign: "center",
-    animation: "fadeIn 0.5s forwards"
+    animation: "fadeIn 2.5s forwards"
   },
   success: {
     background: "#2ecc71",

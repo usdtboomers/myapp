@@ -16,7 +16,8 @@ const generateUserId = async () => {
   let id;
   let exists = true;
   while (exists) {
-    id = Math.floor(100000 + Math.random() * 900000);
+    // 7 Digits Logic: 10,00,000 se 99,99,999 tak
+    id = Math.floor(1000000 + Math.random() * 9000000);
     exists = await User.exists({ userId: id });
   }
   return id;
