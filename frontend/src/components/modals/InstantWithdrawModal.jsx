@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "api/axios";
 import SuccessModal from "./SuccessModal";
 import MessageModal from "./MessageModal";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext"; // Auth context zaroori hai
 
 const InstantWithdrawModal = ({ userId, onClose }) => {
   // --- STATE ---
@@ -20,10 +20,14 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
     binaryIncome: 0,
   });
 
+  const [walletAddress, setWalletAddress] = useState(""); 
+  const [isAddressMissing, setIsAddressMissing] = useState(false); // 🔥 NEW: Address check
+
   const [transactionPassword, setTransactionPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [successData, setSuccessData] = useState({ userId: "", amount: 0 });
+
   const [messageModal, setMessageModal] = useState({
     open: false,
     title: "",
@@ -31,12 +35,17 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
     type: "info",
   });
 
+  // 🔥 NEW: Check Promo User
+  const { user: loggedInUser } = useAuth();
+  const isPromoUser = loggedInUser?.role === "promo";
+
   const showMessage = (title, message, type = "error") =>
     setMessageModal({ open: true, title, message, type });
 
-  // 🔹 Fetch available balances
-  const fetchAvailable = async () => {
+  // 🔹 Fetch Data (Balance + Profile)
+  const fetchData = async () => {
     try {
+      // 1. Fetch Balances
       const res = await api.get(`/wallet/withdrawable/${userId}`);
       setAvailable({
         directIncome: res.data.directIncome || 0,
@@ -44,19 +53,28 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
         spinIncome: res.data.spinIncome || 0,
         binaryIncome: res.data.binaryIncome || 0, 
       });
+
+      // 2. Fetch User Profile for Address (🔥 NEW LOGIC)
+      const profileRes = await api.get(`/user/${userId}`);
+      const userData = profileRes.data?.user || {};
+      const finalAddress = (userData.walletAddress || "").trim();
+      
+      setWalletAddress(finalAddress);
+      // Agar address nahi hai aur user PROMO nahi hai, to missing flag true karo
+      setIsAddressMissing(!finalAddress && !isPromoUser);
+
     } catch (err) {
       console.error(err);
-      showMessage("Error", "Failed to fetch available balances.", "error");
+      showMessage("Error", "Failed to fetch data.", "error");
     }
   };
 
   useEffect(() => {
-    fetchAvailable();
+    fetchData();
   }, [userId]);
 
   const handleInputChange = (e, source) => {
     let value = e.target.value;
-    // Basic validation to ensure they don't type more than available
     if (parseFloat(value) > available[`${source}Income`]) {
       value = available[`${source}Income`];
     }
@@ -70,6 +88,10 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
 
     if (!entries.length)
       return showMessage("Warning", "Enter at least one withdrawal amount.", "warning");
+
+    // 🔥 NEW: Address Check
+    if (isAddressMissing && !isPromoUser) 
+      return showMessage("Error", "Please update Wallet Address in Profile.", "warning");
 
     if (!transactionPassword.trim())
       return showMessage("Warning", "Enter transaction password.", "warning");
@@ -88,8 +110,9 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
         await api.post("/wallet/instant-withdraw", {
           userId,
           amount,
-          source, // direct | level | spin | binary
+          source, 
           transactionPassword,
+          walletAddress: walletAddress.trim(), // Auto-filled address bhejo
         });
 
         totalAmount += amount;
@@ -99,7 +122,7 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
       setSuccessModalOpen(true);
       setWithdrawals({ direct: "", level: "", spin: "", binary: "" });
       setTransactionPassword("");
-      await fetchAvailable();
+      await fetchData();
     } catch (err) {
       console.error(err);
       showMessage("Error", err.response?.data?.message || "Withdrawal failed", "error");
@@ -114,12 +137,12 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
     (available.spinIncome || 0) +
     (available.binaryIncome || 0);
 
-  // --- PREMIUM DARK STYLES (Solid Colors) ---
+  // --- STYLES ---
   const styles = {
     overlay: {
       position: "fixed",
       inset: 0,
-      backgroundColor: "rgba(0, 0, 0, 0.9)", // Solid dark overlay
+      backgroundColor: "rgba(0, 0, 0, 0.9)",
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
@@ -128,7 +151,7 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
       backdropFilter: "blur(5px)",
     },
     modal: {
-      backgroundColor: "#0f172a", // Solid Dark Slate Blue
+      backgroundColor: "#0f172a",
       width: "100%",
       maxWidth: "480px",
       borderRadius: "16px",
@@ -199,7 +222,7 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
     balanceValue: {
       fontSize: "22px",
       fontWeight: "bold",
-      color: "#34d399", // Emerald Green
+      color: "#34d399",
       fontFamily: "monospace",
     },
     sectionTitle: {
@@ -256,6 +279,24 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
         outline: "none",
         marginTop: "6px",
     },
+    infoBox: {
+      padding: "12px",
+      borderRadius: "8px",
+      fontSize: "13px",
+      display: "flex",
+      gap: "10px",
+      alignItems: "flex-start",
+    },
+    addressBox: {
+      backgroundColor: "#1e293b",
+      border: "1px solid #334155",
+      color: "#e2e8f0",
+    },
+    errorBox: {
+      backgroundColor: "rgba(239, 68, 68, 0.1)",
+      border: "1px solid rgba(239, 68, 68, 0.3)",
+      color: "#fca5a5",
+    },
     footer: {
         padding: "20px",
         borderTop: "1px solid #334155",
@@ -284,21 +325,20 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
         border: "1px solid #334155",
     },
     disabledBtn: {
-      flex: 1,
-      padding: "12px",
-      backgroundColor: "#334155",
-      color: "#64748b",
-      border: "none",
-      borderRadius: "8px",
-      fontWeight: "bold",
-      cursor: "not-allowed",
+        flex: 1,
+        padding: "12px",
+        backgroundColor: "#334155",
+        color: "#64748b",
+        border: "none",
+        borderRadius: "8px",
+        fontWeight: "bold",
+        cursor: "not-allowed",
     }
   };
 
   return (
     <>
     <div style={styles.overlay}>
-       {/* Scrollbar CSS */}
        <style>{`
             .custom-scroll::-webkit-scrollbar { width: 6px; }
             .custom-scroll::-webkit-scrollbar-track { background: #0f172a; }
@@ -359,6 +399,27 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
               ))}
            </div>
 
+           {/* 🔥 NEW UI: Wallet Address Display (Not Editable) */}
+           {isAddressMissing ? (
+              <div style={{...styles.infoBox, ...styles.errorBox}}>
+                  <span style={{fontSize: '18px'}}>⚠️</span>
+                  <div>
+                     <strong style={{display:'block', marginBottom:'2px'}}>Missing Wallet Address</strong>
+                     Please add your USDT (BEP20) address in your <a href="/profile" style={{color: 'inherit', textDecoration: 'underline'}}>Profile</a>.
+                  </div>
+              </div>
+           ) : (
+              <div style={{...styles.infoBox, ...styles.addressBox, flexDirection: 'column', gap: '5px'}}>
+                  <div style={{display:'flex', justifyContent:'space-between', width:'100%'}}>
+                     <span style={styles.labelSmall}>Withdrawal Address</span>
+                     <span style={{fontSize: '10px', backgroundColor: '#334155', padding: '2px 6px', borderRadius: '4px', color: '#cbd5e1'}}>USDT</span>
+                  </div>
+                  <div style={{fontFamily: 'monospace', wordBreak: 'break-all', color: 'white'}}>
+                    {walletAddress || "Loading..."}
+                  </div>
+              </div>
+           )}
+
            {/* Transaction Password */}
            <div>
               <label style={{...styles.labelSmall, marginLeft: '4px'}}>Transaction Password</label>
@@ -378,8 +439,8 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
            <button onClick={onClose} style={{...styles.btn, ...styles.cancelBtn}}>Cancel</button>
            <button 
              onClick={handleWithdraw} 
-             disabled={loading}
-             style={loading ? styles.disabledBtn : {...styles.btn, ...styles.confirmBtn}}
+             disabled={loading || (isAddressMissing && !isPromoUser)}
+             style={(loading || (isAddressMissing && !isPromoUser)) ? styles.disabledBtn : {...styles.btn, ...styles.confirmBtn}}
            >
              {loading ? "Processing..." : "Withdraw Instantly"}
            </button>
@@ -388,7 +449,7 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
       </div>
     </div>
 
-    {/* Success Modal */}
+    {/* Success/Message Modals remain same */}
     <SuccessModal
       isOpen={successModalOpen}
       onClose={() => {
@@ -400,8 +461,6 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
       amount={successData.amount}
       zIndex={10000}
     />
-
-    {/* Message Modal */}
     <MessageModal
       isOpen={messageModal.open}
       onClose={() => setMessageModal({ ...messageModal, open: false })}

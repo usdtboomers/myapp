@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import api from "api/axios";
 import { useNavigate } from "react-router-dom";
+import { FaUserShield, FaLock, FaSignInAlt } from "react-icons/fa"; // Icons import kiye
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({ adminId: "", password: "" });
@@ -38,7 +39,7 @@ const AdminLogin = () => {
       localStorage.setItem("adminToken", token);
       localStorage.setItem("loginTime", Date.now());
 
-      // ✅ Redirect to /admin (protected route)
+      // ✅ Redirect to /admin
       navigate("/admin");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed. Please try again.");
@@ -47,54 +48,176 @@ const AdminLogin = () => {
     }
   };
 
+  // --- PREMIUM DARK STYLES ---
+  const styles = {
+    container: {
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "#020617", // Very Dark Blue/Black
+      padding: "16px",
+    },
+    card: {
+      width: "100%",
+      maxWidth: "420px",
+      backgroundColor: "#0f172a", // Dark Slate
+      borderRadius: "20px",
+      padding: "40px 30px",
+      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)", // Deep shadow
+      border: "1px solid #1e293b",
+      textAlign: "center",
+    },
+    logoIcon: {
+      fontSize: "48px",
+      color: "#eab308", // Gold Color
+      marginBottom: "16px",
+    },
+    title: {
+      fontSize: "26px",
+      fontWeight: "800",
+      color: "#ffffff",
+      marginBottom: "8px",
+      letterSpacing: "0.5px",
+    },
+    subtitle: {
+      fontSize: "14px",
+      color: "#94a3b8",
+      marginBottom: "32px",
+    },
+    inputGroup: {
+      marginBottom: "20px",
+      textAlign: "left",
+    },
+    label: {
+      display: "block",
+      fontSize: "12px",
+      fontWeight: "600",
+      color: "#cbd5e1",
+      marginBottom: "8px",
+      textTransform: "uppercase",
+      letterSpacing: "0.5px",
+    },
+    inputWrapper: {
+      position: "relative",
+      display: "flex",
+      alignItems: "center",
+    },
+    icon: {
+      position: "absolute",
+      left: "14px",
+      color: "#64748b",
+      fontSize: "16px",
+      zIndex: 1,
+    },
+    input: {
+      width: "100%",
+      padding: "14px 14px 14px 45px", // Left padding for icon
+      backgroundColor: "#1e293b", // Input bg
+      border: "1px solid #334155",
+      borderRadius: "10px",
+      color: "#ffffff",
+      fontSize: "15px",
+      outline: "none",
+      transition: "border-color 0.2s, box-shadow 0.2s",
+    },
+    button: {
+      width: "100%",
+      padding: "14px",
+      borderRadius: "10px",
+      border: "none",
+      background: "linear-gradient(90deg, #eab308 0%, #ca8a04 100%)", // Gold Gradient
+      color: "#000", // Black text for contrast
+      fontWeight: "bold",
+      fontSize: "16px",
+      cursor: "pointer",
+      marginTop: "10px",
+      boxShadow: "0 4px 6px -1px rgba(234, 179, 8, 0.2)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "8px",
+      transition: "transform 0.1s",
+    },
+    errorBox: {
+      backgroundColor: "rgba(239, 68, 68, 0.1)",
+      border: "1px solid rgba(239, 68, 68, 0.3)",
+      color: "#fca5a5",
+      padding: "12px",
+      borderRadius: "8px",
+      fontSize: "14px",
+      marginBottom: "20px",
+    },
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-2xl p-8">
-        <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
-          Admin Login
-        </h2>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        
+        {/* Logo / Icon */}
+        <div style={styles.logoIcon}>
+          <FaUserShield />
+        </div>
+        
+        <h2 style={styles.title}>Admin Portal</h2>
+        <p style={styles.subtitle}>Secure Access Required</p>
 
-        {error && <div className="mb-4 text-red-600 text-sm text-center">{error}</div>}
+        {error && <div style={styles.errorBox}>{error}</div>}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label htmlFor="adminId" className="block text-sm font-medium text-gray-700">
-              Admin ID
-            </label>
-            <input
-              id="adminId"
-              type="text"
-              value={formData.adminId}
-              onChange={handleChange}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter your Admin ID"
-              autoComplete="off"
-            />
+        <form onSubmit={handleSubmit}>
+          
+          {/* Admin ID Input (Hidden Mode) */}
+          <div style={styles.inputGroup}>
+            <label htmlFor="adminId" style={styles.label}>Admin ID</label>
+            <div style={styles.inputWrapper}>
+              <FaUserShield style={styles.icon} />
+              <input
+                id="adminId"
+                type="password" // 🔥 CHANGED TO PASSWORD (HIDDEN)
+                value={formData.adminId}
+                onChange={handleChange}
+                style={styles.input}
+                placeholder="••••••" // Placeholder bhi hidden style me
+                autoComplete="off"
+                onFocus={(e) => e.target.style.borderColor = "#eab308"} // Focus effect
+                onBlur={(e) => e.target.style.borderColor = "#334155"}
+              />
+            </div>
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter your password"
-              autoComplete="off"
-            />
+          {/* Password Input (Hidden Mode) */}
+          <div style={styles.inputGroup}>
+            <label htmlFor="password" style={styles.label}>Password</label>
+            <div style={styles.inputWrapper}>
+              <FaLock style={styles.icon} />
+              <input
+                id="password"
+                type="password" // 🔥 ALREADY PASSWORD
+                value={formData.password}
+                onChange={handleChange}
+                style={styles.input}
+                placeholder="••••••••"
+                autoComplete="off"
+                onFocus={(e) => e.target.style.borderColor = "#eab308"}
+                onBlur={(e) => e.target.style.borderColor = "#334155"}
+              />
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 rounded-lg text-white font-semibold transition ${
-              loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-            }`}
+            style={{
+                ...styles.button,
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? "not-allowed" : "pointer"
+            }}
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "Authenticating..." : (
+                <>
+                    Access Panel <FaSignInAlt />
+                </>
+            )}
           </button>
         </form>
       </div>
