@@ -17,7 +17,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import MaintenancePage from './pages/error/MaintenancePage';
 import ForgotPassword from './pages/auth/ForgotPassword';
-
+import ResetPassword from './pages/auth/ResetPassword'; // 👈 Import karein
 // 🔹 User Pages
 import Dashboard from './pages/user/Dashboard';
 import Settings from './pages/user/Settings';
@@ -141,6 +141,7 @@ function AppContent() {
           <Route path="/register" element={<Register />} />
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />  {/* 👈 Yeh line add karein */}
 
           {/* 🔐 User Routes */}
           <Route path="/dashboard" element={<RequireUserAuth><UserLayout><Dashboard /></UserLayout></RequireUserAuth>} />

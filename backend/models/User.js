@@ -35,6 +35,12 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   transactionPassword: { type: String, required: true },
 
+
+
+  resetToken: { type: String, default: null },
+  resetTokenExpiry: { type: Date, default: null },
+
+  
   // 🔹 Referral
   sponsorId: { type: Number, default: null },
   packageId: { type: mongoose.Schema.Types.ObjectId, ref: "Package" },
