@@ -127,7 +127,6 @@ const itemsPerPage = 10;
 
   // --- LOGIC: Handle Spin ---
   const handleSpin = async () => {
-    playSound();
     if (
       isSpinning ||
       spinningRef.current ||
@@ -146,6 +145,9 @@ const itemsPerPage = 10;
       const res = await api.post(`/spin/`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+          playSound();
+
 
       const reward = res.data.reward;
       const spin = res.data.spin;
