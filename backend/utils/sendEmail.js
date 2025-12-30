@@ -1,50 +1,39 @@
 // backend/utils/sendEmail.js
-
-// 👇 SABSE IMPORTANT LINE: Ye .env file ko load karegi
 require('dotenv').config(); 
-
 const nodemailer = require('nodemailer');
 
 let transporter;
 
-// Create transporter only once
 const createTransporter = () => {
-  // 👇 DEBUGGING: Ye check karega ki password code tak pahunch raha hai ya nahi
+  // Debug logs
   console.log("---------------------------------------------------");
   console.log("📧 DEBUG: Email Logic Triggered");
-  console.log("👤 User:", process.env.EMAIL_USER || "❌ MISSING (Check .env file)");
-  console.log("🔑 Pass:", process.env.EMAIL_PASS ? "✅ Password Loaded" : "❌ Password MISSING");
+  console.log("👤 User:", process.env.EMAIL_USER || "❌ MISSING");
   console.log("---------------------------------------------------");
 
   if (!transporter) {
     transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',  // 👈 'service: gmail' hata diya, direct host lagaya
+      port: 465,               // 👈 YEH HAI MAGIC NUMBER (Secure Port)
+      secure: true,            // 👈 Port 465 ke liye ye true hona chahiye
       auth: {
-        user: process.env.EMAIL_USER,      // Your Gmail address
-        pass: process.env.EMAIL_PASS,      // Gmail App Password
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
       tls: {
-        rejectUnauthorized: false,         // Avoid certificate issues
+        rejectUnauthorized: false, // Certificate errors avoid karne ke liye
       },
     });
   }
   return transporter;
 };
 
-/**
- * sendEmail - Send email securely
- * @param {Object} options
- * @param {string} options.to - recipient email
- * @param {string} options.subject - email subject
- * @param {string} options.text - plain text content
- * @param {string} options.html - optional HTML content
- */
 const sendEmail = async ({ to, subject, text, html }) => {
   try {
     const transporter = createTransporter();
 
     const mailOptions = {
-      from: `"Elite Infinity Support" <${process.env.EMAIL_USER}>`, // Naam professional kar diya
+      from: `"Elite Infinity Support" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       text,
