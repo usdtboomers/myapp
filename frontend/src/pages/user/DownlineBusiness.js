@@ -185,9 +185,9 @@ const filteredTotal = filtered.reduce(
       {/* Pagination */}
       {pageCount > 1 && (
         <div style={{ marginTop: 12, textAlign: "center", fontSize: 13 }}>
-          <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} style={btnStyle}>⏮ Prev</button>
-          <span style={{ margin: "0 8px" }}>Page {currentPage} / {pageCount}</span>
-          <button disabled={currentPage === pageCount} onClick={() => setCurrentPage(p => p + 1)} style={btnStyle}>Next ⏭</button>
+          <button className="text-white" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} style={btnStyle}>⏮ Prev</button>
+          <span className="text-white" style={{ margin: "0 8px" }}>Page {currentPage} / {pageCount}</span>
+          <button className="text-white" disabled={currentPage === pageCount} onClick={() => setCurrentPage(p => p + 1)} style={btnStyle}>Next ⏭</button>
         </div>
       )}
     </div>

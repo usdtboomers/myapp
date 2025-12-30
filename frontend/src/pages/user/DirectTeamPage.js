@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 const DirectTeamPage = () => {
   const { user } = useAuth();
   const [team, setTeam] = useState([]);
+  const [totalTeamCount, setTotalTeamCount] = useState(0);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
@@ -17,7 +18,11 @@ const DirectTeamPage = () => {
         const res = await api.get(
           `/user/direct-team/${user.userId}`
         );
-        setTeam(Array.isArray(res.data.team) ? res.data.team : []);
+        
+        const teamData = Array.isArray(res.data.team) ? res.data.team : [];
+        setTeam(teamData);
+        setTotalTeamCount(res.data.totalTeam || res.data.totalTeamCount || 0);
+
       } catch (err) {
         console.error("Error fetching direct team:", err);
         setTeam([]);
@@ -33,10 +38,7 @@ const DirectTeamPage = () => {
       u.userId?.toString().includes(s) ||
       u.name?.toLowerCase().includes(s) ||
       u.mobile?.toString().includes(s) ||
-      u.country?.toLowerCase().includes(s) ||
-      u.topUpAmount?.toString().includes(s) ||
-      (u.createdAt &&
-        new Date(u.createdAt).toLocaleDateString().toLowerCase().includes(s))
+      u.country?.toLowerCase().includes(s)
     );
   });
 
@@ -58,6 +60,26 @@ const DirectTeamPage = () => {
       <h2 className="text-lg sm:text-2xl font-bold text-white mb-5 text-center">
         👥 Direct Team 
       </h2>
+
+      {/* Top Stats Cards */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 text-center shadow-sm">
+          <h3 className="text-gray-500 text-xs sm:text-sm font-bold uppercase tracking-wider">
+            My Total Directs
+          </h3>
+          <p className="text-2xl sm:text-3xl font-bold text-indigo-600 mt-2">
+            {team.length}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 text-center shadow-sm">
+          <h3 className="text-gray-500 text-xs sm:text-sm font-bold uppercase tracking-wider">
+            My Total Team
+          </h3>
+          <p className="text-2xl sm:text-3xl font-bold text-indigo-600 mt-2">
+            {totalTeamCount}
+          </p>
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6 justify-between">
@@ -89,8 +111,11 @@ const DirectTeamPage = () => {
               <th className="p-2 sm:p-3 font-semibold border">Sr No.</th>
               <th className="p-2 sm:p-3 font-semibold border">User ID</th>
               <th className="p-2 sm:p-3 font-semibold border">Name</th>
+              {/* ✅ NEW COLUMNS */}
+              <th className="p-2 sm:p-3 font-semibold border text-center">Directs</th>
+              <th className="p-2 sm:p-3 font-semibold border text-center">Team Size</th>
+              
               <th className="p-2 sm:p-3 font-semibold border">Mobile</th>
-              <th className="p-2 sm:p-3 font-semibold border">Country</th>
               <th className="p-2 sm:p-3 font-semibold border">Top-Up ($)</th>
               <th className="p-2 sm:p-3 font-semibold border">Joined</th>
             </tr>
@@ -100,7 +125,7 @@ const DirectTeamPage = () => {
             {currentItems.length === 0 ? (
               <tr>
                 <td
-                  colSpan="7"
+                  colSpan="8"
                   className="text-center py-4 text-white italic"
                 >
                   No direct referrals found.
@@ -117,13 +142,29 @@ const DirectTeamPage = () => {
                   <td className="p-2 sm:p-3 border text-gray-700 font-medium">
                     {indexOfFirst + index + 1}
                   </td>
-                  <td className="p-2 sm:p-3 border text-gray-800">
+                  <td className="p-2 sm:p-3 border text-gray-800 font-bold">
                     {member.userId}
                   </td>
-                  <td className="p-2 sm:p-3 border">{member.name || "-"}</td>
+                  <td className="p-2 sm:p-3 border font-medium text-indigo-700">
+                    {member.name || "-"}
+                  </td>
+
+                  {/* ✅ SHOWING MEMBER'S DIRECTS */}
+                  <td className="p-2 sm:p-3 border text-center">
+                    <span className="bg-blue-100 text-blue-800 py-1 px-2 rounded-full text-xs font-bold">
+                      {member.totalDirects || member.directCount || 0}
+                    </span>
+                  </td>
+
+                  {/* ✅ SHOWING MEMBER'S TOTAL TEAM */}
+                  <td className="p-2 sm:p-3 border text-center">
+                    <span className="bg-purple-100 text-purple-800 py-1 px-2 rounded-full text-xs font-bold">
+                      {member.totalTeam || member.teamCount || 0}
+                    </span>
+                  </td>
+
                   <td className="p-2 sm:p-3 border">{member.mobile || "-"}</td>
-                  <td className="p-2 sm:p-3 border">{member.country || "-"}</td>
-                  <td className="p-2 sm:p-3 border font-semibold text-gray-700">
+                  <td className="p-2 sm:p-3 border font-semibold text-green-600">
                     ${member.topUpAmount || 0}
                   </td>
                   <td className="p-2 sm:p-3 border text-gray-600 whitespace-nowrap">

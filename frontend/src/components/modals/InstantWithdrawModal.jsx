@@ -252,9 +252,9 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
         fontSize: "14px",
     },
     sourceBal: {
-        fontSize: "11px",
-        color: "#94a3b8",
-        marginTop: "2px",
+        fontSize: "13px",
+color: "#86efac"   // light green
+,        marginTop: "2px",
         fontFamily: "monospace",
     },
     input: {

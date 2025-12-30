@@ -188,9 +188,9 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
         fontSize: "14px",
     },
     sourceBal: {
-        fontSize: "11px",
-        color: "#94a3b8",
-        marginTop: "2px",
+        fontSize: "13px",
+color: "#22c55e"
+,        marginTop: "2px",
     },
     input: {
         backgroundColor: "#0f172a",

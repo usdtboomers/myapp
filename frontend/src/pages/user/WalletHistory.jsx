@@ -10,6 +10,10 @@ const WalletHistory = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [userId, setUserId] = useState(null);
 
+  // --- PAGINATION STATE ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const allTypes = [
     "deposit",
     "transfer",
@@ -31,6 +35,11 @@ const WalletHistory = () => {
     } catch { setError("Invalid user."); setLoading(false); }
   }, []);
 
+  // Jab filter change ho to page 1 par wapas aajaye
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, typeFilter]);
+
   const fetchWalletHistory = async (uid) => {
     try {
       const [txRes, withdrawRes, topupRes] = await Promise.all([
@@ -50,13 +59,11 @@ const WalletHistory = () => {
             date:w.createdAt 
           })) 
         : [];
-    const topups = Array.isArray(topupRes.data)
-  ? topupRes.data
-      .filter(t => t.description && !/PROMOTION/i.test(t.description)) // filter promo topups
-      .map(t => ({ ...t, type: t.type || "topup", date: t.createdAt || t.date }))
-  : [];
-
-
+      const topups = Array.isArray(topupRes.data)
+        ? topupRes.data
+            .filter(t => t.description && !/PROMOTION/i.test(t.description))
+            .map(t => ({ ...t, type: t.type || "topup", date: t.createdAt || t.date }))
+        : [];
 
       const allHistory = [
         ...txns.filter(t => ["deposit","transfer","credit_to_wallet","buy_spin"].includes(t.type)), 
@@ -102,6 +109,14 @@ const WalletHistory = () => {
     const matchesSearch = txn.type?.toLowerCase().includes(s) || txn.description?.toLowerCase().includes(s) || txn.fromUserId?.toString().includes(s) || txn.toUserId?.toString().includes(s);
     return matchesType && matchesSearch;
   });
+
+  // --- PAGINATION LOGIC ---
+  // Data ko pehle reverse karte hain (Newest First) fir slice karte hain
+  const reversedData = [...filtered].reverse();
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = reversedData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
   if(loading) return <p>Loading...</p>;
   if(error) return <p style={{color:"red"}}>{error}</p>;
@@ -171,21 +186,24 @@ const WalletHistory = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {currentItems.length === 0 ? (
               <tr>
                 <td colSpan="8" style={{ textAlign: "center", padding: 8, color: "#999" }}>
                   No wallet transactions found.
                 </td>
               </tr>
             ) : (
-              [...filtered].reverse().map((txn, idx) => {
+              currentItems.map((txn, idx) => {
                 const amount = txn.displayAmount || txn.amount || txn.grossAmount || 0;
                 const isCredit = ["deposit", "credit_to_wallet"].includes(txn.type) || (txn.type === "transfer" && txn.toUserId === userId);
                 const colorStyle = { color: isCredit ? "green" : "red" };
+                
+                // Serial Number calculation based on page
+                const serialNumber = (currentPage - 1) * itemsPerPage + idx + 1;
 
                 return (
                   <tr key={`${txn._id}-${txn.date || txn.createdAt}-${txn.type}-${idx}`} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9" }}>
-                    <td style={tdStyle}>{idx + 1}</td>
+                    <td style={tdStyle}>{serialNumber}</td>
                     <td style={tdStyle}>{(txn.type || "unknown").replace(/_/g, " ").toUpperCase()}</td>
                     <td style={{ ...tdStyle, ...colorStyle }}>${amount.toFixed(2)}</td>
                     <td style={tdStyle}>{txn.fromUserId === userId ? "You" : txn.fromUserId || "-"}</td>
@@ -200,6 +218,68 @@ const WalletHistory = () => {
           </tbody>
         </table>
       </div>
+
+      {/* --- PAGINATION CONTROLS --- */}
+      {filtered.length > 0 && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 15, flexWrap: "wrap", gap: 10 }}>
+          
+          {/* Rows Per Page Dropdown */}
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{color: "white"}}>Rows:</span>
+            <select 
+              value={itemsPerPage} 
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1); // Reset to page 1 when changing rows
+              }}
+              style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #ccc" }}
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+
+          {/* Next/Prev Buttons */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button 
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+              disabled={currentPage === 1}
+              style={{
+                padding: "5px 10px",
+                border: "none",
+                borderRadius: 4,
+                backgroundColor: currentPage === 1 ? "#ccc" : "#4A90E2",
+                color: "white",
+                cursor: currentPage === 1 ? "not-allowed" : "pointer"
+              }}
+            >
+              Prev
+            </button>
+            
+            <span style={{ color: "white", fontWeight: "bold" }}>
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button 
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+              disabled={currentPage === totalPages}
+              style={{
+                padding: "5px 10px",
+                border: "none",
+                borderRadius: 4,
+                backgroundColor: currentPage === totalPages ? "#ccc" : "#4A90E2",
+                color: "white",
+                cursor: currentPage === totalPages ? "not-allowed" : "pointer"
+              }}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

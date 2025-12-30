@@ -8,7 +8,9 @@ const MyTransfers = () => {
   const [view, setView] = useState("sent");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const ITEMS_PER_PAGE = 10;
+  
+  // ✅ STATE CHANGE: Rows selection ke liye state banaya
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const userId = user?.userId;
 
@@ -44,10 +46,11 @@ const MyTransfers = () => {
       : txn.fromUserId?.toString().includes(searchTerm)
   );
 
-  const totalPages = Math.ceil(searchedTransfers.length / ITEMS_PER_PAGE);
+  // ✅ UPDATED LOGIC: itemsPerPage use kar rahe hain
+  const totalPages = Math.ceil(searchedTransfers.length / itemsPerPage);
   const paginatedTransfers = searchedTransfers.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   return (
@@ -70,8 +73,8 @@ const MyTransfers = () => {
         </button>
       </div>
 
-      {/* Search Input */}
-      <div style={{ marginBottom: 12 }}>
+      {/* ✅ TOP SECTION: Search + Rows Dropdown */}
+      <div style={{ marginBottom: 12, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
         <input
           type="text"
           value={searchTerm}
@@ -79,6 +82,28 @@ const MyTransfers = () => {
           placeholder={view === "sent" ? "Search by To User ID" : "Search by From User ID"}
           style={{ padding: 6, borderRadius: 4, border: "1px solid #ccc", width: 200, fontSize: 12 }}
         />
+
+        {/* Rows Selector */}
+        <select
+          value={itemsPerPage}
+          onChange={(e) => {
+            setItemsPerPage(Number(e.target.value));
+            setCurrentPage(1); // Reset page
+          }}
+          style={{
+            padding: 6,
+            borderRadius: 4,
+            border: "1px solid #ccc",
+            fontSize: 12,
+            cursor: "pointer",
+            height: 30 // Matching input height roughly
+          }}
+        >
+          <option value={10}>10 Rows</option>
+          <option value={20}>20 Rows</option>
+          <option value={50}>50 Rows</option>
+          <option value={100}>100 Rows</option>
+        </select>
       </div>
 
       {/* Table */}
@@ -97,7 +122,7 @@ const MyTransfers = () => {
               const date = new Date(txn.createdAt);
               return (
                 <tr key={txn._id || idx} style={{ background: idx % 2 ? "#f9f9f9" : "#fff" }}>
-                  <td style={tdStyle}>{(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
+                  <td style={tdStyle}>{(currentPage - 1) * itemsPerPage + idx + 1}</td>
                   <td style={{ ...tdStyle, fontWeight: "bold", color: view === "sent" ? "#c62828" : "#2e7d32" }}>
                     {formatCurrency(txn.amount)}
                   </td>
@@ -114,12 +139,28 @@ const MyTransfers = () => {
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* ✅ BOTTOM SECTION: Next/Prev Buttons */}
       {totalPages > 1 && (
         <div style={{ marginTop: 12, textAlign: "center" }}>
-          <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} style={pageBtnStyle(currentPage === 1)}>⏮ Prev</button>
-          <span style={{ margin: "0 6px", fontSize: 12 }}>Page {currentPage} of {totalPages}</span>
-          <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} style={pageBtnStyle(currentPage === totalPages)}>Next ⏭</button>
+          <button 
+            disabled={currentPage === 1} 
+            onClick={() => setCurrentPage(p => p - 1)} 
+            style={pageBtnStyle(currentPage === 1)}
+          >
+            ⏮ Prev
+          </button>
+          
+          <span style={{ margin: "0 6px", fontSize: 12, color: "#fff" }}>
+            Page {currentPage} of {totalPages}
+          </span>
+          
+          <button 
+            disabled={currentPage === totalPages} 
+            onClick={() => setCurrentPage(p => p + 1)} 
+            style={pageBtnStyle(currentPage === totalPages)}
+          >
+            Next ⏭
+          </button>
         </div>
       )}
     </div>

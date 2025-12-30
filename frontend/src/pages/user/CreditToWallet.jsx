@@ -8,7 +8,7 @@ const CreditToWalletHistory = () => {
   const [filtered, setFiltered] = useState([]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10); // State for rows
 
   useEffect(() => {
     if (!userId) return;
@@ -48,10 +48,10 @@ const CreditToWalletHistory = () => {
     setFiltered(result);
   };
 
-  const pageCount = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const pageCount = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   return (
@@ -62,9 +62,9 @@ const CreditToWalletHistory = () => {
         💰 Credit To Wallet 
       </h2>
 
-      {/* Search */}
+      {/* ✅ TOP SECTION: Search + Rows Dropdown */}
       <div
-        style={{ marginBottom: 12, display: "flex", gap: 6, flexWrap: "wrap" }}
+        style={{ marginBottom: 12, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}
       >
         <input
           type="text"
@@ -77,8 +77,31 @@ const CreditToWalletHistory = () => {
             border: "1px solid #ccc",
             maxWidth: 250,
             fontSize: 12,
+            flex: 1
           }}
         />
+
+        {/* Rows Selector */}
+        <select
+          value={itemsPerPage}
+          onChange={(e) => {
+            setItemsPerPage(Number(e.target.value));
+            setCurrentPage(1);
+          }}
+          style={{
+            padding: 6,
+            borderRadius: 4,
+            border: "1px solid #ccc",
+            fontSize: 12,
+            cursor: "pointer",
+            outline: "none"
+          }}
+        >
+          <option value={10}>10 Rows</option>
+          <option value={20}>20 Rows</option>
+          <option value={50}>50 Rows</option>
+          <option value={100}>100 Rows</option>
+        </select>
       </div>
 
       {/* Table */}
@@ -111,7 +134,7 @@ const CreditToWalletHistory = () => {
                     style={{ background: idx % 2 ? "#f9f9f9" : "#fff" }}
                   >
                     <td style={tdStyle}>
-                      {(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}
+                      {(currentPage - 1) * itemsPerPage + idx + 1}
                     </td>
                     <td style={tdStyle}>{date.toLocaleDateString()}</td>
                     <td style={tdStyle}>{date.toLocaleTimeString()}</td>
@@ -138,28 +161,29 @@ const CreditToWalletHistory = () => {
         </table>
       </div>
 
-      {/* Pagination */}
-      {pageCount > 1 && (
-        <div style={{ marginTop: 12, textAlign: "center" }}>
-          <button
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage((p) => p - 1)}
-            style={pageBtnStyle(currentPage === 1)}
-          >
-            ⏮ Prev
-          </button>
-          <span style={{ margin: "0 6px", fontSize: 12 }}>
-            Page {currentPage} of {pageCount}
-          </span>
-          <button
-            disabled={currentPage === pageCount}
-            onClick={() => setCurrentPage((p) => p + 1)}
-            style={pageBtnStyle(currentPage === pageCount)}
-          >
-            Next ⏭
-          </button>
-        </div>
-      )}
+      {/* ✅ BOTTOM SECTION: Always Visible */}
+      <div style={{ marginTop: 12, textAlign: "center" }}>
+        <button
+          disabled={currentPage === 1}
+          onClick={() => setCurrentPage((p) => p - 1)}
+          style={pageBtnStyle(currentPage === 1)}
+        >
+          ⏮ Prev
+        </button>
+        
+        <span style={{ margin: "0 6px", fontSize: 12, color: "#fff" }}>
+          Page {currentPage} of {pageCount || 1}
+        </span>
+
+        <button
+          disabled={currentPage >= pageCount}
+          onClick={() => setCurrentPage((p) => p + 1)}
+          style={pageBtnStyle(currentPage >= pageCount)}
+        >
+          Next ⏭
+        </button>
+      </div>
+
     </div>
   );
 };

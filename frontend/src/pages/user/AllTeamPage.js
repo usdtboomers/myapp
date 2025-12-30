@@ -5,6 +5,10 @@ import useAuth from "../../hooks/useAuth";
 const AllTeamPage = () => {
   const { user } = useAuth();
   const [team, setTeam] = useState([]);
+  const [stats, setStats] = useState({
+    totalTeam: 0,
+    activeTeam: 0
+  });
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -14,7 +18,20 @@ const AllTeamPage = () => {
     const fetchAllTeam = async () => {
       try {
         const res = await api.get(`/user/all-team/${user.userId}`);
-        setTeam(res.data.team || []);
+        let teamData = res.data.team || [];
+
+        // ✅ YAHAN HAI SORTING LOGIC (Change here)
+        // new Date(b.createdAt) - new Date(a.createdAt) = Jo naya hai wo UPAR aayega
+        teamData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        setTeam(teamData);
+
+        // Stats Calculate karna
+        setStats({
+          totalTeam: res.data.totalTeamCount || teamData.length,
+          activeTeam: teamData.filter(u => u.topUpAmount > 0).length
+        });
+
       } catch (err) {
         console.error("Error fetching all team:", err);
       }
@@ -42,9 +59,21 @@ const AllTeamPage = () => {
 
   return (
     <div style={styles.container}>
-      <h2 className="text-white font-bold p-1 text-xl" >🌍 All Team (Downline)</h2>
+      <h2 className="text-white font-bold p-1 text-xl" style={{marginBottom: 10}}>🌍 All Team (Downline)</h2>
 
-      {/* Search + Entries */}
+      {/* Stats Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "15px" }}>
+        <div style={styles.statCard}>
+          <h3 style={styles.statTitle}>Total Team</h3>
+          <p style={styles.statValue} className="text-blue-600">{stats.totalTeam}</p>
+        </div>
+        <div style={styles.statCard}>
+          <h3 style={styles.statTitle}>Active Users</h3>
+          <p style={styles.statValue} className="text-green-600">{stats.activeTeam}</p>
+        </div>
+      </div>
+
+      {/* Search + Entries (Controls Upar) */}
       <div style={styles.controls}>
         <input
           type="text"
@@ -86,9 +115,18 @@ const AllTeamPage = () => {
                   }}
                 >
                   <td style={styles.td}>{indexOfFirst + i + 1}</td>
-                  <td style={styles.td}>{u.level}</td>
+                  
+                  {/* Level Column */}
+                  <td style={styles.td}>
+                    <span style={{background: "#e3f2fd", color: "#1565c0", padding: "2px 6px", borderRadius: "4px", fontWeight: "bold", fontSize: "10px"}}>
+                      L-{u.level}
+                    </span>
+                  </td>
+                  
                   <td style={styles.td}>{u.userId}</td>
-                  <td style={styles.td}>${u.topUpAmount || 0}</td>
+                  <td style={{ ...styles.td, fontWeight: "bold", color: u.topUpAmount > 0 ? "green" : "red" }}>
+                    ${u.topUpAmount || 0}
+                  </td>
                   <td style={styles.td}>{u.name || "-"}</td>
                   <td style={styles.td}>{u.country || "-"}</td>
                   <td style={styles.td}>
@@ -101,7 +139,7 @@ const AllTeamPage = () => {
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* Pagination (Buttons Niche) */}
       <div style={styles.pagination}>
         <button  onClick={handlePrev} disabled={currentPage === 1} style={styles.pageBtn(currentPage === 1)}>
           ⬅ Prev
@@ -117,18 +155,32 @@ const AllTeamPage = () => {
   );
 };
 
-/* Styles (smaller for mobile) */
+/* Styles */
 const styles = {
   container: {
-    padding: "8px",
+    padding: "10px",
     fontFamily: "Inter, sans-serif",
     fontSize: 12,
   },
-  title: {
-    fontSize: "14px",
-    fontWeight: 600,
-    marginBottom: 8,
-    color: "#222",
+  statCard: {
+    backgroundColor: "white",
+    padding: "10px",
+    borderRadius: "8px",
+    textAlign: "center",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+    border: "1px solid #ddd"
+  },
+  statTitle: {
+    fontSize: "11px",
+    textTransform: "uppercase",
+    fontWeight: "bold",
+    color: "#666",
+    letterSpacing: "0.5px"
+  },
+  statValue: {
+    fontSize: "20px",
+    fontWeight: "bold",
+    marginTop: "4px"
   },
   controls: {
     display: "flex",
@@ -138,7 +190,7 @@ const styles = {
   },
   searchInput: {
     flex: "1 1 140px",
-    padding: "6px",
+    padding: "8px",
     borderRadius: 4,
     border: "1px solid #ccc",
     fontSize: 12,
@@ -161,12 +213,12 @@ const styles = {
     textAlign: "left",
   },
   th: {
-    padding: "6px",
+    padding: "8px",
     fontWeight: 600,
     borderBottom: "2px solid #ddd",
   },
   td: {
-    padding: "4px 6px",
+    padding: "6px 8px",
     borderBottom: "1px solid #eee",
     color: "#333",
   },
@@ -180,7 +232,7 @@ const styles = {
     fontSize: 11,
   },
   pagination: {
-    marginTop: 8,
+    marginTop: 15,
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -188,7 +240,7 @@ const styles = {
     gap: 4,
   },
   pageBtn: (disabled) => ({
-    padding: "4px 8px",
+    padding: "6px 12px",
     borderRadius: 4,
     backgroundColor: disabled ? "#ccc" : "#4A90E2",
     color: "white",
@@ -196,6 +248,6 @@ const styles = {
     cursor: disabled ? "not-allowed" : "pointer",
     fontSize: 11,
   }),
- };
+};
 
 export default AllTeamPage;

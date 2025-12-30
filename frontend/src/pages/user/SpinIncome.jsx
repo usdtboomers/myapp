@@ -35,6 +35,10 @@ const SpinWin = () => {
   const [transactionPassword, setTransactionPassword] = useState("");
   const [buySuccessModal, setBuySuccessModal] = useState(false);
  
+
+  const [currentPage, setCurrentPage] = useState(1);
+const itemsPerPage = 10;
+
   const { user } = useAuth();
   const isPromoUser = user?.role === "promo";
 
@@ -350,43 +354,90 @@ const SpinWin = () => {
       />
 
       {/* History Table */}
-      <div className="w-full max-w-4xl text-white z-10">
-        <h3 className="text-lg font-bold text-white mb-4 border-b border-slate-800 pb-2">Spin History</h3>
-        <div className="overflow-x-auto rounded-xl border border-slate-700 bg-slate-900/50 backdrop-blur-sm shadow-xl">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-400 uppercase bg-slate-900 border-b border-slate-700">
-              <tr>
-                <th className="py-3 px-6">#</th>
-                <th className="py-3 px-6">Date</th>
-                <th className="py-3 px-6 text-right">Amount</th>
-                <th className="py-3 px-6  text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {history.length > 0 ? (
-                history.map((entry, index) => (
-                  <tr key={index} className="hover:bg-slate-800/50 transition-colors">
-                    <td className="py-3 px-6 font-mono text-slate-500">{index + 1}</td>
-                    <td className="py-3 px-6 text-slate-300">{moment(entry.date).format("MMM D, h:mm A")}</td>
-                    <td className="py-3 px-6 text-right text-yellow-400 font-mono font-bold text-emerald-400">${entry.reward}</td>
-                    <td className="py-3 px-6 text-green-500 text-center">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${entry.reward > 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
-                        {entry.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="4" className="text-center py-8 text-slate-500 italic">
-                    {isPromoUser ? "🎯 PROMO MODE: Spins are for display only" : "No spin history found."}
+   {/* History Table */}
+<div className="w-full max-w-4xl text-white z-10 px-2">
+  <h3 className="text-lg font-bold text-white mb-4 border-b border-slate-800 pb-2 flex justify-between">
+    <span>Spin History</span>
+    <span className="text-xs text-slate-500 font-normal">Page {currentPage}</span>
+  </h3>
+
+  <div className="overflow-hidden rounded-xl border border-slate-700 bg-slate-900/50 backdrop-blur-sm shadow-xl">
+    {/* Table Wrapper for Horizontal Scroll on Mobile */}
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm text-left min-w-[450px]">
+        <thead className="text-xs text-slate-400 uppercase bg-slate-900 border-b border-slate-700">
+          <tr>
+            <th className="py-4 px-6">#</th>
+            <th className="py-4 px-14">Date</th>
+            <th className="py-4 px-6 text-right">Amount</th>
+            <th className="py-4 px-6 text-center">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800">
+          {history.length > 0 ? (
+            history
+              .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage) // 🔥 10 items logic
+              .map((entry, index) => (
+                <tr key={index} className="hover:bg-slate-800/50 transition-colors">
+                  <td className="py-4 px-6 font-mono text-slate-500">
+                    {((currentPage - 1) * itemsPerPage) + index + 1}
+                  </td>
+                  <td className="py-4 px-6 text-slate-300 whitespace-nowrap">
+                    {moment(entry.date).format("MMM D, h:mm A")}
+                  </td>
+                  <td className="py-4 px-10 text-right text-yellow-400 font-mono font-bold">
+                    ${entry.reward}
+                  </td>
+                  <td className="py-4 px-6 text-center">
+                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                      entry.reward > 0 ? "bg-emerald-500/10 text-green-400" : "bg-red-500/10 text-green-400"
+                    }`}>
+                      {entry.status}
+                    </span>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              ))
+          ) : (
+            <tr>
+              <td colSpan="4" className="text-center py-10 text-slate-500 italic">
+                {isPromoUser ? "🎯 PROMO MODE: Spins are for display only" : "No spin history found."}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+
+    {/* --- NEXT / PREVIOUS BUTTONS --- */}
+    {history.length > itemsPerPage && (
+      <div className="flex items-center justify-between px-6 py-4 bg-slate-900/80 border-t border-slate-800">
+        <button
+          disabled={currentPage === 1}
+          onClick={() => setCurrentPage(prev => prev - 1)}
+          className={`px-4 py-2 text-xs font-bold rounded-lg transition-all border border-slate-700 ${
+            currentPage === 1 ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-800 text-white"
+          }`}
+        >
+          ← Previous
+        </button>
+        
+        <div className="text-xs text-slate-500 font-mono">
+          {Math.min(currentPage * itemsPerPage, history.length)} / {history.length}
         </div>
+
+        <button
+          disabled={currentPage * itemsPerPage >= history.length}
+          onClick={() => setCurrentPage(prev => prev + 1)}
+          className={`px-4 py-2 text-xs font-bold rounded-lg transition-all border border-slate-700 ${
+            currentPage * itemsPerPage >= history.length ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-800 text-white"
+          }`}
+        >
+          Next →
+        </button>
       </div>
+    )}
+  </div>
+</div>
 
       {/* Buy Spins Modal (Styled) */}
       {modalOpen && (

@@ -61,19 +61,63 @@ router.get('/tree/:userId', async (req, res) => {
   }
 });
 
+/// Helper Function: Pure Team Count nikalne ke liye (Recursive)
+// Isko route ke bahar ya andar define kar sakte hain
+const getDownlineCount = async (sponsorId) => {
+  const referrals = await User.find({ sponsorId: Number(sponsorId) });
+  let count = referrals.length;
+  for (const r of referrals) {
+    count += await getDownlineCount(r.userId);
+  }
+  return count;
+};
+
 // ---------------------------
-// Direct Team
+// 1. UPDATED: Direct Team Route
+// ---------------------------
 router.get('/direct-team/:userId', async (req, res) => {
   try {
-    const direct = await User.find({ sponsorId: Number(req.params.userId) });
-    res.json({ team: direct.map((u, i) => ({ srNo: i + 1, ...u.toObject() })) });
+    const currentUserId = Number(req.params.userId);
+
+    // Step 1: Login user ki khud ki Total Team nikalna (Top Card ke liye)
+    const myTotalTeamCount = await getDownlineCount(currentUserId);
+
+    // Step 2: Direct Members fetch karna
+    const directMembers = await User.find({ sponsorId: currentUserId });
+
+    // Step 3: Har Direct Member ke liye stats calculate karna
+    const teamWithStats = await Promise.all(
+      directMembers.map(async (member, i) => {
+        // A. Member ke khud ke Directs count karna
+        const memberDirectsCount = await User.countDocuments({ sponsorId: member.userId });
+
+        // B. Member ki khud ki Total Team calculate karna (Recursive)
+        const memberTeamSize = await getDownlineCount(member.userId);
+
+        return {
+          srNo: i + 1,
+          ...member.toObject(),
+          // Ye keys Frontend me use hongi:
+          totalDirects: memberDirectsCount, 
+          totalTeam: memberTeamSize        
+        };
+      })
+    );
+
+    res.json({
+      team: teamWithStats,      // Table ka data
+      totalTeam: myTotalTeamCount // Upar wale card ke liye data
+    });
+
   } catch (err) {
+    console.error("Error in direct-team:", err);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 // ---------------------------
-// All Team (full downline)
+// 2. All Team (No Change Needed, but kept for reference)
+// ---------------------------
 router.get('/all-team/:userId', async (req, res) => {
   const { userId } = req.params;
 
