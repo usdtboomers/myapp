@@ -118,6 +118,7 @@ router.post('/login', async (req, res) => {
 
 
 // ====================== FORGOT PASSWORD ======================
+// ====================== FORGOT PASSWORD (CORRECTED) ======================
 router.post('/forgot-password', checkFeature(), async (req, res) => {
   const { userId } = req.body;
 
@@ -125,17 +126,20 @@ router.post('/forgot-password', checkFeature(), async (req, res) => {
     const user = await User.findOne({ userId });
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
+    // Token Generate
     const resetToken = crypto.randomBytes(32).toString('hex');
     user.resetToken = resetToken;
     user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
     await user.save();
 
+    // Link Create
     const resetLink = `${FRONTEND_URL}/reset-password/${resetToken}`;
 
+    // ✅ Email Send (Updated keys for Brevo Utility)
     await sendEmail({
-      to: user.email,
+      email: user.email,      // 'to' ki jagah 'email'
       subject: '🔐 Password Reset Request',
-      text: `Hello ${user.name},\n\nReset your password: ${resetLink}\n\nThis link expires in 1 hour.\n\nThanks,\nApp Team`,
+      message: `Reset Link: ${resetLink}`, // 'text' ki jagah 'message' (Fallback)
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
           <h2 style="color: #2E86C1;">Password Reset Request</h2>
@@ -145,7 +149,7 @@ router.post('/forgot-password', checkFeature(), async (req, res) => {
             <a href="${resetLink}" style="padding:12px 24px;background:#2E86C1;color:white;text-decoration:none;border-radius:5px;">Reset Password</a>
           </p>
           <p>If button doesn't work, copy this link: <a href="${resetLink}">${resetLink}</a></p>
-          <p>If you did not request this, ignore.</p>
+          <p>This link expires in 1 hour.</p>
         </div>
       `,
     });

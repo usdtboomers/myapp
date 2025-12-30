@@ -1,48 +1,34 @@
 require('dotenv').config();
 const nodemailer = require('nodemailer');
 
-let transporter;
+const sendEmail = async (options) => {
+  // 1. Create Transporter using Brevo Settings from .env
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST, // smtp-relay.brevo.com
+    port: process.env.SMTP_PORT, // 587
+    secure: false,               // False for port 587
+    auth: {
+      user: process.env.SMTP_USER, // Brevo Login ID
+      pass: process.env.SMTP_PASS, // Brevo Key
+    },
+  });
 
-const createTransporter = () => {
-  console.log("---------------------------------------------------");
-  console.log("📧 DEBUG: Email Logic Triggered");
-  console.log("👤 User:", process.env.EMAIL_USER || "❌ MISSING");
-  console.log("---------------------------------------------------");
+  // 2. Define Email Options
+  const mailOptions = {
+    from: `Elite Infinity <${process.env.EMAIL_FROM}>`,
+    to: options.email,
+    subject: options.subject,
+    text: options.message,
+    html: options.html,
+  };
 
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-      family: 4, // 👈 YEH WALI LINE IMPORTANT HAI
-    });
-  }
-  return transporter;
-};
-
-const sendEmail = async ({ to, subject, text, html }) => {
+  // 3. Send Email
   try {
-    const transporter = createTransporter();
-    const mailOptions = {
-      from: `"Elite Infinity Support" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      text,
-      html,
-    };
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent successfully:', info.response);
-    return info;
-  } catch (err) {
-    console.error('❌ Send email error:', err);
-    throw err;
+    console.log("✅ Email sent successfully via Brevo. ID:", info.messageId);
+  } catch (error) {
+    console.error("❌ Email Error:", error);
+    // Log error but don't crash the server
   }
 };
 
