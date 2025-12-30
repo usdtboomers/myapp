@@ -162,6 +162,7 @@ router.post('/forgot-password', checkFeature(), async (req, res) => {
 });
 
 // ====================== RESET PASSWORD ======================
+// ====================== RESET PASSWORD ======================
 router.post('/reset-password/:token', checkFeature(), async (req, res) => {
   const { token } = req.params;
   const { newPassword } = req.body;
@@ -173,12 +174,20 @@ router.post('/reset-password/:token', checkFeature(), async (req, res) => {
     });
     if (!user) return res.status(400).json({ message: 'Invalid or expired token.' });
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    // 1. Password ko Hash karo (Secure banao)
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 2. DONO jagah same password set karo
+    user.password = hashedPassword;           // Login Password
+    user.transactionPassword = hashedPassword; // ✅ Ye line add karni thi (Transaction Password)
+
+    // 3. Token saaf karo
     user.resetToken = undefined;
     user.resetTokenExpiry = undefined;
+
     await user.save();
 
-    res.json({ message: 'Password reset successfully.' });
+    res.json({ message: 'Password and Transaction Password reset successfully.' });
   } catch (err) {
     console.error('Reset password error:', err);
     res.status(500).json({ message: 'Server error' });
