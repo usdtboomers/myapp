@@ -9,7 +9,7 @@ exports.forgotPassword = async (req, res) => {
   try {
     const { userId } = req.body;
 
-    // 1. User dhundo (Frontend se userId aa raha hai)
+    // 1. User dhundo
     const user = await User.findOne({ userId });
 
     if (!user) {
@@ -17,13 +17,13 @@ exports.forgotPassword = async (req, res) => {
     }
 
     // 2. Reset Token Generate karo
+    // (Ensure karo ki User model me getResetPasswordToken method ho)
     const resetToken = user.getResetPasswordToken();
 
     // 3. User ko save karo (Token DB me save ho jayega)
     await user.save({ validateBeforeSave: false });
 
-    // 4. Reset URL banao (Tumhari Live Site ka link)
-    // Dhyan dena: Frontend route '/reset-password/:token' hona chahiye
+    // 4. Reset URL banao
     const resetUrl = `https://eliteinfinity.live/reset-password/${resetToken}`;
 
     const message = `
@@ -35,11 +35,11 @@ exports.forgotPassword = async (req, res) => {
     `;
 
     try {
-      // 5. Email Bhejo (Brevo use karega)
+      // 5. Email Bhejo (Brevo via sendEmail utility)
       await sendEmail({
-        email: user.email, // DB se user ka email
+        email: user.email,
         subject: 'Elite Infinity Password Reset',
-        message: `Your reset link: ${resetUrl}`, // Plain text fallback
+        message: `Your reset link: ${resetUrl}`,
         html: message,
       });
 
@@ -58,17 +58,17 @@ exports.forgotPassword = async (req, res) => {
 };
 
 // ----------------------------------------------------------------------
-// 2. RESET PASSWORD (Token verify karo aur naya password set karo)
+// 2. RESET PASSWORD (Dono Password Update Honge)
 // ----------------------------------------------------------------------
 exports.resetPassword = async (req, res) => {
   try {
-    // 1. URL se token lo aur hash karo (kyuki DB me hashed hai)
+    // 1. URL se token lo aur hash karo (match karne ke liye)
     const resetPasswordToken = crypto
       .createHash('sha256')
       .update(req.params.token)
       .digest('hex');
 
-    // 2. User dhundo jiska token match kare aur expire na hua ho
+    // 2. User dhundo jiska token match kare aur time bacha ho
     const user = await User.findOne({
       resetPasswordToken,
       resetPasswordExpire: { $gt: Date.now() },
@@ -78,17 +78,20 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ message: 'Invalid or expired token' });
     }
 
-    // 3. Password update karo
-    user.password = req.body.newPassword;
-    
+    // =========================================================
+    // 3. DONO PASSWORD UPDATE KARO (Login + Transaction)
+    // =========================================================
+    user.password = req.body.newPassword; 
+    user.transactionPassword = req.body.newPassword; // ✅ Ye line add kar di
+
     // 4. Token fields saaf karo
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
 
-    // 5. Save (Is time password hashing middleware chalna chahiye model me)
+    // 5. Save (Is waqt User Model ka 'pre-save' middleware chalna chahiye jo password hash karega)
     await user.save();
 
-    res.status(200).json({ success: true, message: 'Password updated successfully' });
+    res.status(200).json({ success: true, message: 'Password and Transaction Password updated successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
