@@ -367,6 +367,14 @@ async function getTotalWithdrawn(userId) {
 
 // 🔹 Run binary matching for eligible users only
 async function runBinaryMatchingForUser(user) {
+
+
+  if (!user.hasWithdrawn100) {
+    console.log(`Skipping binary for ${user.userId}: Not eligible yet (Withdrawal < $100)`);
+    return; 
+  }
+
+
   const MIN_MATCH = 100;
   const PERCENT = 0.05;
 
@@ -414,6 +422,8 @@ async function propagateBinaryBusiness(startUserId, amount, maxLevels = 10) {
     const sponsor = await User.findOne({ userId: current.sponsorId });
     if (!sponsor) break;
 
+    if (sponsor.hasWithdrawn100) {
+
     // ✅ Add business to correct leg
     if (!sponsor.primaryStrongDirect) {
       sponsor.primaryStrongDirect = current.userId;
@@ -430,7 +440,9 @@ async function propagateBinaryBusiness(startUserId, amount, maxLevels = 10) {
 
     // ✅ Save sponsor after update
     await sponsor.save();
-
+  } else {
+       console.log(`User ${sponsor.userId} skipped for Binary Business (Not Eligible: Withdraw < 100)`);
+    }
     // Move to next level
     current = sponsor;
   }
