@@ -459,45 +459,18 @@ if (isSelf) {
 
 
  // Downline Team Business Details
-router.get("/binary-summary/:userId", async (req, res) => {
+router.get("/binary-summary/:userId", async (req, res) => {  
   try {
-    const userId = Number(req.params.userId); // Ensure Number type
-    const user = await User.findOne({ userId });
-
+    const user = await User.findOne({ userId: Number(req.params.userId) });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     const strong = user.strongLegBusiness || 0;
-    const weak = user.weakLegBusiness || 0;
+    const weak   = user.weakLegBusiness || 0;
 
     const totalMatching = Math.min(strong, weak);
-    const carryForward = Math.abs(strong - weak);
-
-    // 👇 2. AGGREGATION: Transaction table se purana hisab nikalo
-    const historyData = await Transaction.aggregate([
-      {
-        $match: {
-          userId: userId,
-          type: "binary_income" // ⚠️ Dhyan de: DB me check krna yahi spelling hai na type ki?
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          totalAmount: { $sum: "$amount" } // Saara paisa jod do
-        }
-      }
-    ]);
-
-    // Agar history hai to total lo, nahi to 0
-    const pastEarnings = historyData.length > 0 ? parseFloat(historyData[0].totalAmount) : 0;
-    
-    // Current Pending Income (jo abhi wallet me add nahi hui hai)
-    const currentPending = user.binaryIncome || 0;
-
-    // 🔥 3. TOTAL SO FAR = (Purana History) + (Abhi ka Pending)
-    const totalLifetimeBinary = pastEarnings + currentPending;
+    const carryForward  = Math.abs(strong - weak);
 
     res.json({
       strongLegBusiness: strong,
@@ -506,20 +479,20 @@ router.get("/binary-summary/:userId", async (req, res) => {
       carryForward,
 
       // 🔷 current unreleased / available binary
-      binaryIncome: currentPending,
+      binaryIncome: user.binaryIncome || 0,
 
-      // 🔥 Eligibility
+      // 🔥 VERY IMPORTANT FOR UI (eligibility)
       hasWithdrawn100: user.hasWithdrawn100 === true,
 
-      // 🔥 TOTAL EARNED SO FAR (Ab ye bilkul sahi total dega)
-      totalEarnedSoFar: totalLifetimeBinary, 
+      // 🔥 optional (agar future me total released track karna ho)
+      totalEarnedSoFar: user.totalBinaryEarned || user.binaryIncome || 0,
     });
-
   } catch (err) {
     console.error("Binary summary error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 
 router.get('/global-team-count/:userId', async (req, res) => {

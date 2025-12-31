@@ -84,7 +84,7 @@ const BinarySummary = () => {
             </tr>
             {/* <tr className="border-b border-gray-700 font-bold bg-gray-800">
               <td className="p-2">Total Earnings So Far</td>
-              <td className="p-2 text-right text-emerald-300">${totalEarnedSoFar}</td>
+              <td className="p-2 text-right text-emerald-300">${totalEarnedSoFar || binaryIncome}</td>
             </tr> */}
             <tr className="font-bold">
               <td className="p-2">Carry Forward</td>
