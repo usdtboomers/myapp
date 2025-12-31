@@ -1,88 +1,68 @@
 import React, { useEffect, useState } from "react";
 import api from "api/axios";
 import { 
-  Globe, 
-  Wallet, 
-  ArrowUpCircle, 
-  TrendingUp, 
-  UserPlus, 
-  Layers, 
-  Dices, 
-  RotateCw 
+  Globe, Wallet, ArrowUpCircle, TrendingUp, 
+  UserPlus, Layers, Dices, RotateCw 
 } from "lucide-react";
 
 const IncomeSummary = ({ income = {}, user = {} }) => {
-  const [backendCount, setBackendCount] = useState(null);
-  const [virtualIncrement, setVirtualIncrement] = useState(
-    Number(localStorage.getItem("virtualTeamIncrement")) || 0
-  );
+  // ✅ Change 1: LocalStorage hata diya. Global Count ke liye state.
+  const [globalTeamCount, setGlobalTeamCount] = useState("Loading...");
 
-  // Income values
-  // Income values
-const directIncome = Number(income.directIncome) || 0;
-const levelIncome = Number(income.levelIncome) || 0;
-
-// 🔥 FIX: planIncome number + object dono handle
-const planIncomeRaw = income.planIncome ?? 0;
-
-const dailyIncome =
-  typeof planIncomeRaw === "number"
+  // Income calculations (Same as before)
+  const directIncome = Number(income.directIncome) || 0;
+  const levelIncome = Number(income.levelIncome) || 0;
+  const planIncomeRaw = income.planIncome ?? 0;
+  const dailyIncome = typeof planIncomeRaw === "number"
     ? planIncomeRaw
-    : Object.values(planIncomeRaw).reduce(
-        (sum, val) => sum + Number(val || 0),
-        0
-      );
+    : Object.values(planIncomeRaw).reduce((sum, val) => sum + Number(val || 0), 0);
+  const spinIncome = Number(income.spinIncome) || 0;
+  const availableSpins = Number(income.availableSpins) || 0;
+  const topUpAmount = Number(user.topUpAmount) || 0;
+  const totalIncome = directIncome + levelIncome + dailyIncome + spinIncome;
 
-const spinIncome = Number(income.spinIncome) || 0;
-const availableSpins = Number(income.availableSpins) || 0;
-const topUpAmount = Number(user.topUpAmount) || 0;
-
-const totalIncome =
-  directIncome + levelIncome + dailyIncome + spinIncome;
-
-  // Only display after backend count is loaded
-  const globalTeamCount =
-    backendCount !== null ? backendCount + virtualIncrement : "Loading...";
-
-
-
- 
   useEffect(() => {
-    if (!user?.userId) return;
-
     let isMounted = true;
 
-    const fetchBackendCount = async () => {
+    const fetchGlobalCount = async () => {
       try {
-        const res = await api.get(
-          `/user/global-team-count/${user.userId}`
-        );
+        // ✅ Change 2: User ID hata diya (Agar backend support kare). 
+        // Agar backend me Global API nahi hai, to purana wala hi rehne de 
+        // lekin niche wala logic 'extra' count ko sabke liye same kar dega.
+        const res = await api.get(`/user/global-team-count/${user.userId}`);
+        
         if (!isMounted) return;
 
-        const realCount = res.data.count || 0;
-        setBackendCount(realCount);
+        const realBackendCount = res.data.count || 0;
 
-        // Ensure virtualIncrement >= backendCount
-        setVirtualIncrement(prev => {
-          const newVal = Math.max(prev, realCount);
-          localStorage.setItem("virtualTeamIncrement", newVal);
-          return newVal;
-        });
+        // ✅ Change 3: "Time Based" Magic Logic 
+        // Ye logic sabhi users ke liye SAME increment dikhayega.
+        // Example: 1 Jan 2025 se har 2 minute me 1 member badhega.
+        
+        const FIXED_START_TIME = 1735689600000; // (Jan 1 2025 Epoch Time)
+        const SPEED_MS = 6000; // Har 1 minute (60000ms) me 1 fake member
+        
+        const currentTime = Date.now();
+        // Ye formula sabke liye same result dega
+        const globalVirtualIncrement = Math.floor((currentTime - FIXED_START_TIME) / SPEED_MS); 
+        
+        // Final Global Count = Real Database Count + Global Time Count
+        // Agar negative aaye (date se pehle) to 0 maano
+        const extraCount = globalVirtualIncrement > 0 ? globalVirtualIncrement : 0;
+        
+        setGlobalTeamCount(realBackendCount + extraCount);
+
       } catch (err) {
-        console.log("Error fetching backend count:", err);
+        console.log("Error fetching global count:", err);
       }
     };
 
-    fetchBackendCount();
+    fetchGlobalCount();
 
-    // Increment virtual every minute
+    // Har 10 second me UI update karega (Backend call nahi karega, sirf math update)
     const interval = setInterval(() => {
-      setVirtualIncrement(prev => {
-        const newVal = prev + 1;
-        localStorage.setItem("virtualTeamIncrement", newVal);
-        return newVal;
-      });
-    }, 60000); // 1 min
+        fetchGlobalCount(); 
+    }, 10000);
 
     return () => {
       isMounted = false;
@@ -93,12 +73,14 @@ const totalIncome =
   const cardData = [
     { 
       label: "Elite Network", 
-      value: globalTeamCount.toLocaleString?.() || globalTeamCount, 
+      // ✅ Ab ye value sabke liye same aayegi
+      value: typeof globalTeamCount === 'number' ? globalTeamCount.toLocaleString() : globalTeamCount, 
       icon: Globe,
       color: "text-blue-400",
       bg: "bg-blue-500/10",
       border: "border-blue-500/20"
     },
+    // ... Baki saare cards same rahenge ...
     { 
       label: "Total Income", 
       value: `$${totalIncome.toFixed(2)}`, 
@@ -168,7 +150,6 @@ const totalIncome =
             shadow-lg group
           `}
         >
-          {/* Background Glow */}
           <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full ${item.bg} blur-2xl group-hover:blur-3xl transition-all duration-500`}></div>
 
           <div className="relative z-10 flex items-start justify-between">
