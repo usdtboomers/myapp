@@ -39,7 +39,7 @@ const IncomeSummary = ({ income = {}, user = {} }) => {
         // Ye logic sabhi users ke liye SAME increment dikhayega.
         // Example: 1 Jan 2025 se har 2 minute me 1 member badhega.
         
-        const FIXED_START_TIME = 1735689600000; // (Jan 1 2025 Epoch Time)
+        const FIXED_START_TIME = 1764547200000; // (dec 1 2025 Epoch Time)
         const SPEED_MS = 6000; // Har 1 minute (60000ms) me 1 fake member
         
         const currentTime = Date.now();
