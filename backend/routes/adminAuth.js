@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
 const router = express.Router();
-
+const crypto = require('crypto'); // 👈 YE LINE SABSE ZARURI HAI
 // 🔐 Admin Login
 router.post("/login", async (req, res) => {
   const { adminId, password } = req.body;
