@@ -41,6 +41,7 @@ const transactionSchema = new mongoose.Schema(
                     "binary" ,  // ✅ ADD THIS
         "topup",
         "manual",
+        "mixed",
         null,
       ],
       default: null,

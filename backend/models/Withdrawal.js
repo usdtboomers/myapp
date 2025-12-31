@@ -8,7 +8,11 @@ const withdrawalSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
-      "direct", "level", "spin",   "binary",   // ✅ ADD THIS
+      "direct", 
+      "level", 
+      "spin",   
+      "binary", 
+      "mixed",  // ✅ YAHAN "mixed" ADD KIYA HAI
       "plan1","plan2","plan3","plan4","plan5","plan6","plan7"
     ]
   },

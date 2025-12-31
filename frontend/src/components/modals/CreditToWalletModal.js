@@ -42,46 +42,61 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
     fetchAvailable();
   }, [userId]);
 
-  // --- LOGIC: Handle Credit ---
+  // --- 🔥 UPDATED LOGIC: Handle Credit (Single Call) ---
   const handleCredit = async () => {
-    const entries = Object.entries(credits).filter(
-      ([_, amt]) => amt && !isNaN(amt) && Number(amt) > 0
-    );
-    if (!entries.length)
-      return showMessage("Error", "⚠️ Enter at least one credit amount.", "warning");
+    // 1. Prepare Values
+    const dDirect = parseFloat(credits.direct) || 0;
+    const dLevel = parseFloat(credits.level) || 0;
+    const dSpin = parseFloat(credits.spin) || 0;
+    const dBinary = parseFloat(credits.binary) || 0;
+
+    const totalAmount = dDirect + dLevel + dSpin + dBinary;
+
+    // 2. Validate
+    if (totalAmount < 10) {
+      return showMessage("Warning", `⚠️ Minimum credit amount is $10. Total: $${totalAmount}`, "warning");
+    }
 
     if (!transactionPassword.trim())
       return showMessage("Error", "⚠️ Please enter transaction password.", "error");
 
     setLoading(true);
     try {
-      let totalAmount = 0;
-      for (const [source, amount] of entries) {
-        
-        const res = await api.post(
-          "/wallet/credit-to-wallet",
-          {
-            userId,
-            amount: Number(amount),
-            source,
-            transactionPassword,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        ); 
+      // 3. Single API Request (No Loop)
+      const payload = {
+        userId,
+        transactionPassword,
+        // Backend ke naye format ke hisaab se keys bhejo 👇
+        deductDirect: dDirect,
+        deductLevel: dLevel,
+        deductSpin: dSpin,
+        deductBinary: dBinary,
+        amount: totalAmount // Optional, but good for cross-check
+      };
 
-        if (!res.data.success)
-          return showMessage("Error", res.data.message || "❌ Failed to credit.", "error");
+      const res = await api.post(
+        "/wallet/credit-to-wallet",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (res.data.success) {
+        setSuccessData({ userId, amount: totalAmount });
+        setSuccessModalOpen(true);
+        setCredits({ direct: "", level: "", spin: "", binary: "" }); // Reset inputs
+        setTransactionPassword("");
+        await fetchAvailable(); // Refresh balances
         
-        totalAmount += Number(amount);
+        // Notify parent component
+        if(onSuccess) onSuccess({ userId, walletBalance: (available.walletBalance || 0) + totalAmount });
+      } else {
+        showMessage("Error", res.data.message || "❌ Failed to credit.", "error");
       }
-      setSuccessData({ userId, amount: totalAmount });
-      setSuccessModalOpen(true);
-      await fetchAvailable();
-      if(onSuccess) onSuccess({ userId, walletBalance: available.walletBalance + totalAmount });
+
     } catch (err) {
       showMessage("Error", err.response?.data?.message || "❌ Error crediting income", "error");
     } finally {
@@ -89,8 +104,16 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
     }
   };
 
-  const handleInputChange = (e, source) =>
-    setCredits({ ...credits, [source]: e.target.value });
+  const handleInputChange = (e, source) => {
+    let value = e.target.value;
+    // Prevent negative
+    if (value < 0) value = 0;
+    // Prevent exceeding balance
+    if (parseFloat(value) > available[`${source}Income`]) {
+      value = available[`${source}Income`];
+    }
+    setCredits({ ...credits, [source]: value });
+  };
 
   const totalAvailable =
     (available.directIncome || 0) +
@@ -98,12 +121,12 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
     (available.spinIncome || 0) +
     (available.binaryIncome || 0);
 
-  // --- PREMIUM DARK STYLES (Solid Colors) ---
+  // --- STYLES (No Change) ---
   const styles = {
     overlay: {
       position: "fixed",
       inset: 0,
-      backgroundColor: "rgba(0, 0, 0, 0.9)", // Solid dark overlay
+      backgroundColor: "rgba(0, 0, 0, 0.9)", 
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
@@ -112,7 +135,7 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
       backdropFilter: "blur(5px)",
     },
     modal: {
-      backgroundColor: "#0f172a", // Solid Dark Slate Blue
+      backgroundColor: "#0f172a", 
       width: "100%",
       maxWidth: "480px",
       borderRadius: "16px",
@@ -165,7 +188,7 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
     infoValue: {
       fontSize: "18px",
       fontWeight: "bold",
-      color: "#34d399", // Emerald Green
+      color: "#34d399", 
       fontFamily: "monospace",
     },
     tableContainer: {

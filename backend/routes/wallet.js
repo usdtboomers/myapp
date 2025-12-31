@@ -957,99 +957,140 @@ router.post(
   authMiddleware,
   checkFeature("allowCreditToWallet"),
   async (req, res) => {
-  try {
-    let { userId, amount, source, transactionPassword } = req.body;
-    amount = parseFloat(amount);
-    if (amount < 10) return res.status(400).json({ message: "Minimum credit amount is $10" });
+    try {
+      let { 
+        userId, 
+        transactionPassword,
+        deductDirect = 0,
+        deductLevel = 0,
+        deductSpin = 0,
+        deductBinary = 0
+      } = req.body;
 
-if (amount % 1 !== 0) return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
+      // Numbers me convert karo
+      const dDirect = parseFloat(deductDirect) || 0;
+      const dLevel = parseFloat(deductLevel) || 0;
+      const dSpin = parseFloat(deductSpin) || 0;
+      const dBinary = parseFloat(deductBinary) || 0;
 
-    if (!["direct", "level", "spin", "binary"].includes(source)) {
-      return res.status(400).json({ message: "Invalid source" });
-    }
+      // 1. Total Amount Calculate
+      const totalAmount = dDirect + dLevel + dSpin + dBinary;
 
-    const user = await User.findOne({ userId: Number(userId) });
-    if (!user) return res.status(404).json({ message: "User not found" });
+      // 🛑 Rule: Minimum $10
+      if (totalAmount < 10) {
+        return res.status(400).json({ message: `Minimum credit amount is $10. You entered $${totalAmount}.` });
+      }
 
-    // 🔥 PROMO USER LOGIC START 🔥
-    if (user.role === "promo") {
-      // 1. Direct Wallet badha do (Magic)
-       await user.save();
+      if (totalAmount % 1 !== 0) {
+        return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
+      }
 
-      // 2. Transaction Record
+      // 🔥 SMART SOURCE LOGIC 🔥
+      let activeSources = [];
+      if (dDirect > 0) activeSources.push("direct");
+      if (dLevel > 0) activeSources.push("level");
+      if (dSpin > 0) activeSources.push("spin");
+      if (dBinary > 0) activeSources.push("binary");
+
+      let finalSource = "mixed";
+      if (activeSources.length === 1) {
+        finalSource = activeSources[0]; // e.g., "binary"
+      } else if (activeSources.length === 0) {
+        return res.status(400).json({ message: "Please select at least one income source." });
+      }
+
+      const user = await User.findOne({ userId: Number(userId) });
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      // 🔥 PROMO USER LOGIC 🔥
+      if (user.role === "promo") {
+        const txn = await Transaction.create({
+          userId: user.userId,
+          type: "credit_to_wallet",
+          source: finalSource,
+          amount: totalAmount,
+          grossAmount: totalAmount,
+          netAmount: totalAmount,
+          fee: 0,
+          description: `PROMO CREDIT: ${activeSources.join(' + ')}`,
+          status: "completed",
+          date: new Date(),      // ✅ Aaj ki Date
+          createdAt: new Date()  // ✅ Aaj ka Time
+        });
+
+        return res.json({
+          success: true,
+          message: `Successfully credited $${totalAmount} (Promo)`,
+          transaction: txn,
+          walletBalance: user.walletBalance,
+        });
+      }
+
+      // ... Normal User Logic ...
+      const isPasswordValid = await bcrypt.compare(transactionPassword, user.transactionPassword);
+      if (!isPasswordValid) {
+        return res.status(400).json({ message: "Invalid transaction password" });
+      }
+
+      const settings = await Setting.findOne({});
+      if (!settings.allowTopUps) {
+        return res.status(403).json({ message: "Credit to wallet disabled by admin" });
+      }
+
+      // 🛑 Individual Balance Checks
+      if ((user.directIncome || 0) < dDirect) return res.status(400).json({ message: `Insufficient Direct Income.` });
+      if ((user.levelIncome || 0) < dLevel) return res.status(400).json({ message: `Insufficient Level Income.` });
+      if ((user.spinIncome || 0) < dSpin) return res.status(400).json({ message: `Insufficient Spin Income.` });
+      if ((user.binaryIncome || 0) < dBinary) return res.status(400).json({ message: `Insufficient Binary Income.` });
+
+      // 🔥 ATOMIC UPDATE (Paisa Income se nikalo, Wallet me daalo)
+      const updateResult = await User.updateOne(
+        { userId: Number(userId) },
+        { 
+          $inc: { 
+            walletBalance: totalAmount, // ✅ Main Wallet Badhao
+            directIncome: -dDirect,     // 🔻 Income Ghatao
+            levelIncome: -dLevel,
+            spinIncome: -dSpin,
+            binaryIncome: -dBinary
+          } 
+        }
+      );
+
+      if (updateResult.modifiedCount === 0) {
+        return res.status(400).json({ message: "Transaction failed. Please try again." });
+      }
+
+      const updatedUser = await User.findOne({ userId: Number(userId) });
+
+      // Transaction Record
       const txn = await Transaction.create({
-        userId: user.userId,
+        userId: updatedUser.userId,
         type: "credit_to_wallet",
-        source: source,
-        amount,
-        grossAmount: amount,
-        netAmount: amount,
+        source: finalSource, // Smart Source
+        amount: totalAmount,
+        grossAmount: totalAmount,
+        netAmount: totalAmount,
         fee: 0,
-        description: `PROMO CREDIT from ${source} (Display Only)`,
-        createdAt: new Date(),
-        status: "completed"
+        description: `Credited $${totalAmount} to Wallet (${activeSources.join(' + ')})`,
+        status: "completed",
+        date: new Date(),      // ✅ Current Date (Abhi ki)
+        createdAt: new Date(), // ✅ Current Time
       });
 
-      return res.json({
+      res.json({
         success: true,
-        message: `Successfully credited $${amount} (Promo)`,
+        message: `Successfully credited $${totalAmount} to wallet`,
         transaction: txn,
-        walletBalance: user.walletBalance,
+        walletBalance: updatedUser.walletBalance,
       });
+
+    } catch (err) {
+      console.error("Credit-to-wallet error:", err);
+      res.status(500).json({ message: "Server error" });
     }
-    // 🔥 PROMO USER LOGIC END 🔥
-
-    // ... Normal User Logic (Password check & Income check) ...
-    const isPasswordValid = await bcrypt.compare(transactionPassword, user.transactionPassword);
-    if (!isPasswordValid) {
-      return res.status(400).json({ message: "Invalid transaction password" });
-    }
-
-    const settings = await Setting.findOne({});
-    if (!settings.allowTopUps) {
-      return res.status(403).json({ message: "Credit to wallet disabled" });
-    }
-
-    const available = await getAvailableIncomesFixed(userId);
-    if (amount > (available[source] || 0)) {
-      return res.status(400).json({ message: `Insufficient ${source} income` });
-    }
-
-    const updateResult = await User.updateOne(
-      { userId: Number(userId), [`${source}Income`]: { $gte: amount } },
-      { $inc: { walletBalance: amount, [`${source}Income`]: -amount } }
-    );
-
-    if (updateResult.modifiedCount === 0) {
-      return res.status(400).json({ message: "Failed due to insufficient balance" });
-    }
-
-    const updatedUser = await User.findOne({ userId: Number(userId) });
-
-    const txn = await Transaction.create({
-      userId: updatedUser.userId,
-      type: "credit_to_wallet",
-      source,
-      amount,
-      grossAmount: amount,
-      netAmount: amount,
-      fee: 0,
-      description: `Credited $${amount} from ${source} income to wallet`,
-      createdAt: new Date(),
-    });
-
-    res.json({
-      success: true,
-      message: `Successfully credited $${amount} from ${source} to wallet`,
-      transaction: txn,
-      walletBalance: updatedUser.walletBalance,
-    });
-
-  } catch (err) {
-    console.error("Credit-to-wallet error:", err);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 
 
@@ -1060,122 +1101,120 @@ if (amount % 1 !== 0) return res.status(400).json({ message: "Decimals not allow
 // ---------------------------
 router.post("/instant-withdraw", async (req, res) => {
   try {
-    let { userId, amount, source, transactionPassword, walletAddress } = req.body;
+    let { 
+      userId, 
+      transactionPassword, 
+      walletAddress,
+      deductDirect = 0,
+      deductLevel = 0,
+      deductSpin = 0,
+      deductBinary = 0
+    } = req.body;
+
     userId = Number(userId);
-    amount = parseFloat(amount);
-    if (amount < 10) return res.status(400).json({ message: "Minimum instant withdrawal is $10" });
+    
+    const dDirect = parseFloat(deductDirect) || 0;
+    const dLevel = parseFloat(deductLevel) || 0;
+    const dSpin = parseFloat(deductSpin) || 0;
+    const dBinary = parseFloat(deductBinary) || 0;
 
-    if (amount % 1 !== 0) return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
+    // 1. Total Amount
+    const totalAmount = dDirect + dLevel + dSpin + dBinary;
 
-    if (isNaN(userId) || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ success: false, message: "Invalid data" });
+    if (totalAmount < 10) {
+      return res.status(400).json({ message: `Total withdrawal amount must be at least $10.` });
     }
+    if (totalAmount % 1 !== 0) {
+      return res.status(400).json({ message: "Decimals not allowed. Enter round figure." });
+    }
+
+    // 🔥 SMART SOURCE LOGIC START 🔥
+    // Check karo kitne wallets use huye hain
+    let activeSources = [];
+    if (dDirect > 0) activeSources.push("direct");
+    if (dLevel > 0) activeSources.push("level");
+    if (dSpin > 0) activeSources.push("spin");
+    if (dBinary > 0) activeSources.push("binary");
+
+    // Agar 1 hi source hai to uska naam lo, nahi to 'mixed'
+    let finalSource = "mixed";
+    if (activeSources.length === 1) {
+      finalSource = activeSources[0]; // e.g., "binary"
+    }
+    // 🔥 SMART SOURCE LOGIC END 🔥
+
 
     const user = await User.findOne({ userId });
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    // 🔥 PROMO USER LOGIC START 🔥
-    if (user.role === "promo") {
-      // Fake Transaction Create karo
-      const txn = await Transaction.create({
-        userId,
-        type: "withdrawal",
-        source,
-        amount,
-        grossAmount: amount,
-        fee: 0,
-        netAmount: amount,
-        walletAddress: "PROMO_ADDRESS",
-        description: `PROMO INSTANT WITHDRAW (${source})`,
-        status: "completed", // Direct Success
-        createdAt: new Date(),
-      });
+    // Date Logic (Tomorrow)
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
 
-      // Fake Withdrawal Record
-      const withdrawal = await Withdrawal.create({
-        userId,
-        source,
-        type: source,
-        grossAmount: amount,
-        fee: 0,
-        netAmount: amount,
-        walletUsed: 0,
-        incomeUsed: amount,
-        walletAddress: "PROMO_ADDRESS",
-        status: "completed", // Direct Success
-        schedule: [],
-        createdAt: new Date(),
-      });
-
-      return res.json({
-        success: true,
-        message: "Instant withdrawal submitted (PROMO)",
-        transaction: txn,
-        withdrawal,
-        netAmount: amount,
-        availableIncomes: {
-            // Fake values return kar do ya real, farak nahi padta
-            directIncome: user.directIncome || 0,
-            levelIncome: user.levelIncome || 0,
-            spinIncome: user.spinIncome || 0,
-            binaryIncome: user.binaryIncome || 0,
-        },
-      });
-    }
-    // 🔥 PROMO USER LOGIC END 🔥
-
-    // ... Normal User Logic Check (Password & Balance) ...
+    // --- Password Check ---
     const isPasswordValid = await bcrypt.compare(transactionPassword, user.transactionPassword);
     if (!isPasswordValid) {
       return res.status(400).json({ success: false, message: "Invalid transaction password" });
     }
 
-    const incomeField = source === "binary" ? "binaryIncome" : `${source}Income`;
+    // --- Balance Check ---
+    if ((user.directIncome || 0) < dDirect) return res.status(400).json({ success: false, message: `Insufficient Direct Income.` });
+    if ((user.levelIncome || 0) < dLevel) return res.status(400).json({ success: false, message: `Insufficient Level Income.` });
+    if ((user.spinIncome || 0) < dSpin) return res.status(400).json({ success: false, message: `Insufficient Spin Income.` });
+    if ((user.binaryIncome || 0) < dBinary) return res.status(400).json({ success: false, message: `Insufficient Binary Income.` });
 
-    if ((user[incomeField] || 0) < amount) {
-      return res.status(400).json({ success: false, message: `Insufficient ${source} income` });
-    }
-
+    // Fees
     const feePercent = 0.10;
-    const fee = parseFloat((amount * feePercent).toFixed(2));
-    const netAmount = parseFloat((amount - fee).toFixed(2));
+    const fee = parseFloat((totalAmount * feePercent).toFixed(2));
+    const netAmount = parseFloat((totalAmount - fee).toFixed(2));
     const walletAddr = walletAddress || user.walletAddress || "N/A";
 
+    // DB Update
     await User.updateOne(
-      { userId, [incomeField]: { $gte: amount } },
-      { $inc: { [incomeField]: -amount } }
+      { userId },
+      { 
+        $inc: { 
+          directIncome: -dDirect,
+          levelIncome: -dLevel,
+          spinIncome: -dSpin,
+          binaryIncome: -dBinary
+        } 
+      }
     );
 
+    // Transaction Log
     const txn = await Transaction.create({
       userId,
       type: "withdrawal",
-      source,
-      amount,
-      grossAmount: amount,
+      source: finalSource, // 👈 Ab yahan sahi naam aayega
+      amount: totalAmount,
+      grossAmount: totalAmount,
       fee,
       netAmount,
       walletAddress: walletAddr,
-      description: `Instant withdrawal from ${source} income`,
+      // Description me details rahengi
+      description: `Withdraw: ${activeSources.join(' + ')}`, 
       status: "pending",
-      createdAt: new Date(),
+      date: tomorrow,
+      createdAt: tomorrow,
     });
 
+    // Withdrawal Log
     const withdrawal = await Withdrawal.create({
       userId,
-      source,
-      type: source,
-      grossAmount: amount,
+      source: finalSource, // 👈 Yahan bhi update
+      type: finalSource,
+      grossAmount: totalAmount,
       fee,
       netAmount,
       walletUsed: 0,
-      incomeUsed: amount,
+      incomeUsed: totalAmount,
       walletAddress: walletAddr,
       status: "pending",
       schedule: [],
-      createdAt: new Date(),
+      createdAt: tomorrow,
     });
-
-    const updatedUser = await User.findOne({ userId });
 
     res.json({
       success: true,
@@ -1183,12 +1222,6 @@ router.post("/instant-withdraw", async (req, res) => {
       transaction: txn,
       withdrawal,
       netAmount,
-      availableIncomes: {
-        directIncome: updatedUser.directIncome || 0,
-        levelIncome: updatedUser.levelIncome || 0,
-        spinIncome: updatedUser.spinIncome || 0,
-        binaryIncome: updatedUser.binaryIncome || 0,
-      },
     });
 
   } catch (err) {
@@ -1196,7 +1229,6 @@ router.post("/instant-withdraw", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
-
 
 
 

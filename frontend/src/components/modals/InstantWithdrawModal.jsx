@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "api/axios";
 import SuccessModal from "./SuccessModal";
 import MessageModal from "./MessageModal";
-import { useAuth } from "../../context/AuthContext"; // Auth context zaroori hai
+import { useAuth } from "../../context/AuthContext";
 
 const InstantWithdrawModal = ({ userId, onClose }) => {
   // --- STATE ---
@@ -21,7 +21,7 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
   });
 
   const [walletAddress, setWalletAddress] = useState(""); 
-  const [isAddressMissing, setIsAddressMissing] = useState(false); // 🔥 NEW: Address check
+  const [isAddressMissing, setIsAddressMissing] = useState(false);
 
   const [transactionPassword, setTransactionPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,17 +35,15 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
     type: "info",
   });
 
-  // 🔥 NEW: Check Promo User
   const { user: loggedInUser } = useAuth();
   const isPromoUser = loggedInUser?.role === "promo";
 
   const showMessage = (title, message, type = "error") =>
     setMessageModal({ open: true, title, message, type });
 
-  // 🔹 Fetch Data (Balance + Profile)
+  // 🔹 Fetch Data
   const fetchData = async () => {
     try {
-      // 1. Fetch Balances
       const res = await api.get(`/wallet/withdrawable/${userId}`);
       setAvailable({
         directIncome: res.data.directIncome || 0,
@@ -54,13 +52,11 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
         binaryIncome: res.data.binaryIncome || 0, 
       });
 
-      // 2. Fetch User Profile for Address (🔥 NEW LOGIC)
       const profileRes = await api.get(`/user/${userId}`);
       const userData = profileRes.data?.user || {};
       const finalAddress = (userData.walletAddress || "").trim();
       
       setWalletAddress(finalAddress);
-      // Agar address nahi hai aur user PROMO nahi hai, to missing flag true karo
       setIsAddressMissing(!finalAddress && !isPromoUser);
 
     } catch (err) {
@@ -75,21 +71,29 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
 
   const handleInputChange = (e, source) => {
     let value = e.target.value;
+    // Check max available
     if (parseFloat(value) > available[`${source}Income`]) {
       value = available[`${source}Income`];
     }
     setWithdrawals({ ...withdrawals, [source]: value });
   };
 
+  // 🔥 YAHAN MAIN CHANGE KIYA HAI (Logic Fix) 🔥
   const handleWithdraw = async () => {
-    const entries = Object.entries(withdrawals).filter(
-      ([_, amt]) => amt && !isNaN(amt) && Number(amt) > 0
-    );
+    // 1. Calculate Total first
+    const dDirect = parseFloat(withdrawals.direct) || 0;
+    const dLevel = parseFloat(withdrawals.level) || 0;
+    const dSpin = parseFloat(withdrawals.spin) || 0;
+    const dBinary = parseFloat(withdrawals.binary) || 0;
 
-    if (!entries.length)
-      return showMessage("Warning", "Enter at least one withdrawal amount.", "warning");
+    const totalAmount = dDirect + dLevel + dSpin + dBinary;
 
-    // 🔥 NEW: Address Check
+    // 2. Check Total >= 10
+    if (totalAmount < 10) {
+      return showMessage("Warning", `Minimum total withdrawal is $10. You entered $${totalAmount.toFixed(2)}.`, "warning");
+    }
+
+    // 3. Address Check
     if (isAddressMissing && !isPromoUser) 
       return showMessage("Error", "Please update Wallet Address in Profile.", "warning");
 
@@ -98,25 +102,20 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
 
     setLoading(true);
     try {
-      let totalAmount = 0;
+      // 4. Single API Call (Loop hata diya)
+      const payload = {
+        userId,
+        amount: totalAmount, // Total backend ko bhej rahe hain
+        deductDirect: dDirect,
+        deductLevel: dLevel,
+        deductSpin: dSpin,
+        deductBinary: dBinary,
+        transactionPassword,
+        walletAddress: walletAddress.trim(),
+      };
 
-      for (const [source, amountStr] of entries) {
-        const amount = parseFloat(amountStr);
-
-        if (amount > available[`${source}Income`]) {
-          return showMessage("Error", `Insufficient ${source} balance.`, "error");
-        }
-
-        await api.post("/wallet/instant-withdraw", {
-          userId,
-          amount,
-          source, 
-          transactionPassword,
-          walletAddress: walletAddress.trim(), // Auto-filled address bhejo
-        });
-
-        totalAmount += amount;
-      }
+      // Route wahi rakha hai jo tumne diya tha
+      await api.post("/wallet/instant-withdraw", payload);
 
       setSuccessData({ userId, amount: totalAmount });
       setSuccessModalOpen(true);
@@ -137,203 +136,33 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
     (available.spinIncome || 0) +
     (available.binaryIncome || 0);
 
-  // --- STYLES ---
+  // --- STYLES (No Change) ---
   const styles = {
-    overlay: {
-      position: "fixed",
-      inset: 0,
-      backgroundColor: "rgba(0, 0, 0, 0.9)",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 9999,
-      padding: "16px",
-      backdropFilter: "blur(5px)",
-    },
-    modal: {
-      backgroundColor: "#0f172a",
-      width: "100%",
-      maxWidth: "480px",
-      borderRadius: "16px",
-      border: "1px solid #334155",
-      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-      display: "flex",
-      flexDirection: "column",
-      maxHeight: "90vh",
-      overflow: "hidden",
-    },
-    header: {
-      padding: "20px",
-      borderBottom: "1px solid #1e293b",
-      textAlign: "center",
-      backgroundColor: "#0f172a",
-      flexShrink: 0,
-    },
-    title: {
-      fontSize: "18px",
-      fontWeight: "700",
-      color: "#ffffff",
-      margin: 0,
-    },
-    subtitle: {
-      fontSize: "12px",
-      color: "#94a3b8",
-      marginTop: "2px",
-      margin: 0,
-    },
-    closeBtn: {
-      background: "transparent",
-      border: "none",
-      color: "#94a3b8",
-      fontSize: "24px",
-      cursor: "pointer",
-      lineHeight: 1,
-      padding: "0 8px",
-      position: "absolute",
-      right: "16px",
-      top: "20px",
-    },
-    body: {
-      padding: "20px",
-      overflowY: "auto",
-      display: "flex",
-      flexDirection: "column",
-      gap: "16px",
-      backgroundColor: "#0f172a",
-      flex: 1,
-      minHeight: 0,
-    },
-    balanceCard: {
-      backgroundColor: "#1e293b",
-      padding: "16px",
-      borderRadius: "12px",
-      border: "1px solid #334155",
-      textAlign: "center",
-      flexShrink: 0,
-    },
-    labelSmall: {
-      fontSize: "12px",
-      color: "#94a3b8",
-      textTransform: "uppercase",
-      fontWeight: "bold",
-      marginBottom: "4px",
-      display: "block",
-    },
-    balanceValue: {
-      fontSize: "22px",
-      fontWeight: "bold",
-      color: "#34d399",
-      fontFamily: "monospace",
-    },
-    sectionTitle: {
-        fontSize: "11px",
-        color: "#cbd5e1",
-        fontWeight: "bold",
-        textTransform: "uppercase",
-        letterSpacing: "0.5px",
-    },
-    tableContainer: {
-        border: "1px solid #334155",
-        borderRadius: "12px",
-        overflow: "hidden",
-        backgroundColor: "#1e293b",
-        flexShrink: 0,
-    },
-    tableRow: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "12px 16px",
-        borderBottom: "1px solid #334155",
-    },
-    sourceName: {
-        color: "white",
-        fontWeight: "500",
-        fontSize: "14px",
-    },
-    sourceBal: {
-        fontSize: "13px",
-color: "#86efac"   // light green
-,        marginTop: "2px",
-        fontFamily: "monospace",
-    },
-    input: {
-        backgroundColor: "#0f172a",
-        border: "1px solid #475569",
-        color: "white",
-        padding: "8px",
-        borderRadius: "8px",
-        width: "100px",
-        fontSize: "14px",
-        textAlign: "right",
-        outline: "none",
-    },
-    mainInput: {
-        width: "100%",
-        backgroundColor: "#1e293b",
-        border: "1px solid #475569",
-        color: "white",
-        padding: "12px",
-        borderRadius: "8px",
-        fontSize: "14px",
-        outline: "none",
-        marginTop: "6px",
-    },
-    infoBox: {
-      padding: "12px",
-      borderRadius: "8px",
-      fontSize: "13px",
-      display: "flex",
-      gap: "10px",
-      alignItems: "flex-start",
-    },
-    addressBox: {
-      backgroundColor: "#1e293b",
-      border: "1px solid #334155",
-      color: "#e2e8f0",
-    },
-    errorBox: {
-      backgroundColor: "rgba(239, 68, 68, 0.1)",
-      border: "1px solid rgba(239, 68, 68, 0.3)",
-      color: "#fca5a5",
-    },
-    footer: {
-        padding: "20px",
-        borderTop: "1px solid #334155",
-        display: "flex",
-        gap: "12px",
-        backgroundColor: "#0f172a",
-        flexShrink: 0,
-    },
-    btn: {
-        flex: 1,
-        padding: "12px",
-        borderRadius: "8px",
-        fontWeight: "bold",
-        fontSize: "14px",
-        cursor: "pointer",
-        border: "none",
-    },
-    confirmBtn: {
-        background: "linear-gradient(90deg, #eab308 0%, #ca8a04 100%)",
-        color: "black",
-        boxShadow: "0 4px 6px -1px rgba(234, 179, 8, 0.2)",
-    },
-    cancelBtn: {
-        backgroundColor: "#1e293b",
-        color: "#cbd5e1",
-        border: "1px solid #334155",
-    },
-    disabledBtn: {
-        flex: 1,
-        padding: "12px",
-        backgroundColor: "#334155",
-        color: "#64748b",
-        border: "none",
-        borderRadius: "8px",
-        fontWeight: "bold",
-        cursor: "not-allowed",
-    }
+    overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0, 0, 0, 0.9)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "16px", backdropFilter: "blur(5px)" },
+    modal: { backgroundColor: "#0f172a", width: "100%", maxWidth: "480px", borderRadius: "16px", border: "1px solid #334155", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)", display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden" },
+    header: { padding: "20px", borderBottom: "1px solid #1e293b", textAlign: "center", backgroundColor: "#0f172a", flexShrink: 0 },
+    title: { fontSize: "18px", fontWeight: "700", color: "#ffffff", margin: 0 },
+    subtitle: { fontSize: "12px", color: "#94a3b8", marginTop: "2px", margin: 0 },
+    closeBtn: { background: "transparent", border: "none", color: "#94a3b8", fontSize: "24px", cursor: "pointer", lineHeight: 1, padding: "0 8px", position: "absolute", right: "16px", top: "20px" },
+    body: { padding: "20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px", backgroundColor: "#0f172a", flex: 1, minHeight: 0 },
+    balanceCard: { backgroundColor: "#1e293b", padding: "16px", borderRadius: "12px", border: "1px solid #334155", textAlign: "center", flexShrink: 0 },
+    labelSmall: { fontSize: "12px", color: "#94a3b8", textTransform: "uppercase", fontWeight: "bold", marginBottom: "4px", display: "block" },
+    balanceValue: { fontSize: "22px", fontWeight: "bold", color: "#34d399", fontFamily: "monospace" },
+    sectionTitle: { fontSize: "11px", color: "#cbd5e1", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.5px" },
+    tableContainer: { border: "1px solid #334155", borderRadius: "12px", overflow: "hidden", backgroundColor: "#1e293b", flexShrink: 0 },
+    tableRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #334155" },
+    sourceName: { color: "white", fontWeight: "500", fontSize: "14px" },
+    sourceBal: { fontSize: "13px", color: "#86efac", marginTop: "2px", fontFamily: "monospace" },
+    input: { backgroundColor: "#0f172a", border: "1px solid #475569", color: "white", padding: "8px", borderRadius: "8px", width: "100px", fontSize: "14px", textAlign: "right", outline: "none" },
+    mainInput: { width: "100%", backgroundColor: "#1e293b", border: "1px solid #475569", color: "white", padding: "12px", borderRadius: "8px", fontSize: "14px", outline: "none", marginTop: "6px" },
+    infoBox: { padding: "12px", borderRadius: "8px", fontSize: "13px", display: "flex", gap: "10px", alignItems: "flex-start" },
+    addressBox: { backgroundColor: "#1e293b", border: "1px solid #334155", color: "#e2e8f0" },
+    errorBox: { backgroundColor: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#fca5a5" },
+    footer: { padding: "20px", borderTop: "1px solid #334155", display: "flex", gap: "12px", backgroundColor: "#0f172a", flexShrink: 0 },
+    btn: { flex: 1, padding: "12px", borderRadius: "8px", fontWeight: "bold", fontSize: "14px", cursor: "pointer", border: "none" },
+    confirmBtn: { background: "linear-gradient(90deg, #eab308 0%, #ca8a04 100%)", color: "black", boxShadow: "0 4px 6px -1px rgba(234, 179, 8, 0.2)" },
+    cancelBtn: { backgroundColor: "#1e293b", color: "#cbd5e1", border: "1px solid #334155" },
+    disabledBtn: { flex: 1, padding: "12px", backgroundColor: "#334155", color: "#64748b", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "not-allowed" }
   };
 
   return (
@@ -399,7 +228,7 @@ color: "#86efac"   // light green
               ))}
            </div>
 
-           {/* 🔥 NEW UI: Wallet Address Display (Not Editable) */}
+           {/* Address Check */}
            {isAddressMissing ? (
               <div style={{...styles.infoBox, ...styles.errorBox}}>
                   <span style={{fontSize: '18px'}}>⚠️</span>
@@ -449,7 +278,6 @@ color: "#86efac"   // light green
       </div>
     </div>
 
-    {/* Success/Message Modals remain same */}
     <SuccessModal
       isOpen={successModalOpen}
       onClose={() => {
