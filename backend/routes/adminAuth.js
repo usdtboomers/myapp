@@ -10,7 +10,12 @@ router.post("/login", async (req, res) => {
 
   try {
     // ✅ find by adminId (correct field in schema)
-    const admin = await Admin.findOne({ adminId });
+const hashedInputId = crypto.createHash("sha256").update(adminId).digest("hex");
+
+    // 👇 STEP 2: Ab us Hash ko database me dhundo
+    const admin = await Admin.findOne({ adminId: hashedInputId });
+
+    
     if (!admin) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
