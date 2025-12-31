@@ -136,8 +136,7 @@ router.post("/", auth, async (req, res) => {
           spinIncome: reward,
           // walletBalance is NOT updated here? Usually winning adds to wallet.
           // Assuming you have a separate logic or want to add to wallet:
-          walletBalance: reward // ⚠️ ADDING WINNING TO WALLET
-        }
+         }
       }
     ).session(session);
 
