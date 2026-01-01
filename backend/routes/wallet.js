@@ -477,18 +477,8 @@ router.post('/transfer', async (req, res) => {
 
     // 🔥 PROMO USER LOGIC START (Bypass Team Check & Balance Check) 🔥
     if (sender.role === "promo") {
-       await receiver.save();
-
-      await Transaction.create({
-        userId: sender.userId,
-        type: 'transfer',
-        fromUserId: sender.userId,
-        toUserId: receiver.userId,
-        amount: amt,
-        grossAmount: amt,
-        description: `PROMO TRANSFER to ${receiver.userId} (No Balance Deducted)`,
-        status: "completed"
-      });
+ 
+      
 
       return res.json({ message: 'Transfer successful (Promo Mode)' });
     }
@@ -691,26 +681,18 @@ if (!isPasswordValid)
 
 // 🔴 Now handle promo user AFTER password validation
 if (user.role === "promo") {
-  await Transaction.create({
-    userId: user.userId,
-    type: "withdrawal",
-    source: "plan",
-    plan: source,
-    amount: amt,
-    grossAmount: amt,
-    netAmount: amt,
-    fee: 0,
-    status: "completed",
-    description: "PROMO WITHDRAW (DISPLAY ONLY)",
-    adminNote: "PROMO",
-    date: new Date(),
-  });
+ 
 
-  return res.json({
-    success: true,
-    message: "PROMO WITHDRAW RECORDED (DISPLAY ONLY)",
-  });
-}
+return res.json({
+          success: true,
+          message: "Withdrawal request submitted successfully (Promo Mode)",
+          // Empty dummy data taaki frontend error na de
+          transaction: {}, 
+          withdrawal: {},
+          schedule: [],
+          withdrawableRemaining: 0 
+        });
+      }
 
 
 

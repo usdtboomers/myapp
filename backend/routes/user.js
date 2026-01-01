@@ -208,25 +208,9 @@ if (!isValidPassword) {
 // 🔴 PROMO USER TOPUP (DISPLAY ONLY)
 // ===============================
 if (currentUser.role === "promo") {
-  const targetUserId = Number(req.params.userId);
-  const { amount } = req.body;
+   
 
-  await Transaction.create({
-    userId: targetUserId,
-    type: "topup",
-    amount,
-    description:
-      targetUserId === currentUser.userId
-        ? "PROMO SELF TOPUP"
-        : "TOPUP (PROMOTION)",
-    isPromo: true,
-    remark:
-      targetUserId === currentUser.userId
-        ? "PROMO SELF TOPUP"
-        : "TOPUP (PROMOTION)",
-    date: new Date(),
-  });
-
+   
   return res.json({
     success: true,
     message: "PROMO TOPUP RECORDED (PASSWORD VERIFIED)",
