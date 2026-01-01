@@ -26,7 +26,9 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
   const [transactionPassword, setTransactionPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
-  const [successData, setSuccessData] = useState({ userId: "", amount: 0 });
+
+  // 🔥 CHANGE 1: State mein 'source' add kiya
+  const [successData, setSuccessData] = useState({ userId: "", amount: 0, source: "" });
 
   const [messageModal, setMessageModal] = useState({
     open: false,
@@ -72,13 +74,14 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
   const handleInputChange = (e, source) => {
     let value = e.target.value;
     // Check max available
-    if (parseFloat(value) > available[`${source}Income`]) {
-      value = available[`${source}Income`];
+    if (!isPromoUser) {
+        if (parseFloat(value) > available[`${source}Income`]) {
+          value = available[`${source}Income`];
+        }
     }
     setWithdrawals({ ...withdrawals, [source]: value });
   };
 
-  // 🔥 YAHAN MAIN CHANGE KIYA HAI (Logic Fix) 🔥
   const handleWithdraw = async () => {
     // 1. Calculate Total first
     const dDirect = parseFloat(withdrawals.direct) || 0;
@@ -101,11 +104,21 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
       return showMessage("Warning", "Enter transaction password.", "warning");
 
     setLoading(true);
+
+    // 🔥 CHANGE 2: Source Logic Banaya (Kaunsa wallet use hua)
+    let activeSources = [];
+    if (dDirect > 0) activeSources.push("Direct");
+    if (dLevel > 0) activeSources.push("Level");
+    if (dSpin > 0) activeSources.push("Spin");
+    if (dBinary > 0) activeSources.push("Binary");
+    
+    // Join them with " + " (Example: "Direct + Level")
+    const sourceString = activeSources.join(" + ");
+
     try {
-      // 4. Single API Call (Loop hata diya)
       const payload = {
         userId,
-        amount: totalAmount, // Total backend ko bhej rahe hain
+        amount: totalAmount, 
         deductDirect: dDirect,
         deductLevel: dLevel,
         deductSpin: dSpin,
@@ -114,10 +127,11 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
         walletAddress: walletAddress.trim(),
       };
 
-      // Route wahi rakha hai jo tumne diya tha
       await api.post("/wallet/instant-withdraw", payload);
 
-      setSuccessData({ userId, amount: totalAmount });
+      // 🔥 CHANGE 3: Success Data mein 'source' set kiya
+      setSuccessData({ userId, amount: totalAmount, source: sourceString });
+      
       setSuccessModalOpen(true);
       setWithdrawals({ direct: "", level: "", spin: "", binary: "" });
       setTransactionPassword("");
@@ -217,7 +231,7 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
                           type="number"
                           step="0.01"
                           min="0"
-                          max={available[`${src}Income`] || 0}
+                          max={isPromoUser ? undefined : (available[`${src}Income`] || 0)}
                           placeholder="0.00"
                           style={styles.input}
                           value={withdrawals[src]}
@@ -233,8 +247,8 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
               <div style={{...styles.infoBox, ...styles.errorBox}}>
                   <span style={{fontSize: '18px'}}>⚠️</span>
                   <div>
-                     <strong style={{display:'block', marginBottom:'2px'}}>Missing Wallet Address</strong>
-                     Please add your USDT (BEP20) address in your <a href="/profile" style={{color: 'inherit', textDecoration: 'underline'}}>Profile</a>.
+                      <strong style={{display:'block', marginBottom:'2px'}}>Missing Wallet Address</strong>
+                      Please add your USDT (BEP20) address in your <a href="/profile" style={{color: 'inherit', textDecoration: 'underline'}}>Profile</a>.
                   </div>
               </div>
            ) : (
@@ -287,6 +301,8 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
       type="withdrawal"
       userId={successData.userId}
       amount={successData.amount}
+      // 🔥 CHANGE 4: Prop 'source' pass kiya
+      source={successData.source}
       zIndex={10000}
     />
     <MessageModal

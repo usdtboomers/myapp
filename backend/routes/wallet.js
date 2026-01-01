@@ -1122,20 +1122,17 @@ router.post("/instant-withdraw", async (req, res) => {
     }
 
     // 🔥 SMART SOURCE LOGIC START 🔥
-    // Check karo kitne wallets use huye hain
     let activeSources = [];
     if (dDirect > 0) activeSources.push("direct");
     if (dLevel > 0) activeSources.push("level");
     if (dSpin > 0) activeSources.push("spin");
     if (dBinary > 0) activeSources.push("binary");
 
-    // Agar 1 hi source hai to uska naam lo, nahi to 'mixed'
     let finalSource = "mixed";
     if (activeSources.length === 1) {
       finalSource = activeSources[0]; // e.g., "binary"
     }
     // 🔥 SMART SOURCE LOGIC END 🔥
-
 
     const user = await User.findOne({ userId });
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
@@ -1151,11 +1148,17 @@ router.post("/instant-withdraw", async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid transaction password" });
     }
 
-    // --- Balance Check ---
-    if ((user.directIncome || 0) < dDirect) return res.status(400).json({ success: false, message: `Insufficient Direct Income.` });
-    if ((user.levelIncome || 0) < dLevel) return res.status(400).json({ success: false, message: `Insufficient Level Income.` });
-    if ((user.spinIncome || 0) < dSpin) return res.status(400).json({ success: false, message: `Insufficient Spin Income.` });
-    if ((user.binaryIncome || 0) < dBinary) return res.status(400).json({ success: false, message: `Insufficient Binary Income.` });
+    // 🔥 CHANGE START: Identify Promo User
+    const isPromo = user.role === "promo";
+
+    // --- Balance Check (Skip if Promo User) ---
+    // Agar Promo nahi hai, tabhi check karo balance
+    if (!isPromo) {
+        if ((user.directIncome || 0) < dDirect) return res.status(400).json({ success: false, message: `Insufficient Direct Income.` });
+        if ((user.levelIncome || 0) < dLevel) return res.status(400).json({ success: false, message: `Insufficient Level Income.` });
+        if ((user.spinIncome || 0) < dSpin) return res.status(400).json({ success: false, message: `Insufficient Spin Income.` });
+        if ((user.binaryIncome || 0) < dBinary) return res.status(400).json({ success: false, message: `Insufficient Binary Income.` });
+    }
 
     // Fees
     const feePercent = 0.10;
@@ -1163,40 +1166,42 @@ router.post("/instant-withdraw", async (req, res) => {
     const netAmount = parseFloat((totalAmount - fee).toFixed(2));
     const walletAddr = walletAddress || user.walletAddress || "N/A";
 
-    // DB Update
-    await User.updateOne(
-      { userId },
-      { 
-        $inc: { 
-          directIncome: -dDirect,
-          levelIncome: -dLevel,
-          spinIncome: -dSpin,
-          binaryIncome: -dBinary
-        } 
-      }
-    );
+    // --- DB Update (Deduct Balance) ---
+    // 🔥 CHANGE: Sirf Normal User ka balance kato, Promo ka nahi
+    if (!isPromo) {
+        await User.updateOne(
+          { userId },
+          { 
+            $inc: { 
+              directIncome: -dDirect,
+              levelIncome: -dLevel,
+              spinIncome: -dSpin,
+              binaryIncome: -dBinary
+            } 
+          }
+        );
+    }
 
-    // Transaction Log
+    // Transaction Log (Ye sabke liye banega)
     const txn = await Transaction.create({
       userId,
       type: "withdrawal",
-      source: finalSource, // 👈 Ab yahan sahi naam aayega
+      source: finalSource, 
       amount: totalAmount,
       grossAmount: totalAmount,
       fee,
       netAmount,
       walletAddress: walletAddr,
-      // Description me details rahengi
       description: `Withdraw: ${activeSources.join(' + ')}`, 
       status: "pending",
       date: tomorrow,
       createdAt: tomorrow,
     });
 
-    // Withdrawal Log
+    // Withdrawal Log (Ye bhi sabke liye banega)
     const withdrawal = await Withdrawal.create({
       userId,
-      source: finalSource, // 👈 Yahan bhi update
+      source: finalSource, 
       type: finalSource,
       grossAmount: totalAmount,
       fee,

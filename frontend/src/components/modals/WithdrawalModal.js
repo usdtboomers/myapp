@@ -13,7 +13,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
   const [walletAddress, setwalletAddress] = useState("");
   const [isAddressMissing, setIsAddressMissing] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
-  const [successData, setSuccessData] = useState({ userId: "", amount: 0 });
+const [successData, setSuccessData] = useState({ userId: "", amount: 0, source: "" });
   const [messageModal, setMessageModal] = useState({ open: false, title: "", message: "", type: "info" });
 
   const { user: loggedInUser } = useAuth();
@@ -153,8 +153,18 @@ const WithdrawalModal = ({ userId, onClose }) => {
         totalWithdraw += amount;
       }
 
-      setSuccessData({ userId, amount: totalWithdraw });
-      setSuccessOpen(true);
+
+
+      const planSource = entries.map(([plan]) => plan).join(" + "); 
+
+setSuccessData({ 
+    userId, 
+    amount: totalWithdraw, 
+    source: planSource // 🔥 Ye add karna hai
+});
+
+setSuccessOpen(true);
+      
 
       // Reset
       setWithdrawals({});
@@ -397,6 +407,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
           type="withdrawal"
           userId={successData.userId}
           amount={successData.amount}
+          source={successData.source}
         />
       )}
 

@@ -4,13 +4,14 @@ import Confetti from "react-confetti";
 const SuccessModal = ({
   isOpen,
   onClose,
-  type = "credit", // "withdrawal" | "credit" | "transfer" | "topup" | "buy" | "spin" | "deposit"
+  type = "credit", 
   userId = "",
   amount = 0,
   reward = 0,
   spinQuantity = 0,
   customTitle = "",
   customMessage = "",
+  source = "", // "plan1", "plan2" OR "Direct", "Level", "Direct + Level"
   zIndex = 2000,
 }) => {
   const [showConfetti, setShowConfetti] = useState(false);
@@ -26,7 +27,7 @@ const SuccessModal = ({
     timeStyle: "short",
   });
 
-  // ✅ Package Names ko yahan define kiya taaki switch case mein use ho sake
+  // ✅ Package Mapping (For Topup)
   const packageNames = {
     10: "Bronze",
     25: "Silver",
@@ -37,21 +38,26 @@ const SuccessModal = ({
     1000: "Infinity",
   };
 
-  /* ================= GOLD LAYOUT ================= */
+  // ✅ Plan Mapping (For Normal Withdrawal)
+  const planNames = {
+    plan1: "Bronze ",
+    plan2: "Silver ",
+    plan3: "Gold ",
+    plan4: "Platinum ",
+    plan5: "Diamond ",
+    plan6: "Elite ",
+    plan7: "Infinity ",
+  };
+
+  /* ================= LAYOUT ================= */
   const SuccessLayout = ({ title, children }) => (
     <>
-      {/* ✅ Title Logo */}
+      {/* Logo */}
       <div className="flex justify-center items-center my-0.5">
         <img
           src="/eliteinfinitylogo.png"
           alt="Elite Infinity Logo"
-          className="
-            w-44 h-20 sm:w-28 sm:h-24 md:w-44 md:h-28
-            object-contain
-            [image-rendering:crisp-edges]
-            [image-rendering:-webkit-optimize-contrast]
-            drop-shadow-[0_2px_6px_rgba(255,215,0,0.45)]
-          "
+          className="w-44 h-20 sm:w-28 sm:h-24 md:w-44 md:h-28 object-contain drop-shadow-[0_2px_6px_rgba(255,215,0,0.45)]"
         />
       </div>
 
@@ -60,17 +66,15 @@ const SuccessModal = ({
         <span>✅</span>
       </h2>
 
-      {/* ✅ Custom Content */}
       {children}
 
-      {/* ✅ Date */}
-      <p className="text-white text-xs sm:text-sm italic text-center leading-tight mt-0.5">
+      <p className="text-white text-xs sm:text-sm italic text-center leading-tight mt-2">
         {formattedDate}
       </p>
     </>
   );
 
-  /* ================= CONTENT ================= */
+  /* ================= CONTENT LOGIC ================= */
   const renderContent = () => {
     if (customTitle || customMessage) {
       return (
@@ -84,14 +88,35 @@ const SuccessModal = ({
 
     switch (type) {
       case "withdrawal":
+        // 🔥 LOGIC: Check if it's a Plan Withdrawal or Instant
+        // Agar source 'plan' se shuru hota hai (e.g. plan1, plan2) to Normal hai
+        const isPlan = source && source.toLowerCase().startsWith("plan");
+        
+        // Title Set Karo
+        const titleText = isPlan ? "Withdrawal Successful" : "Instant Withdrawal";
+        
+        // Label aur Value Set Karo
+        const labelText = isPlan ? "Plan" : "Source";
+        const valueText = isPlan ? (planNames[source] || source) : source;
+
         return (
-          <SuccessLayout title="Withdrawal Successful">
+          <SuccessLayout title={titleText}>
             <p className="text-white text-md sm:text-lg font-bold text-center mt-0.5">
               Amount :-{" "}
               <span className="font-extrabold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-transparent bg-clip-text drop-shadow-[0_1px_4px_rgba(255,215,0,0.6)]">
                 ${amount}
               </span>
             </p>
+
+            {/* 🔥 Dynamic Section: Plan Name ya Source Name */}
+            {source && (
+            <div>
+  <p className="text-lg font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white to-yellow-300">
+    {labelText}:  <span className="text-yellow-400">{valueText}</span> Income
+  </p>
+</div>
+
+            )}
           </SuccessLayout>
         );
 
@@ -99,10 +124,7 @@ const SuccessModal = ({
         return (
           <SuccessLayout title="Deposit Successful">
             <p className="text-white text-md sm:text-lg font-bold text-center mt-0.5">
-              Amount :-{" "}
-              <span className="font-extrabold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-transparent bg-clip-text drop-shadow-[0_1px_4px_rgba(255,215,0,0.6)]">
-                ${amount}
-              </span>
+              Amount :- <span className="text-yellow-400 font-extrabold">${amount}</span>
             </p>
           </SuccessLayout>
         );
@@ -111,11 +133,11 @@ const SuccessModal = ({
         return (
           <SuccessLayout title="Wallet Credited">
             <p className="text-white text-md sm:text-lg font-bold text-center mt-0.5">
-              Amount :-{" "}
-              <span className="font-extrabold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-transparent bg-clip-text drop-shadow-[0_1px_4px_rgba(255,215,0,0.6)]">
-                ${amount}
-              </span>
+              Amount :- <span className="text-yellow-400 font-extrabold">${amount}</span>
             </p>
+            {source && (
+              <p className="text-xs text-gray-400 mt-1 capitalize">From: {source}</p>
+            )}
           </SuccessLayout>
         );
 
@@ -133,20 +155,15 @@ const SuccessModal = ({
         );
 
       case "topup":
-        // Package name find karne ke liye
-        const packageName = packageNames[amount] || "Unknown Package";
-
+        const topupPkgName = packageNames[amount] || "Unknown Package";
         return (
           <SuccessLayout title="Top-Up Successful">
-            {/* Package Name Display */}
             <p className="text-white text-lg font-bold text-center mt-2">
               <span className="text-gray-300">Package: </span>
               <span className="text-green-400 uppercase tracking-wider">
-                {packageName}
+                {topupPkgName}
               </span>
             </p>
-
-            {/* Amount Display */}
             <p className="text-white text-md font-semibold text-center mt-1">
               <span className="font-bold">Amount: </span>
               <span className="text-yellow-400 font-extrabold"> ${amount}</span>
@@ -194,12 +211,7 @@ const SuccessModal = ({
         />
       )}
 
-      <div
-        className="bg-gray-900 rounded-2xl pt-2 pb-6 w-full max-w-sm text-center relative z-10
-        ring-4 ring-yellow-600
-        shadow-[0_0_30px_rgba(255,215,0,0.8)]
-        animate-[pulse_1.5s_infinite]"
-      >
+      <div className="bg-gray-900 rounded-2xl pt-2 pb-6 w-full max-w-sm text-center relative z-10 ring-4 ring-yellow-600 shadow-[0_0_30px_rgba(255,215,0,0.8)] animate-[pulse_1.5s_infinite]">
         {renderContent()}
 
         <button
