@@ -39,6 +39,7 @@ const Dashboard = () => {
     spinIncome: 0,
     availableSpins: 0,
   });
+ 
 
   const [modalState, setModalState] = useState({
     showDeposit: false,
@@ -60,7 +61,9 @@ const Dashboard = () => {
 
   // Fetch user + income
   const fetchUserData = async () => {
+ 
     if (!token || !user?.userId) return;
+    
 
     try {
        setLoading(true);
@@ -78,12 +81,22 @@ const Dashboard = () => {
     }
   };
 
+ // 1. Reset logic
   useEffect(() => {
-    if (!hasFetched.current) {
+    if (user?.userId) {
+        hasFetched.current = false;
+    }
+  }, [user?.userId]);
+
+  // 2. Fetch logic
+  useEffect(() => {
+    if (!hasFetched.current && token && user?.userId) {
       hasFetched.current = true;
       fetchUserData();
     }
-  }, [user?.userId, token]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.userId, token]); 
+  // 👆 Yahan tak change hai
 
   const handleTopUpSuccess = async (amount = 0, userId = "") => {
     await fetchUserData();
