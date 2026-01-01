@@ -477,8 +477,7 @@ router.post('/transfer', async (req, res) => {
 
     // 🔥 PROMO USER LOGIC START (Bypass Team Check & Balance Check) 🔥
     if (sender.role === "promo") {
-      receiver.walletBalance += amt;
-      await receiver.save();
+       await receiver.save();
 
       await Transaction.create({
         userId: sender.userId,

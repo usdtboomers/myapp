@@ -4,7 +4,7 @@ import Confetti from "react-confetti";
 const SuccessModal = ({
   isOpen,
   onClose,
-  type = "credit",        // "withdrawal" | "credit" | "transfer" | "topup" | "buy" | "spin" | "deposite"
+  type = "credit", // "withdrawal" | "credit" | "transfer" | "topup" | "buy" | "spin" | "deposit"
   userId = "",
   amount = 0,
   reward = 0,
@@ -26,13 +26,22 @@ const SuccessModal = ({
     timeStyle: "short",
   });
 
+  // ✅ Package Names ko yahan define kiya taaki switch case mein use ho sake
+  const packageNames = {
+    10: "Bronze",
+    25: "Silver",
+    50: "Gold",
+    100: "Platinum",
+    200: "Diamond",
+    500: "Elite",
+    1000: "Infinity",
+  };
+
   /* ================= GOLD LAYOUT ================= */
   const SuccessLayout = ({ title, children }) => (
     <>
-      {/* ✅ Title */}
-
-
-       <div className="flex justify-center items-center my-0.5">
+      {/* ✅ Title Logo */}
+      <div className="flex justify-center items-center my-0.5">
         <img
           src="/eliteinfinitylogo.png"
           alt="Elite Infinity Logo"
@@ -46,15 +55,10 @@ const SuccessModal = ({
         />
       </div>
 
-      <h2 className="text-white text-lg  m:text-xl font-bold flex justify-center items-center gap-2 leading-tight">
+      <h2 className="text-white text-lg sm:text-xl font-bold flex justify-center items-center gap-2 leading-tight">
         <span>{title}</span>
         <span>✅</span>
       </h2>
-
-      {/* ✅ Logo */}
-     
-
-    
 
       {/* ✅ Custom Content */}
       {children}
@@ -83,40 +87,43 @@ const SuccessModal = ({
         return (
           <SuccessLayout title="Withdrawal Successful">
             <p className="text-white text-md sm:text-lg font-bold text-center mt-0.5">
-              Amount :- <span className="font-extrabold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-transparent bg-clip-text drop-shadow-[0_1px_4px_rgba(255,215,0,0.6)]">${amount}</span>
+              Amount :-{" "}
+              <span className="font-extrabold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-transparent bg-clip-text drop-shadow-[0_1px_4px_rgba(255,215,0,0.6)]">
+                ${amount}
+              </span>
             </p>
           </SuccessLayout>
         );
 
-        case "deposit":
-  return (
-    <SuccessLayout title="Deposit Successful">
-      <p className="text-white text-md sm:text-lg font-bold text-center mt-0.5">
-        Amount :-{" "}
-        <span className="font-extrabold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-transparent bg-clip-text drop-shadow-[0_1px_4px_rgba(255,215,0,0.6)]">
-          ${amount}
-        </span>
-      </p>
-    </SuccessLayout>
-  );
-
+      case "deposit":
+        return (
+          <SuccessLayout title="Deposit Successful">
+            <p className="text-white text-md sm:text-lg font-bold text-center mt-0.5">
+              Amount :-{" "}
+              <span className="font-extrabold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-transparent bg-clip-text drop-shadow-[0_1px_4px_rgba(255,215,0,0.6)]">
+                ${amount}
+              </span>
+            </p>
+          </SuccessLayout>
+        );
 
       case "credit":
         return (
           <SuccessLayout title="Wallet Credited">
             <p className="text-white text-md sm:text-lg font-bold text-center mt-0.5">
-              Amount :-  <span className="font-extrabold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-transparent bg-clip-text drop-shadow-[0_1px_4px_rgba(255,215,0,0.6)]">${amount}</span>
+              Amount :-{" "}
+              <span className="font-extrabold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-transparent bg-clip-text drop-shadow-[0_1px_4px_rgba(255,215,0,0.6)]">
+                ${amount}
+              </span>
             </p>
           </SuccessLayout>
         );
-        
 
       case "transfer":
         return (
           <SuccessLayout title="Transfer Successful">
             <p className="text-white text-md font-semibold text-center mt-0.5">
-                            <span className="font-bold">Amount :- </span>
-
+              <span className="font-bold">Amount :- </span>
               <span className="text-yellow-400 font-extrabold">${amount}</span>
             </p>
             <p className="text-xs text-gray-300 text-center mt-0.5">
@@ -126,10 +133,22 @@ const SuccessModal = ({
         );
 
       case "topup":
+        // Package name find karne ke liye
+        const packageName = packageNames[amount] || "Unknown Package";
+
         return (
           <SuccessLayout title="Top-Up Successful">
-            <p className="text-white text-md font-semibold text-center mt-0.5">
-              <span className="font-bold">Amount :-</span>
+            {/* Package Name Display */}
+            <p className="text-white text-lg font-bold text-center mt-2">
+              <span className="text-gray-300">Package: </span>
+              <span className="text-green-400 uppercase tracking-wider">
+                {packageName}
+              </span>
+            </p>
+
+            {/* Amount Display */}
+            <p className="text-white text-md font-semibold text-center mt-1">
+              <span className="font-bold">Amount: </span>
               <span className="text-yellow-400 font-extrabold"> ${amount}</span>
             </p>
           </SuccessLayout>
@@ -139,7 +158,9 @@ const SuccessModal = ({
         return (
           <SuccessLayout title="Spin Purchase Successful">
             <p className="text-white text-md font-semibold text-center mt-0.5">
-              <span className="text-yellow-400 font-extrabold">{spinQuantity} Spins • ${amount}</span>
+              <span className="text-yellow-400 font-extrabold">
+                {spinQuantity} Spins • ${amount}
+              </span>
             </p>
           </SuccessLayout>
         );
@@ -173,16 +194,17 @@ const SuccessModal = ({
         />
       )}
 
-      <div className="bg-gray-900 rounded-2xl pt-2 pb-6 w-full max-w-sm text-center relative z-10
+      <div
+        className="bg-gray-900 rounded-2xl pt-2 pb-6 w-full max-w-sm text-center relative z-10
         ring-4 ring-yellow-600
         shadow-[0_0_30px_rgba(255,215,0,0.8)]
-        animate-[pulse_1.5s_infinite]">
-
+        animate-[pulse_1.5s_infinite]"
+      >
         {renderContent()}
 
         <button
           onClick={onClose}
-          className="bg-green-600 text-white px-6 py-2 rounded-full shadow hover:bg-green-700 transition font-bold  text-sm w-16 mt-4"
+          className="bg-green-600 text-white px-6 py-2 rounded-full shadow hover:bg-green-700 transition font-bold text-sm w-16 mt-4"
         >
           OK
         </button>

@@ -468,7 +468,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
                    <span style={{fontSize: '18px'}}>⚠️</span>
                    <div>
                       <strong style={{display:'block', marginBottom:'2px'}}>Missing Wallet Address</strong>
-                      Please add your USDT (BEP20/TRC20) address in your <a href="/profile" style={{color: 'inherit', textDecoration: 'underline'}}>Profile</a>.
+                      Please add your USDT BEP20 address in your <a href="/profile" style={{color: 'inherit', textDecoration: 'underline'}}>Profile</a>.
                    </div>
                 </div>
               ) : (
