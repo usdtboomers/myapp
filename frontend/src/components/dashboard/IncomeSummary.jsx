@@ -39,9 +39,9 @@ const IncomeSummary = ({ income = {}, user = {} }) => {
         // Ye logic sabhi users ke liye SAME increment dikhayega.
         // Example: 1 Jan 2025 se har 2 minute me 1 member badhega.
         
-       const FIXED_START_TIME = 1766707600000; 
-const SPEED_MS = 90000; // Har 1.5 minute me 1 member
-
+       const FIXED_START_TIME = 1766901000000; 
+const SPEED_MS = 90000;// Har 1 minute (60000ms) me 1 fake member
+        
         const currentTime = Date.now();
         // Ye formula sabke liye same result dega
         const globalVirtualIncrement = Math.floor((currentTime - FIXED_START_TIME) / SPEED_MS); 
