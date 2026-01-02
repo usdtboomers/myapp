@@ -14,7 +14,7 @@ const PackageWithdrawals = () => {
   const [note, setNote] = useState("");
 
   /* =========================
-     FETCH DATA
+      FETCH DATA
      ========================= */
   useEffect(() => {
     if (!user?.userId || !token) return;
@@ -44,6 +44,13 @@ const PackageWithdrawals = () => {
         const topups = Array.isArray(topupRes.data) ? topupRes.data : [];
 
         for (const t of topups) {
+          
+          // 🔴 UPDATED LOGIC: Filter packages sent to others
+          // Agar transaction mein receiver (toUserId) koi aur hai, toh skip karo.
+          if (t.toUserId && String(t.toUserId) !== String(user.userId)) {
+            continue; 
+          }
+
           const amt = Number(t.package ?? t.amount ?? 0);
           if (!amt) continue;
 
@@ -63,7 +70,7 @@ const PackageWithdrawals = () => {
         }));
 
         setPkgs(pkgsArr);
-        if (pkgsArr.length) setNote("withdrawls are based on the packages.");
+        if (pkgsArr.length) setNote("Withdrawals are based on the packages.");
 
       } catch (err) {
         console.error("PackageWithdrawals error:", err);
@@ -80,7 +87,7 @@ const PackageWithdrawals = () => {
   if (!user || !token || loading) return <SpinnerOverlay />;
 
   /* =========================
-     WITHDRAW ATTRIBUTION (FIFO)
+      WITHDRAW ATTRIBUTION (FIFO)
      ========================= */
 
   // Expand packages into units
@@ -147,7 +154,7 @@ const PackageWithdrawals = () => {
   });
 
   /* =========================
-     TOTALS
+      TOTALS
      ========================= */
   const totalMax = pkgs.reduce((s, p) => s + p.maxWithdraw, 0);
   const totalWithdrawn = Object.values(perPkgWithdrawn).reduce(
@@ -157,79 +164,73 @@ const PackageWithdrawals = () => {
   const remainingAll = Math.max(0, totalMax - totalWithdrawn);
 
   /* =========================
-     UI
+      UI
      ========================= */
-return (
-  <div className="max-w-6xl mx-auto px-2 ">
-    <div className="bg-gray-900 text-white  rounded-2xl shadow-xl p-0">
+  return (
+    <div className="max-w-6xl mx-auto px-2">
+      <div className="bg-gray-900 text-white rounded-2xl shadow-xl p-0">
+        <div className="rounded-2xl p-1 mb-2 bg-[#1e293b]">
+          <h2 className="text-lg sm:text-xl font-bold text-emerald-400 mb-2 text-center">
+            📦 Package Withdrawal Summary
+          </h2>
 
-      <div className=" rounded-2xl p-1 mb-2 border ${item.border}
-            bg-[#1e293b]">
+          {note && (
+            <p className="text-xs sm:text-sm text-yellow-400 text-center mb-3">
+              {note}
+            </p>
+          )}
+        </div>
 
-      <h2 className="text-lg sm:text-xl  font-bold text-emerald-400 mb-2 text-center">
-        📦 Package Withdrawal Summary
-      </h2>
+        {/* ✅ Responsive Table Wrapper */}
+        <div className="overflow-x-auto">
+          <div className="rounded-2xl overflow-hidden bg-[#1e293b]">
+            <table className="w-full min-w-[520px] text-xs">
+              <thead className="bg-gray-800 text-gray-300">
+                <tr>
+                  <th className="p-2 text-center">Package</th>
+                  <th className="p-2 text-center">Max</th>
+                  <th className="p-2 text-center">Withdrawn</th>
+                  <th className="p-2 text-center">Remaining</th>
+                </tr>
+              </thead>
 
-      {note && (
-        <p className="text-xs sm:text-sm text-yellow-400 text-center mb-3">
-          {note}
-        </p>
-      )}
+              <tbody>
+                {pkgs.map((p) => {
+                  const w = perPkgWithdrawn[p._id] || 0;
+                  return (
+                    <tr
+                      key={p._id}
+                      className="border-t border-gray-700 hover:bg-gray-800 transition"
+                    >
+                      <td className="p-2 text-center whitespace-nowrap">{p.name}</td>
+                      <td className="p-2 text-center">${p.maxWithdraw.toFixed(2)}</td>
+                      <td className="p-2 text-center text-emerald-400 font-semibold">
+                        ${w.toFixed(2)}
+                      </td>
+                      <td className="p-2 text-center text-yellow-400 font-semibold">
+                        ${(p.maxWithdraw - w).toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                <tr className="border-t border-gray-600 bg-gray-800 font-bold">
+                  <td className="p-2 text-center">TOTAL</td>
+                  <td className="p-2 text-center">${totalMax.toFixed(2)}</td>
+                  <td className="p-2 text-center text-emerald-400">
+                    ${totalWithdrawn.toFixed(2)}
+                  </td>
+                  <td className="p-2 text-center text-yellow-400">
+                    ${remainingAll.toFixed(2)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-
-      {/* ✅ Responsive Table Wrapper */}
-     <div className="overflow-x-auto">
-  <div className="rounded-2xl overflow-hidden border ${item.border}
-            bg-[#1e293b]">
-    <table className="w-full min-w-[520px] text-xs">
-      <thead className="bg-gray-800 text-gray-300">
-        <tr>
-          <th className="p-2 text-center">Package</th>
-          <th className="p-2 text-center">Max</th>
-          <th className="p-2 text-center">Withdrawn</th>
-          <th className="p-2 text-center">Remaining</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {pkgs.map((p) => {
-          const w = perPkgWithdrawn[p._id] || 0;
-          return (
-            <tr
-              key={p._id}
-              className="border-t border-gray-700 hover:bg-gray-800 transition"
-            >
-              <td className="p-2 text-center whitespace-nowrap">{p.name}</td>
-              <td className="p-2 text-center">${p.maxWithdraw.toFixed(2)}</td>
-              <td className="p-2 text-center text-emerald-400 font-semibold">
-                ${w.toFixed(2)}
-              </td>
-              <td className="p-2 text-center text-yellow-400 font-semibold">
-                ${(p.maxWithdraw - w).toFixed(2)}
-              </td>
-            </tr>
-          );
-        })}
-
-        <tr className="border-t border-gray-600 bg-gray-800 font-bold">
-          <td className="p-2 text-center">TOTAL</td>
-          <td className="p-2 text-center">${totalMax.toFixed(2)}</td>
-          <td className="p-2 text-center text-emerald-400">
-            ${totalWithdrawn.toFixed(2)}
-          </td>
-          <td className="p-2 text-center text-yellow-400">
-            ${remainingAll.toFixed(2)}
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
     </div>
-  </div>
-);
-
+  );
 };
 
 export default PackageWithdrawals;
