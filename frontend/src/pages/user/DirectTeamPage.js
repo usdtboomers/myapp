@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import api from "api/axios";
-import { useAuth } from "../../context/AuthContext";
+import api from "api/axios"; // Make sure path is correct
+import { useAuth } from "../../context/AuthContext"; // Make sure path is correct
 
 const DirectTeamPage = () => {
   const { user } = useAuth();
@@ -159,18 +159,18 @@ const DirectTeamPage = () => {
                     </span>
                   </td>
 
-                  {/* ✅ EDITED: Mobile Number with Better WhatsApp Icon */}
+                  {/* ✅ EDITED: Mobile Number with Hardcoded +91 for WhatsApp */}
                   <td className="p-2 sm:p-3 border">
                     <div className="flex items-center gap-2">
                         <span className="text-gray-700">{member.mobile || "-"}</span>
                         {member.mobile && (
                             <a 
-                                href={`https://wa.me/${member.mobile}`} 
+                                // 👉 YAHAN CHANGE KIYA HAI: Added '91' before variable
+                                href={`https://wa.me/91${member.mobile}`} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 title="Chat on WhatsApp"
                             >
-                                {/* Correct Filled WhatsApp SVG */}
                                 <svg 
                                   xmlns="http://www.w3.org/2000/svg" 
                                   width="24" 
