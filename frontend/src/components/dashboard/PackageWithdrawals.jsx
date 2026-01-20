@@ -169,7 +169,8 @@ const PackageWithdrawals = () => {
   return (
     <div className="max-w-6xl mx-auto px-2">
       <div className="bg-gray-900 text-white rounded-2xl shadow-xl p-0">
-        <div className="rounded-2xl p-1 mb-2 bg-[#1e293b]">
+        <div className="bg-gray-900 text-white border ${item.border}
+            bg-[#1e293b] rounded-xl shadow-lg p-2">
           <h2 className="text-lg sm:text-xl font-bold text-emerald-400 mb-2 text-center">
             📦 Package Withdrawal Summary
           </h2>
@@ -183,8 +184,9 @@ const PackageWithdrawals = () => {
 
         {/* ✅ Responsive Table Wrapper */}
         <div className="overflow-x-auto">
-          <div className="rounded-2xl overflow-hidden bg-[#1e293b]">
-            <table className="w-full min-w-[520px] text-xs">
+          <div className="bg-gray-900 text-white border ${item.border}
+            bg-[#1e293b] rounded-xl shadow-lg p-2 mt-2">
+            <table className="w-full min-w-[540px] text-xs">
               <thead className="bg-gray-800 text-gray-300">
                 <tr>
                   <th className="p-2 text-center">Package</th>

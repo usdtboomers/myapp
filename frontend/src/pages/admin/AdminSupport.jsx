@@ -29,7 +29,7 @@ const AdminSupport = () => {
   // Update status
   const updateStatus = async (id, status) => {
     try {
-      await api.put(`/api/support/status/${id}`, { status }, {
+      await api.put(`/support/status/${id}`, { status }, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
       fetchSupport();
@@ -43,7 +43,7 @@ const AdminSupport = () => {
   const deleteMessage = async (id) => {
     if (!window.confirm("Are you sure to delete this message?")) return;
     try {
-      await api.put(`/api/support/soft-delete/${id}`, {}, {
+      await api.put(`/support/soft-delete/${id}`, {}, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
       fetchSupport();
@@ -63,7 +63,7 @@ const AdminSupport = () => {
     if (!window.confirm("Delete selected messages?")) return;
     try {
       await Promise.all(selectedIds.map(id =>
-        api.put(`/api/support/soft-delete/${id}`, {}, {
+        api.put(`/support/soft-delete/${id}`, {}, {
           headers: { Authorization: `Bearer ${adminToken}` },
         })
       ));
@@ -79,7 +79,7 @@ const AdminSupport = () => {
     if (!selectedIds.length) return;
     try {
       await Promise.all(selectedIds.map(id =>
-        api.put(`/api/support/status/${id}`, { status: "Resolved" }, {
+        api.put(`/support/status/${id}`, { status: "Resolved" }, {
           headers: { Authorization: `Bearer ${adminToken}` },
         })
       ));
