@@ -35,12 +35,10 @@ const IncomeSummary = ({ income = {}, user = {} }) => {
 
         const realBackendCount = res.data.count || 0;
 
-        // ✅ Change 3: "Time Based" Magic Logic 
-        // Ye logic sabhi users ke liye SAME increment dikhayega.
-        // Example: 1 Jan 2025 se har 2 minute me 1 member badhega.
         
-       const FIXED_START_TIME = 1766901000000; 
-const SPEED_MS = 90000;// Har 1 minute (60000ms) me 1 fake member
+        
+const FIXED_START_TIME = 1765000000000;
+const SPEED_MS = 6 * 60 * 1000;
         
         const currentTime = Date.now();
         // Ye formula sabke liye same result dega
