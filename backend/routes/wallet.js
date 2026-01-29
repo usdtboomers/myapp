@@ -585,33 +585,53 @@ router.get("/withdrawable/:userId", async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const planBalances = {};
+    const planKeys = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6", "plan7"];
 
-    ["plan1","plan2","plan3","plan4","plan5","plan6","plan7"].forEach(plan => {
-      const roiEntry = (user.dailyROI || []).find(d => d.plan === plan);
-      if (!roiEntry) {
-        planBalances[plan] = 0;
-        return;
-      }
+    // ✅ Helper to match ROI Logic (Same as TopUp)
+    const getDailyRate = (amount) => {
+      if (amount <= 50) return 0.04;  // 4%
+      if (amount <= 500) return 0.05; // 5%
+      return 0.06;                    // 6%
+    };
 
-      const earned    = roiEntry.claimedDays * roiEntry.amount;
-      const withdrawn = user.pendingWithdrawals?.[plan] || 0;
-      planBalances[plan] = Math.max(earned - withdrawn, 0);
+    planKeys.forEach(planKey => {
+      // 1. Is Plan Key ke saare active packages dhundo
+      const activePackages = (user.dailyROI || []).filter(d => d.plan === planKey);
+      
+      let totalGrossEarned = 0;
+
+      // 2. Har package ki earning calculate karke jodo
+      activePackages.forEach(pkg => {
+        // Agar database me totalEarned saved hai to wo lo, nahi to calculate karo
+        if (pkg.totalEarned) {
+          totalGrossEarned += pkg.totalEarned;
+        } else {
+          // Fallback Calculation
+          const dailyIncome = pkg.amount * getDailyRate(pkg.amount);
+          totalGrossEarned += (pkg.claimedDays * dailyIncome);
+        }
+      });
+
+      // 3. Is Plan se aaj tak kitna withdraw kiya hai
+      const alreadyWithdrawn = user.pendingWithdrawals?.[planKey] || 0;
+
+      // 4. Available Balance = Total Earned - Already Withdrawn
+      // (Math.floor/toFixed use kar sakte hain decimals fix karne ke liye)
+      planBalances[planKey] = Math.max(parseFloat((totalGrossEarned - alreadyWithdrawn).toFixed(2)), 0);
     });
 
-    
-
-    // 🔥 IMPORTANT: yahi shape frontend expect kar raha hai
+    // 🔥 Response Shape (Frontend Compatible)
     res.json({
       walletBalance: user.walletBalance || 0,
       directIncome:  user.directIncome  || 0,
       levelIncome:   user.levelIncome   || 0,
       spinIncome:    user.spinIncome    || 0,
-        binaryIncome: user.binaryIncome || 0, // ✅ ADD THIS
-      planIncomes:   planBalances,
+      binaryIncome:  user.binaryIncome  || 0, // ✅ Binary Added
+      planIncomes:   planBalances,            // ✅ Calculated Plan Balances
     });
 
   } catch (err) {
-    console.error(err);
+    console.error("Withdrawable API Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -637,251 +657,184 @@ router.get("/withdrawable/:userId", async (req, res) => {
 // POST /api/wallet/withdraw
 router.post(
   "/withdraw",
-  authMiddleware,                    // ✅ ensure user is authenticated
+  authMiddleware,                  // ✅ ensure user is authenticated
   checkFeature("allowWithdrawals"),  // ✅ feature toggle
   async (req, res) => {
-      try {
-const { amount, source, transactionPassword, package: packageAmount } = req.body;
-    const amt = parseFloat(amount);
+    try {
+      const { amount, source, transactionPassword, package: packageAmount } = req.body;
+      const amt = parseFloat(amount);
+      const pkgAmt = parseFloat(packageAmount);
 
-  if (amt < 20) return res.status(400).json({ message: "Minimum withdrawal amount is $20" });
-if (amt % 1 !== 0) return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
-    const validPlans = ["plan1","plan2","plan3","plan4","plan5","plan6","plan7"];
-    if (!validPlans.includes(source))
-      return res.status(400).json({ message: "Invalid plan selected." });
+      // 🔹 Basic Amount Checks
+      if (!amt || !pkgAmt) return res.status(400).json({ message: "Amount and Package value required." });
+      if (amt % 1 !== 0) return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
 
-
-
-
-const authUserId = req.user.userId;   // 🔐 token se
-const user = await User.findOne({ userId: authUserId });
-
-if (!user) {
-  return res.status(404).json({ message: "User not found" });
-}
- 
-// 🔐 Transaction password check for ALL users
-if (!transactionPassword)
-  return res.status(400).json({ message: "Transaction password is required" });
-
-const isPasswordValid = await bcrypt.compare(transactionPassword, user.transactionPassword);
-if (!isPasswordValid)
-  return res.status(403).json({ message: "Invalid transaction password" });
-
-
-
-  
-
-    // ===============================
-    // 🔐 USER + PASSWORD CHECK
-    // ===============================
- // Check if user exists
-// Fetch user
-
-
-// 🔴 Now handle promo user AFTER password validation
-if (user.role === "promo") {
- 
-
-return res.json({
-          success: true,
-          message: "Withdrawal request submitted successfully (Promo Mode)",
-          // Empty dummy data taaki frontend error na de
-          transaction: {}, 
-          withdrawal: {},
-          schedule: [],
-          withdrawableRemaining: 0 
+      // ✅ 1. MINIMUM WITHDRAWAL CHECK (10% of Package)
+      const minWithdrawal = pkgAmt * 0.10;
+      if (amt < minWithdrawal) {
+        return res.status(400).json({ 
+          message: `Minimum withdrawal is 10% of package ($${minWithdrawal})` 
         });
       }
 
+      const validPlans = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6", "plan7"];
+      if (!validPlans.includes(source))
+        return res.status(400).json({ message: "Invalid plan selected." });
 
+      const authUserId = req.user.userId;   // 🔐 token se
+      const user = await User.findOne({ userId: authUserId });
 
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
 
+      // ===============================
+      // 🔐 TRANSACTION PASSWORD CHECK
+      // ===============================
+      if (!transactionPassword)
+        return res.status(400).json({ message: "Transaction password is required" });
 
-    // ===============================
-    // 🔥 RUN BINARY MATCHING (AUTO)
-    // ===============================
+      const isPasswordValid = await bcrypt.compare(transactionPassword, user.transactionPassword);
+      if (!isPasswordValid)
+        return res.status(403).json({ message: "Invalid transaction password" });
 
-    // ===============================
-    // 🔐 FIRST $100 WITHDRAW FLAG
-    // ===============================
-// After withdrawal record is created
-const withdrawalAmount = amt; // already defined
+      // ===============================
+      // 🔴 PROMO USER (Fake Success)
+      // ===============================
+      if (user.role === "promo") {
+        return res.json({
+          success: true,
+          message: "Withdrawal request submitted successfully (Promo Mode)",
+          transaction: {},
+          withdrawal: {},
+          withdrawableRemaining: 0
+        });
+      }
 
-user.totalWithdrawn = (user.totalWithdrawn || 0) + withdrawalAmount;
+      // ===============================
+      // 🔹 PLAN EARNING CHECK (ROI)
+      // ===============================
+      user.pendingWithdrawals = user.pendingWithdrawals || {};
+      
+      // Check if user has earned enough ROI in this plan
+      const roiEntry = user.dailyROI.find(d => d.plan === source && d.amount === pkgAmt);
+      
+      // Agar specific package match nahi karta, to total plan income check karein
+      // (Assuming user might have multiple packs of same plan, simplifying to plan check)
+      // For stricter check, use roiEntry logic. Here using accumulated planIncome vs withdrawn.
+      
+      // Calculate Total ROI Earned Available
+      const earned = user.dailyROI
+        .filter(d => d.plan === source)
+        .reduce((acc, curr) => acc + (curr.totalEarned || 0), 0); // Or use claimedDays logic
 
-if(user.totalWithdrawn >= 100){
-  user.hasWithdrawn100 = true;
-}
+      // Or simply verify against current ROI balance if you store it separately
+      // Here using the logic: Can't withdraw more than earned - alreadyWithdrawn
+      
+      const withdrawn = user.pendingWithdrawals[source] || 0;
+      const withdrawable = Math.max(earned - withdrawn, 0);
 
-await user.save();
+      // (Optional: You can also just check walletBalance if ROI goes to wallet first. 
+      // But assuming ROI is a separate 'withdrawable' balance inside plan):
+      
+      if (amt > withdrawable)
+        return res.status(400).json({
+          message: `Insufficient earnings in this plan. Available: $${withdrawable}`
+        });
 
+      // ✅ 2. NO WALLET DEDUCTION (Code removed)
+      
+      // Update Withdrawn Amount
+      user.pendingWithdrawals[source] = (user.pendingWithdrawals[source] || 0) + amt;
+      user.totalWithdrawn = (user.totalWithdrawn || 0) + amt;
 
+      // First $100 withdrawal Flag
+      if (user.totalWithdrawn >= 100) {
+        user.hasWithdrawn100 = true;
+      }
 
-    // ===============================
-    // 🔹 PLAN EARNING CHECK
-    // ===============================
-    user.pendingWithdrawals = user.pendingWithdrawals || {};
-    const roiEntry = user.dailyROI.find(d => d.plan === source);
-    if (!roiEntry)
-      return res.status(400).json({ message: "No earnings available in this plan" });
+      // ===============================
+      // 🔹 FEES Calculation (Direct)
+      // ===============================
+      const feePercent = 0.10; // 10% Admin Fee
+      const totalFee = parseFloat((amt * feePercent).toFixed(2));
+      let netAmount = parseFloat((amt - totalFee).toFixed(2));
 
-    const earned = roiEntry.claimedDays * roiEntry.amount;
-    const withdrawn = user.pendingWithdrawals[source] || 0;
-    const withdrawable = Math.max(earned - withdrawn, 0);
+      // ===============================
+      // 🔷 BINARY INCOME MERGE (Optional)
+      // ===============================
+      // Agar user purana hai (hasWithdrawn100) aur binary income padi hai, to saath me nikal do
+      let binaryAdded = 0;
+      if (user.hasWithdrawn100 && user.binaryIncome > 0) {
+        binaryAdded = user.binaryIncome;
+        netAmount += binaryAdded;
 
-    if (amt > withdrawable)
-      return res.status(400).json({
-        message: `Insufficient withdrawable balance. Max: $${withdrawable}`
-      });
+        // Log Binary Payout
+        await Transaction.create({
+          userId: user.userId,
+          type: "binary_income",
+          amount: binaryAdded,
+          description: "Binary income released with withdrawal",
+          status: "completed",
+          date: new Date()
+        });
 
-    // ===============================
-    // 🔹 WALLET 50% CHECK
-    // ===============================
-    const walletTotal = parseFloat((amt * 0.5).toFixed(2));
-    if (user.walletBalance < walletTotal)
-      return res.status(400).json({
-        message: `Wallet must cover 50% ($${walletTotal})`
-      });
+        user.binaryIncome = 0; // Reset Binary
+      }
 
-    user.walletBalance -= walletTotal;
-    user.pendingWithdrawals[source] =
-      (user.pendingWithdrawals[source] || 0) + amt;
-    await user.save();
-
-        await propagateBinaryBusiness(user.userId, amt);
-
-
-    // ===============================
-    // 🔹 FEES & PAYOUT
-    // ===============================
-    const planPercentages = {
-      plan1: 5.5, plan2: 5.75, plan3: 6,
-      plan4: 6.5, plan5: 6.75, plan6: 7, plan7: 7.5
-    };
-
-    const payoutPercent = planPercentages[source] || 5;
-    const feePercent = 0.10;
-    const intervalDays = 5;
-
-    const totalFee = parseFloat((amt * feePercent).toFixed(2));
-    const totalNet = parseFloat((amt - totalFee).toFixed(2));
-
-    // ===============================
-    // 🔷 ADD BINARY WITH PLAN
-    // ===============================
-    let finalNetAmount = totalNet;
-
-    if (user.hasWithdrawn100 && user.binaryIncome > 0) {
-      finalNetAmount += user.binaryIncome;
-
-      await Transaction.create({
-        userId: user.userId,
-        type: "binary_income",
-        amount: user.binaryIncome,
-        grossAmount: user.binaryIncome,
-        netAmount: user.binaryIncome,
-        description: "Binary income released with plan withdrawal",
-        status: "completed",
-      });
-
-      user.binaryIncome = 0;
       await user.save();
-    }
 
-    // ===============================
-    // 🔹 PAYOUT SCHEDULE
-    // ===============================
-    const schedule = [];
-    const totalPayouts = Math.ceil(100 / payoutPercent);
-    const firstPayoutDate = new Date();
-    firstPayoutDate.setDate(firstPayoutDate.getDate() + 1);
-
-    let paidGross = 0;
-    let paidFee = 0;
-    let paidWallet = 0;
-
-    for (let i = 0; i < totalPayouts; i++) {
-      let remainingGross = amt - paidGross;
-      let gross = Math.min(
-        parseFloat((amt * payoutPercent / 100).toFixed(2)),
-        remainingGross
-      );
-
-      let fee = parseFloat((gross * feePercent).toFixed(2));
-      if (i === totalPayouts - 1) fee = totalFee - paidFee;
-
-      let net = gross - fee;
-      let walletUsed = Math.min(
-        parseFloat((walletTotal * payoutPercent / 100).toFixed(2)),
-        walletTotal - paidWallet
-      );
-
-      schedule.push({
-        day: `Payout ${i + 1}`,
-        date: new Date(firstPayoutDate.getTime() + i * intervalDays * 86400000)
-          .toISOString().split("T")[0],
-        percent: payoutPercent,
-        grossAmount: gross,
-        fee,
-        netAmount: net,
-        walletUsed,
-        incomeUsed: net - walletUsed,
-        status: "pending",
+      // ===============================
+      // 🔹 SAVE WITHDRAWAL & TRANSACTION
+      // ===============================
+      
+      // Create Withdrawal Record (Status: Pending for Admin Approval)
+      const withdrawal = await Withdrawal.create({
+        userId: user.userId,
+        source,
+        package: pkgAmt,
+        grossAmount: amt,
+        fee: totalFee,
+        netAmount: netAmount,
         walletAddress: user.walletAddress,
+        status: "pending", // Admin will approve
+        date: new Date()
+        // No schedule array here
       });
 
-      paidGross += gross;
-      paidFee += fee;
-      paidWallet += walletUsed;
-      if (paidGross >= amt) break;
+      const txn = await Transaction.create({
+        userId: authUserId,
+        type: "withdrawal",
+        source: "plan",
+        plan: source,
+        package: pkgAmt,
+        amount: amt,
+        grossAmount: amt,
+        fee: totalFee,
+        netAmount: netAmount,
+        description: `Withdrawal request from ${source} (Package $${pkgAmt})`,
+        status: "pending",
+        date: new Date()
+      });
+
+      // ===============================
+      // 🔹 RESPONSE
+      // ===============================
+      res.json({
+        success: true,
+        message: `Withdrawal request of $${amt} submitted successfully.`,
+        transaction: txn,
+        withdrawal,
+        withdrawableRemaining: withdrawable - amt,
+        netReceivable: netAmount
+      });
+
+    } catch (err) {
+      console.error("Withdraw error:", err);
+      res.status(500).json({ message: "Server error" });
     }
-
-    // ===============================
-    // 🔹 SAVE WITHDRAW + TXN
-    // ===============================
-    const withdrawal = await Withdrawal.create({
-  userId: user.userId,
-      source,
-      package: packageAmount,
-      grossAmount: amt,
-      walletUsed: paidWallet,
-      incomeUsed: finalNetAmount - paidWallet,
-      fee: totalFee,
-      netAmount: finalNetAmount,
-      walletAddress: user.walletAddress,
-      status: "pending",
-      schedule,
-    });
-
-    const txn = await Transaction.create({
-  userId: authUserId, // ✅ token userId
-      type: "withdrawal",
-      source: "plan",
-      plan: source,
-      package: packageAmount,
-      amount: amt,
-      grossAmount: amt,
-      fee: totalFee,
-      netAmount: finalNetAmount,
-      description: `Withdrawal from ${source}`,
-      status: "pending",
-    });
-
-    res.json({
-      success: true,
-      message: `Withdrawal request submitted successfully`,
-      transaction: txn,
-      withdrawal,
-      withdrawableRemaining: withdrawable - amt,
-      schedule,
-    });
-
-  } catch (err) {
-    console.error("Withdraw error:", err);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 
 

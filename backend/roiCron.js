@@ -3,34 +3,56 @@ const mongoose = require("mongoose");
 const cron = require("node-cron");
 const User = require("./models/User");
 const Transaction = require("./models/Transaction");
+
 // ---------------------------
-// Migrate old numeric planIncome → object
+// 1. Helper: ROI Rate Calculator
+// ---------------------------
+const getDailyRate = (amount) => {
+  if (amount <= 50) return 4;   // 4%
+  if (amount <= 500) return 5;  // 5%
+  return 6;                     // 6%
+};
+
+// ---------------------------
+// 2. Migration: Numeric -> Object
 // ---------------------------
 async function migratePlanIncome() {
   const users = await User.find();
   for (const user of users) {
+    let changed = false;
+    
+    // Fix: planIncome number to object
     if (typeof user.planIncome === "number") {
       console.log(`Migrating user ${user.userId} planIncome from number to object...`);
       user.planIncome = {
         plan1: user.planIncome,
-        plan2: 0,
-        plan3: 0,
-        plan4: 0,
-        plan5: 0,
-        plan6: 0,
-        plan7: 0,
+        plan2: 0, plan3: 0, plan4: 0, plan5: 0, plan6: 0, plan7: 0,
       };
-      await user.save();
+      changed = true;
     }
+    
+    // Fix: Ensure dailyROI plans exist
+    if (user.dailyROI && user.dailyROI.length > 0) {
+       user.dailyROI.forEach(roi => {
+          if (!roi.plan) {
+             // Try to guess plan based on amount or default to plan1
+             const packageToPlan = { 10: "plan1", 25: "plan2", 50: "plan3", 100: "plan4", 200: "plan5", 500: "plan6", 1000: "plan7" };
+             roi.plan = packageToPlan[roi.amount] || "plan1";
+             changed = true;
+          }
+       });
+    }
+
+    if (changed) await user.save();
   }
-  console.log("✅ Migration completed.");
+  console.log("✅ Migration check completed.");
 }
 
 // ---------------------------
-// Daily Plan Income (multi-plan only)
+// 3. Daily ROI Credit Logic
 // ---------------------------
 async function runDailyPlanIncome() {
-  console.log("⏰ Running Daily Plan Income...");
+  console.log("⏰ Running Daily Plan Income Task...");
 
   const users = await User.find({ "dailyROI.0": { $exists: true } });
   const today = new Date();
@@ -39,48 +61,62 @@ async function runDailyPlanIncome() {
   for (const user of users) {
     let updated = false;
 
-    // Ensure planIncome is object
+    // Ensure planIncome structure
     if (typeof user.planIncome !== "object" || user.planIncome === null) {
-      user.planIncome = { plan1: 0, plan2: 0, plan3: 0, plan4: 0,plan5: 0,plan6: 0,plan7: 0};
+      user.planIncome = { plan1: 0, plan2: 0, plan3: 0, plan4: 0, plan5: 0, plan6: 0, plan7: 0 };
     }
 
-    // Fix old dailyROI missing plan
-    user.dailyROI.forEach(roi => {
-      if (!roi.plan) {
-        roi.plan = "plan1"; // default plan
-        updated = true;
-      }
-    });
-
+    // Loop through each active ROI package
     for (const roi of user.dailyROI) {
+      // Skip if completed
       if (roi.claimedDays >= roi.maxDays) continue;
 
+      // Determine Last Credited Date
       const lastDate = roi.lastCreditedDate ? new Date(roi.lastCreditedDate) : new Date(roi.startDate);
       lastDate.setHours(0, 0, 0, 0);
 
+      // Calculate how many days missed (e.g. if script didn't run yesterday)
+      const diffTime = Math.abs(today - lastDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+      
+      // We credit only if at least 1 day has passed
+      // But ensure we don't exceed maxDays
       const daysToCredit = Math.min(
         roi.maxDays - roi.claimedDays,
-        Math.floor((today - lastDate) / (1000 * 60 * 60 * 24))
+        diffDays
       );
+
       if (daysToCredit <= 0) continue;
 
-      const dailyAmount = roi.amount;
-      const plan = roi.plan || "plan1"; // fallback
+      // ✅ FIXED: Calculate ROI Amount (Percentage of Package)
+      const rate = getDailyRate(roi.amount);
+      const dailyAmount = (roi.amount * rate) / 100;
+      const planName = roi.plan || "plan1"; 
 
       for (let i = 1; i <= daysToCredit; i++) {
         const creditDate = new Date(lastDate);
         creditDate.setDate(creditDate.getDate() + i);
         creditDate.setHours(0, 0, 0, 0);
 
+        // Prevent Future Dates
+        if (creditDate > today) break;
+
+        // Check Duplicate Transaction for this specific date
         const alreadyCredited = await Transaction.exists({
           userId: user.userId,
           type: "plan_income",
-          plan,
-          date: { $gte: creditDate, $lt: new Date(creditDate.getTime() + 24 * 60 * 60 * 1000) },
+          plan: planName,
+          // Match roughly the same day
+          date: { 
+            $gte: creditDate, 
+            $lt: new Date(creditDate.getTime() + 24 * 60 * 60 * 1000) 
+          },
+          package: roi.amount // Check against package amount to be precise
         });
+
         if (alreadyCredited) continue;
 
-        // Update ROI
+        // --- UPDATE ROI ---
         roi.totalEarned = (roi.totalEarned || 0) + dailyAmount;
         roi.claimedDays = (roi.claimedDays || 0) + 1;
         roi.lastCreditedDate = creditDate;
@@ -93,23 +129,24 @@ async function runDailyPlanIncome() {
           date: creditDate,
         });
 
-        // Update planIncome safely
-        user.planIncome[plan] = (user.planIncome[plan] || 0) + dailyAmount;
+        // --- UPDATE WALLET / PLAN INCOME ---
+        user.planIncome[planName] = (user.planIncome[planName] || 0) + dailyAmount;
 
+        // --- CREATE TRANSACTION ---
         await Transaction.create({
           userId: user.userId,
           type: "plan_income",
-          plan,
           source: "plan",
+          plan: planName,
+          package: roi.amount,
           amount: dailyAmount,
-          description: `Daily ROI Day ${roi.claimedDays} for ${plan} ($${roi.amount})`,
+          description: `Daily ROI Day ${roi.claimedDays} (${rate}%) for Package $${roi.amount}`,
           date: creditDate,
         });
 
-        console.log(`✅ Credited $${dailyAmount.toFixed(2)} to user ${user.userId} for ${plan} on ${creditDate.toDateString()}`);
+        console.log(`✅ Credited $${dailyAmount.toFixed(2)} to User ${user.userId} (${planName}) for ${creditDate.toDateString()}`);
+        updated = true;
       }
-
-      updated = true;
     }
 
     if (updated) await user.save();
@@ -119,41 +156,38 @@ async function runDailyPlanIncome() {
 }
 
 // ---------------------------
-// Mongo Connection + Scheduler
+// 4. Start Scheduler
 // ---------------------------
- 
-// ---------------------------
-// Mongo Connection + Scheduler (Final Part)
-// ---------------------------
-
 const startCron = async () => {
   try {
-    // 1. Database Connect karein
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB connected for Cron Job");
+    if (mongoose.connection.readyState === 0) {
+        await mongoose.connect(process.env.MONGO_URI);
+        console.log("✅ MongoDB connected for Cron Job");
+    }
 
-    // 2. Migration run karein (Ek baar zaroori hai)
+    // Run Migration first
     await migratePlanIncome();
 
-    // 3. Pehli baar manual run (Optional: Server start hote hi chalane ke liye)
-    await runDailyPlanIncome();
-
-    // 4. Cron Schedule: Roz raat 12:05 AM par chalega
+    // Schedule: Every Night at 12:05 AM
     cron.schedule("5 0 * * *", async () => {
       console.log("🕒 Cron Triggered: Running Daily Income...");
       await runDailyPlanIncome();
     });
+    
+    console.log("🚀 Cron Scheduler Active (12:05 AM Daily)");
 
-    console.log("🚀 Initial Cron tasks completed & Scheduler active.");
   } catch (err) {
     console.error("❌ Cron Setup Error:", err);
-    process.exit(1); // Error aane par process band kar dein
   }
 };
 
-// Agar is file ko direct "node roiCron.js" se chalana hai
-if (require.main === module) {
-  startCron();
-}
+// Export for main server usage
+module.exports = { startCron, runDailyPlanIncome };
 
-module.exports = { runDailyPlanIncome, migratePlanIncome };
+// Allow direct execution: "node roiCron.js"
+if (require.main === module) {
+  startCron().then(() => {
+     // Optional: Run immediately for testing
+     // runDailyPlanIncome(); 
+  });
+}

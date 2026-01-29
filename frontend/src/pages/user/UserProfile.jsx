@@ -9,6 +9,8 @@ function UserProfile() {
   const navigate = useNavigate();
   const { user, updateUser, token } = useAuth();
 
+
+  
   /* ================= STATES ================= */
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -17,13 +19,28 @@ function UserProfile() {
     walletAddress: user?.walletAddress || '',
   });
 
-  const [profileTxnPassword, setProfileTxnPassword] = useState('');
 
-  const [loginPassword, setLoginPassword] = useState('');
-  const [newLoginPassword, setNewLoginPassword] = useState('');
+  const checkWalletAddress = async (address) => {
+  try {
+    const res = await api.post('/user/check-wallet', { walletAddress: address });
+    // res.data.exists = true/false
+    return res.data.exists;
+  } catch (err) {
+    console.error('Wallet check failed', err);
+    return false; // default false agar error
+  }
+};
 
-  const [currentTxnPassword, setCurrentTxnPassword] = useState('');
-  const [newTxnPassword, setNewTxnPassword] = useState('');
+const [newAddress, setNewAddress] = useState(user?.address || '');
+const isAddressAdded = Boolean(user?.address);
+
+const [profileTxnPassword, setProfileTxnPassword] = useState('');
+
+const [loginPassword, setLoginPassword] = useState('');
+const [newLoginPassword, setNewLoginPassword] = useState('');
+
+const [currentTxnPassword, setCurrentTxnPassword] = useState('');
+const [newTxnPassword, setNewTxnPassword] = useState('');
 
   const [messageModal, setMessageModal] = useState({
     open: false,
@@ -32,83 +49,126 @@ function UserProfile() {
     type: 'info',
   });
 
+  
+  
   const showMessage = (title, message, type = 'info') =>
     setMessageModal({ open: true, title, message, type });
 
   /* ================= WALLET LOCK LOGIC ================= */
-  const walletLockReason = useMemo(() => {
-    if (!user) return null;
-    if (user.role === 'admin') return null;
+const walletLockReason = useMemo(() => {
+  if (!user) return null;
+  if (user.role === 'admin') return null;
 
-    if (
-      user.pendingWithdrawals &&
-      Object.values(user.pendingWithdrawals).some(v => v > 0)
-    ) {
-      return '🔒 Wallet address cannot be changed because a withdrawal process has already started.';
-    }
+  // Pending withdrawals
+  if (
+    user.pendingWithdrawals &&
+    Object.values(user.pendingWithdrawals).some(v => v > 0)
+  ) {
+    return '🔒 Wallet address cannot be changed because a withdrawal process has already started.';
+  }
 
-    if (
-      user.walletAddressChangeCount >= 2 &&
-      user.walletAddressChangeWindowStart &&
-      Date.now() -
-        new Date(user.walletAddressChangeWindowStart).getTime() <
-        24 * 60 * 60 * 1000
-    ) {
-      return '⏳ You can change your wallet address only 2 times within 24 hours.';
-    }
+  // Wallet change limit
+  if (
+    user.walletAddressChangeCount >= 2 &&
+    user.walletAddressChangeWindowStart &&
+    Date.now() - new Date(user.walletAddressChangeWindowStart).getTime() <
+      24 * 60 * 60 * 1000
+  ) {
+    return '⏳ You can change your wallet address only 2 times within 24 hours.';
+  }
 
-    return null;
-  }, [user]);
+  // Only one address per user
+  if (user.walletAddress && formData.walletAddress && formData.walletAddress !== user.walletAddress) {
+    return '❌ Each user can have only one wallet address. Cannot add another.';
+  }
 
-  const isWalletLocked = Boolean(walletLockReason);
+  return null;
+}, [user, formData.walletAddress]);
 
+const isWalletLocked = Boolean(walletLockReason);
+
+  
   /* ================= HANDLERS ================= */
   const handleChange = e => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSaveProfile = async () => {
-    if (!profileTxnPassword) {
+const handleSaveProfile = async () => {
+  if (!profileTxnPassword) {
+    return showMessage(
+      'Transaction Password Required',
+      'Please enter your transaction password to update profile.',
+      'warning'
+    );
+  }
+
+  // Check system-wide wallet uniqueness
+  if (formData.walletAddress && formData.walletAddress !== user.walletAddress) {
+    const exists = await checkWalletAddress(formData.walletAddress);
+    if (exists) {
       return showMessage(
-        'Transaction Password Required',
-        'Please enter your transaction password to update profile.',
-        'warning'
-      );
-    }
-
-    if (isWalletLocked && formData.walletAddress !== user.walletAddress) {
-      return showMessage('Wallet Address Locked', walletLockReason, 'error');
-    }
-
-    try {
-      const payload = {
-        ...formData,
-        oldTxnPassword: profileTxnPassword,
-      };
-
-      const res = await api.put(
-        `/user/${user.userId}`,
-        payload,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      updateUser(res.data.user || res.data);
-      setProfileTxnPassword('');
-
-      showMessage(
-        'Profile Updated Successfully ✅',
-        'Your profile has been updated successfully.',
-        'success'
-      );
-    } catch (err) {
-      showMessage(
-        err.response?.status === 403 ? 'Update Blocked 🚫' : 'Error',
-        err.response?.data?.message ||
-          'Profile update blocked due to security rules.',
+        'Wallet Already Used',
+        '❌ This wallet address is already used by another user.',
         'error'
       );
     }
-  };
+  }
+
+  // Existing wallet lock rules
+  if (
+    user.pendingWithdrawals && Object.values(user.pendingWithdrawals).some(v => v > 0)
+  ) {
+    return showMessage(
+      'Wallet Address Locked',
+      '🔒 Wallet address cannot be changed because a withdrawal process has already started.',
+      'error'
+    );
+  }
+
+  const now = Date.now();
+  if (
+    user.walletAddressChangeCount >= 2 &&
+    user.walletAddressChangeWindowStart &&
+    now - new Date(user.walletAddressChangeWindowStart).getTime() < 24 * 60 * 60 * 1000
+  ) {
+    return showMessage(
+      'Wallet Address Locked',
+      '⏳ You can change your wallet address only 2 times within 24 hours.',
+      'error'
+    );
+  }
+
+  try {
+    const payload = {
+      ...formData,
+      oldTxnPassword: profileTxnPassword,
+    };
+
+    const res = await api.put(
+      `/user/${user.userId}`,
+      payload,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    updateUser(res.data.user || res.data);
+    setProfileTxnPassword('');
+
+    showMessage(
+      'Profile Updated Successfully ✅',
+      'Your profile has been updated successfully.',
+      'success'
+    );
+  } catch (err) {
+    showMessage(
+      err.response?.status === 403 ? 'Update Blocked 🚫' : 'Error',
+      err.response?.data?.message ||
+        'Profile update blocked due to security rules.',
+      'error'
+    );
+  }
+};
+
+
 
   const handleChangePassword = async type => {
     let payload;

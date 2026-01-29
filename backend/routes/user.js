@@ -184,260 +184,258 @@ router.get('/', getAllUsers);
 router.put(
   '/topup/:userId',
   authMiddleware,
-  checkFeature("allowTopUps"), // ✅ Add this
-  async (req, res) => {  try {
-    const targetUserId = Number(req.params.userId);
-    const { amount, transactionPassword } = req.body;
+  checkFeature("allowTopUps"),
+  async (req, res) => {
+    try {
+      const targetUserId = Number(req.params.userId);
+      const { amount, transactionPassword } = req.body;
 
-const currentUser = await User.findOne({ userId: req.user.userId });
+      // 🔹 1. User & Password Check
+      const currentUser = await User.findOne({ userId: req.user.userId });
+      if (!currentUser) return res.status(404).json({ message: "Current user not found" });
 
-// 🔹 SAB USERS KE LIYE TRANSACTION PASSWORD CHECK
-if (!transactionPassword) {
-  return res.status(400).json({ message: "Transaction password is required" });
-}
-
-const isValidPassword = await bcrypt.compare(
-  transactionPassword,
-  currentUser.transactionPassword
-);
-if (!isValidPassword) {
-  return res.status(403).json({ message: "Invalid transaction password" });
-}
-
-// ===============================
-// 🔴 PROMO USER TOPUP (DISPLAY ONLY)
-// ===============================
-if (currentUser.role === "promo") {
-   
-
-   
-  return res.json({
-    success: true,
-    message: "PROMO TOPUP RECORDED (PASSWORD VERIFIED)",
-  });
-}
-
-// 🔹 Normal user flow continues here...
-if (!amount)
-  return res.status(400).json({ message: 'Missing amount.' });
-
-    
-    if (!currentUser || currentUser.role !== 'user')
-      return res.status(403).json({ message: 'Only regular users can perform top-up.' });
-
-    
-
-    const targetUser = await User.findOne({ userId: targetUserId });
-    if (!targetUser)
-      return res.status(404).json({ message: 'Target user not found' });
-
-    const isSelf = targetUserId === currentUser.userId;
-    const isInDownline =
-      isSelf || (await isUserInDownline(currentUser.userId, targetUserId));
-    if (!isInDownline)
-      return res.status(403).json({ message: 'Not authorized to top up this user.' });
-
-    if (targetUser.dailyROI.some(p => p.amount === amount))
-      return res
-        .status(400)
-        .json({ message: `Package $${amount} already purchased.` });
-
-   // 🔐 Wallet checks ONLY for normal users
-if (currentUser.role === 'user' && currentUser.walletBalance < amount)
-  return res.status(400).json({ message: 'Insufficient balance in wallet' });
-
-// 🔻 Deduct from funder wallet (ONLY user)
-if (currentUser.role === 'user') {
-  currentUser.walletBalance -= amount;
-  await currentUser.save();
-}
-
-
-    const packageToPlan = {
-      10: "plan1",
-      25: "plan2",
-      50: "plan3",
-      100: "plan4",
-      200: "plan5",
-      500: "plan6",
-      1000: "plan7"
-    };
-    const assignedPlan = packageToPlan[amount] || "plan1";
-
-    const createTransaction = async (data) =>
-      Transaction.create({ ...data, date: new Date() });
-if (isSelf) {
-  // ✅ SELF TOP-UP → ONLY ONE TRANSACTION
-  await createTransaction({
-    userId: targetUser.userId,
-    type: "topup",
-    source: "topup",
-    amount,
-    fromUserId: currentUser.userId,
-    toUserId: targetUser.userId,
-    description: `Self top-up of $${amount}`,
-    package: amount,
-    plan: assignedPlan,
-  });
-} else {
-  // ✅ DOWNLINE TOP-UP → TWO TRANSACTIONS
-  await createTransaction({
-    userId: currentUser.userId,
-    type: "topup",
-    source: "topup",
-    amount,
-    fromUserId: currentUser.userId,
-    toUserId: targetUser.userId,
-    description: `Top-up sent to user ${targetUser.userId}`,
-    package: amount,
-    plan: assignedPlan,
-  });
-
-  await createTransaction({
-    userId: targetUser.userId,
-    type: "topup",
-    source: "topup",
-    amount,
-    fromUserId: currentUser.userId,
-    toUserId: targetUser.userId,
-    description: `Top-up received from user ${currentUser.userId}`,
-    package: amount,
-    plan: assignedPlan,
-  });
-}
-
-
-    // Log in TopUp collection
-    await TopUp.create({
-      funderUserId: currentUser.userId,
-      targetUserId: targetUser.userId,
-      amount,
-      plan: assignedPlan,
-      date: new Date(),
-    });
-
-    // Apply top-up to target user
-    targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
-    targetUser.topUpDate = new Date();
-    targetUser.isToppedUp = true;
-
-    const dailyIncome = amount;
-    const maxDays = 10;
-
-    targetUser.dailyROI.push({
-      amount,
-      startDate: new Date(),
-      claimedDays: 1,
-      maxDays,
-      totalEarned: dailyIncome,
-      plan: assignedPlan,
-    });
-
-    // Credit Day 1 ROI instantly
-    targetUser.planIncome =
-      targetUser.planIncome || {
-        plan1: 0, plan2: 0, plan3: 0,
-        plan4: 0, plan5: 0, plan6: 0, plan7: 0
-      };
-    targetUser.planIncome[assignedPlan] += dailyIncome;
-
-    await createTransaction({
-      userId: targetUser.userId,
-      type: "plan_income",
-      source: "plan",
-      amount: dailyIncome,
-      description: `Day 1 ROI credited for package $${amount}`,
-      package: amount,
-      plan: assignedPlan,
-    });
-
-    // Direct & Level Income
-    const distributeLevelIncome = async (
-      currentUserId,
-      topupUserId,
-      pkgAmount,
-      level = 1
-    ) => {
-      if (level > 20) return;
-
-      const current = await User.findOne({ userId: currentUserId });
-      if (!current?.sponsorId) return;
-
-      const sponsor = await User.findOne({ userId: current.sponsorId });
-      if (!sponsor) return;
-
-      let rate = 0;
-      if (level <= 5) rate = 4;
-      else if (level <= 10) rate = 3;
-      else if (level <= 15) rate = 2;
-      else if (level <= 20) rate = 1;
-
-      if (rate > 0) {
-        const income = (pkgAmount * rate) / 100;
-        sponsor.levelIncome = (sponsor.levelIncome || 0) + income;
-        await sponsor.save();
-
-        await createTransaction({
-          userId: sponsor.userId,
-          fromUserId: topupUserId,
-          type: "level_income",
-          source: "level",
-          amount: income,
-          description: `Level ${level} income from user ${topupUserId}`,
-          package: pkgAmount,
-          plan: assignedPlan,
-        });
+      if (!transactionPassword) {
+        return res.status(400).json({ message: "Transaction password is required" });
+      }
+      const isValidPassword = await bcrypt.compare(transactionPassword, currentUser.transactionPassword);
+      if (!isValidPassword) {
+        return res.status(403).json({ message: "Invalid transaction password" });
       }
 
-      await distributeLevelIncome(
-        sponsor.userId,
-        topupUserId,
-        pkgAmount,
-        level + 1
-      );
-    };
+      if (!amount) return res.status(400).json({ message: 'Missing amount.' });
 
-    if (targetUser.sponsorId) {
-      const sponsor = await User.findOne({ userId: targetUser.sponsorId });
-      if (sponsor) {
-        const directIncome = (amount * 25) / 100;
-        sponsor.directIncome =
-          (sponsor.directIncome || 0) + directIncome;
-        await sponsor.save();
+      const targetUser = await User.findOne({ userId: targetUserId });
+      if (!targetUser) return res.status(404).json({ message: 'Target user not found' });
 
+      // 🔹 2. Authorization (Self or Downline)
+      const isSelf = targetUserId === currentUser.userId;
+      const isInDownline = isSelf || (await isUserInDownline(currentUser.userId, targetUserId));
+      if (!isInDownline) {
+        return res.status(403).json({ message: 'Not authorized to top up this user.' });
+      }
+
+      // 🔹 3. Package Validation & Step-by-Step Check
+      // Available Packages List
+      const allPackages = [10, 25, 50, 100, 200, 500, 1000];
+      
+      if (!allPackages.includes(amount)) {
+        return res.status(400).json({ message: "Invalid package amount." });
+      }
+
+      // Check duplicate
+      if (targetUser.dailyROI.some(p => p.amount === amount)) {
+        return res.status(400).json({ message: `Package $${amount} already purchased.` });
+      }
+
+      // ✅ LOGIC: Step-by-Step Restriction (Above 100)
+      if (amount > 100) {
+        const currentIndex = allPackages.indexOf(amount);
+        const previousPackageAmount = allPackages[currentIndex - 1];
+
+        // Check if user has the previous package active/purchased
+        const hasPreviousPackage = targetUser.dailyROI.some(p => p.amount === previousPackageAmount);
+        
+        if (!hasPreviousPackage) {
+          return res.status(400).json({ 
+            message: `Locked! You must purchase the $${previousPackageAmount} package before buying $${amount}.` 
+          });
+        }
+      }
+
+      // 🔹 4. Wallet Balance Check (Skip for Promo)
+      if (currentUser.role !== 'promo') {
+        if (currentUser.walletBalance < amount) {
+          return res.status(400).json({ message: 'Insufficient balance in wallet' });
+        }
+        // Deduct
+        currentUser.walletBalance -= amount;
+        await currentUser.save();
+      }
+
+      // 🔹 5. Plan Mapping & ROI Calculation
+      const packageToPlan = {
+        10: "plan1", 25: "plan2", 50: "plan3",
+        100: "plan4", 200: "plan5", 500: "plan6",
+        1000: "plan7"
+      };
+      const assignedPlan = packageToPlan[amount] || "plan1";
+
+      // ✅ LOGIC: Dynamic ROI % based on Package
+      let roiPercent = 0;
+      if (amount <= 50) {
+        roiPercent = 4; // 10, 25, 50 -> 4%
+      } else if (amount <= 500) {
+        roiPercent = 5; // 100, 200, 500 -> 5%
+      } else {
+        roiPercent = 6; // 1000 -> 6%
+      }
+
+      const dailyIncome = (amount * roiPercent) / 100;
+      const totalReturnTarget = amount * 2; // 2x Earning
+      const maxDays = Math.ceil(totalReturnTarget / dailyIncome); // Calculate days automatically
+
+      // Helper for Transactions
+      const createTransaction = async (data) => Transaction.create({ ...data, date: new Date() });
+
+      // 🔹 6. Record Transactions
+      const descSuffix = currentUser.role === 'promo' ? ' (Promo)' : '';
+      
+      if (isSelf) {
         await createTransaction({
-          userId: sponsor.userId,
-          fromUserId: targetUser.userId,
-          type: "direct_income",
-          source: "direct",
-          amount: directIncome,
-          description: `Direct income from user ${targetUser.userId}`,
+          userId: targetUser.userId,
+          type: "topup",
+          source: "topup",
+          amount,
+          fromUserId: currentUser.userId,
+          toUserId: targetUser.userId,
+          description: `Self top-up of $${amount}${descSuffix}`,
           package: amount,
           plan: assignedPlan,
         });
-
-        await distributeLevelIncome(
-          sponsor.userId,
-          targetUser.userId,
-          amount
-        );
+      } else {
+        // Sender Debit Record
+        await createTransaction({
+          userId: currentUser.userId,
+          type: "topup",
+          source: "topup",
+          amount,
+          fromUserId: currentUser.userId,
+          toUserId: targetUser.userId,
+          description: `Top-up sent to user ${targetUser.userId}${descSuffix}`,
+          package: amount,
+          plan: assignedPlan,
+        });
+        // Receiver Credit Record
+        await createTransaction({
+          userId: targetUser.userId,
+          type: "topup",
+          source: "topup",
+          amount,
+          fromUserId: currentUser.userId,
+          toUserId: targetUser.userId,
+          description: `Top-up received from user ${currentUser.userId}`,
+          package: amount,
+          plan: assignedPlan,
+        });
       }
+
+      // TopUp Collection Log
+      await TopUp.create({
+        funderUserId: currentUser.userId,
+        targetUserId: targetUser.userId,
+        amount,
+        plan: assignedPlan,
+        date: new Date(),
+      });
+
+      // 🔹 7. Update Target User Profile (ROI Push)
+      targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
+      targetUser.topUpDate = new Date();
+      targetUser.isToppedUp = true;
+
+      targetUser.dailyROI.push({
+        amount,
+        startDate: new Date(),
+        claimedDays: 1, // Giving Day 1 instantly?
+        maxDays,
+        totalEarned: dailyIncome,
+        plan: assignedPlan,
+      });
+
+      // Credit Day 1 ROI instantly
+      targetUser.planIncome = targetUser.planIncome || { plan1: 0, plan2: 0, plan3: 0, plan4: 0, plan5: 0, plan6: 0, plan7: 0 };
+      targetUser.planIncome[assignedPlan] += dailyIncome;
+
+      await createTransaction({
+        userId: targetUser.userId,
+        type: "plan_income",
+        source: "plan",
+        amount: dailyIncome,
+        description: `Day 1 ROI (${roiPercent}%) credited for package $${amount}`,
+        package: amount,
+        plan: assignedPlan,
+      });
+
+      // 🔹 8. Income Distribution (Direct & Level)
+
+      // ✅ A. LEVEL INCOME (10 Levels, 1% Each)
+      const distributeLevelIncome = async (currentUserId, topupUserId, pkgAmount, level = 1) => {
+        // Stop after 10 levels
+        if (level > 10) return;
+
+        const current = await User.findOne({ userId: currentUserId });
+        if (!current?.sponsorId) return;
+
+        const sponsor = await User.findOne({ userId: current.sponsorId });
+        if (!sponsor) return;
+
+        // Flat 1% for all 10 levels
+        const rate = 1; 
+        
+        if (rate > 0) {
+          const income = (pkgAmount * rate) / 100;
+          sponsor.levelIncome = (sponsor.levelIncome || 0) + income;
+          await sponsor.save();
+
+          await createTransaction({
+            userId: sponsor.userId,
+            fromUserId: topupUserId,
+            type: "level_income",
+            source: "level",
+            amount: income,
+            description: `Level ${level} income (1%) from user ${topupUserId}`,
+            package: pkgAmount,
+            plan: assignedPlan,
+          });
+        }
+
+        // Recursive Call
+        await distributeLevelIncome(sponsor.userId, topupUserId, pkgAmount, level + 1);
+      };
+
+      if (targetUser.sponsorId) {
+        const sponsor = await User.findOne({ userId: targetUser.sponsorId });
+        if (sponsor) {
+          // ✅ B. DIRECT INCOME (10%)
+          const directIncome = (amount * 10) / 100;
+          
+          sponsor.directIncome = (sponsor.directIncome || 0) + directIncome;
+          await sponsor.save();
+
+          await createTransaction({
+            userId: sponsor.userId,
+            fromUserId: targetUser.userId,
+            type: "direct_income",
+            source: "direct",
+            amount: directIncome,
+            description: `Direct income (10%) from user ${targetUser.userId}`,
+            package: amount,
+            plan: assignedPlan,
+          });
+
+          // Trigger Level Income (starting from sponsor's sponsor, or including sponsor as level 1? 
+          // Usually direct is separate, and level starts from upline. 
+          // Assuming standard flow: pass sponsor ID to start level distribution upwards)
+          await distributeLevelIncome(sponsor.userId, targetUser.userId, amount, 1);
+        }
+      }
+
+      await targetUser.save();
+
+      res.json({
+        success: true,
+        message: `Top-up successful: Package $${amount} purchased (${roiPercent}% Daily).`,
+        funderUserId: currentUser.userId,
+        targetUserId: targetUser.userId,
+        funderBalance: currentUser.walletBalance,
+      });
+
+    } catch (err) {
+      console.error('Top-up Error:', err);
+      res.status(500).json({ message: 'Server error during top-up' });
     }
-
-    await targetUser.save();
-
-    res.json({
-      message: `Top-up successful: Package $${amount} purchased.`,
-      funderUserId: currentUser.userId,
-      targetUserId: targetUser.userId,
-      funderBalance: currentUser.walletBalance,
-    });
-
-  } catch (err) {
-    console.error('Top-up Error:', err);
-    res.status(500).json({ message: 'Server error during top-up' });
   }
-});
+);
 
 
 
@@ -638,72 +636,43 @@ router.get('/sponsor-name/:id', async (req, res) => {
 // Update user
 router.put('/:userId', authMiddleware, async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      mobile,
-      walletAddress,
-      oldTxnPassword
-    } = req.body;
-
+    const { walletAddress, oldTxnPassword, name, email, mobile } = req.body;
     const user = await User.findOne({ userId: Number(req.params.userId) });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // 🔐 txn password verify
+    // ✅ Transaction password verify
     const validTxn = await bcrypt.compare(oldTxnPassword, user.transactionPassword);
     if (!validTxn)
       return res.status(403).json({ message: 'Invalid transaction password' });
 
-    const isAdmin = req.user.role === 'admin';
-    const isWalletChanged =
-      walletAddress && walletAddress !== user.walletAddress;
-
-    /* ===========================
-       🔒 WALLET ADDRESS RULES
-       =========================== */
-    if (isWalletChanged && !isAdmin) {
-
-      // ❌ Withdrawal hua hai → lock
-      if (user.pendingWithdrawals &&
-          Object.values(user.pendingWithdrawals).some(v => v > 0)) {
+    // 🔒 Wallet uniqueness check
+    if (walletAddress && walletAddress !== user.walletAddress) {
+      const exists = await User.findOne({ walletAddress });
+      if (exists)
         return res.status(403).json({
-          message: 'Wallet address locked due to withdrawal'
+          message: 'This wallet address is already used by another user.',
         });
-      }
+
+      // Optional: check 2 times/24h limit, pending withdrawals, etc.
+      if (user.pendingWithdrawals && Object.values(user.pendingWithdrawals).some(v => v > 0))
+        return res.status(403).json({ message: 'Wallet locked due to pending withdrawal.' });
 
       const now = new Date();
+      if (!user.walletAddressChangeWindowStart || now - user.walletAddressChangeWindowStart > 24*60*60*1000)
+        user.walletAddressChangeCount = 0, user.walletAddressChangeWindowStart = now;
 
-      // Reset window if 24h passed
-      if (
-        !user.walletAddressChangeWindowStart ||
-        now - user.walletAddressChangeWindowStart > 24 * 60 * 60 * 1000
-      ) {
-        user.walletAddressChangeCount = 0;
-        user.walletAddressChangeWindowStart = now;
-      }
+      if (user.walletAddressChangeCount >= 2)
+        return res.status(403).json({ message: 'Wallet can be changed max 2 times in 24h.' });
 
-      // ❌ limit reached
-      if (user.walletAddressChangeCount >= 2) {
-        return res.status(403).json({
-          message: 'Wallet address can be changed only 2 times in 24 hours'
-        });
-      }
-
-      // ✅ save history
-      if (user.walletAddress) {
-        user.walletAddressHistory.push({
-          address: user.walletAddress,
-          changedAt: now,
-        });
-      }
+      // Save history
+      if (user.walletAddress)
+        user.walletAddressHistory.push({ address: user.walletAddress, changedAt: now });
 
       user.walletAddress = walletAddress;
       user.walletAddressChangeCount += 1;
     }
 
-    /* ===========================
-       NORMAL PROFILE UPDATE
-       =========================== */
+    // Update other profile info
     if (name) user.name = name;
     if (email) user.email = email;
     if (mobile) user.mobile = mobile;
@@ -712,10 +681,18 @@ router.put('/:userId', authMiddleware, async (req, res) => {
     res.json({ user });
 
   } catch (err) {
-    console.error('Profile update error:', err);
+    console.error(err);
     res.status(500).json({ message: 'Profile update failed' });
   }
 });
+
+router.post('/check-wallet', async (req, res) => {
+  const { walletAddress } = req.body;
+  const exists = await User.findOne({ walletAddress });
+  res.json({ exists: !!exists });
+});
+
+
 
 
 // ---------------------------

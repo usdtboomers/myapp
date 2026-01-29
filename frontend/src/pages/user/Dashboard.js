@@ -1,9 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import api from "api/axios";
-import { ChevronDown, Menu, Bell, Home, UserCircle2, BadgeDollarSign, History, Banknote, Users, BarChart, Wallet, HelpCircle, LogOut } from "lucide-react";
-
-// ✅ REAL IMPORTS (Jab aap apne project mein use karein to inhein uncomment karein)
-
+import api from "../../api/axios"; // Path adjust karein
 import { useNavigate } from "react-router-dom"; 
 import { useAuth } from "../../context/AuthContext";
 import Sidebar from "../../components/sidebar/Sidebar";
@@ -23,12 +19,10 @@ import TopNav from "../../components/navbar/TopNav";
 import BinarySummary from "../../components/dashboard/BinarySummary";
 import WalletReminderModal from "../../components/modals/WalletReminderModal";
 
- 
-
 const Dashboard = () => {
   const { user, token, setUser, logout } = useAuth();
   const navigate = useNavigate(); 
-  const [showSidebar, setShowSidebar] = useState(false); // Mobile sidebar state
+  const [showSidebar, setShowSidebar] = useState(false); 
 
   const [walletRefreshKey, setWalletRefreshKey] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -39,7 +33,6 @@ const Dashboard = () => {
     spinIncome: 0,
     availableSpins: 0,
   });
- 
 
   const [modalState, setModalState] = useState({
     showDeposit: false,
@@ -61,9 +54,7 @@ const Dashboard = () => {
 
   // Fetch user + income
   const fetchUserData = async () => {
- 
     if (!token || !user?.userId) return;
-    
 
     try {
        setLoading(true);
@@ -74,21 +65,19 @@ const Dashboard = () => {
        const incomeRes = await api.get(`/wallet/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
        setIncome({ ...incomeRes.data });
     } catch (err) {
-      console.error("Failed to fetch user or income:", err);
-      if (err?.response?.status === 401) logout();
+       console.error("Failed to fetch user or income:", err);
+       if (err?.response?.status === 401) logout();
     } finally {
-      setLoading(false);
+       setLoading(false);
     }
   };
 
- // 1. Reset logic
   useEffect(() => {
     if (user?.userId) {
         hasFetched.current = false;
     }
   }, [user?.userId]);
 
-  // 2. Fetch logic
   useEffect(() => {
     if (!hasFetched.current && token && user?.userId) {
       hasFetched.current = true;
@@ -96,7 +85,6 @@ const Dashboard = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.userId, token]); 
-  // 👆 Yahan tak change hai
 
   const handleTopUpSuccess = async (amount = 0, userId = "") => {
     await fetchUserData();
@@ -155,24 +143,20 @@ const Dashboard = () => {
         <Sidebar user={user} isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
 
         {/* Main Content Area */}
-        <main className="flex-1 w-full max-w-full overflow-y-auto pb-20 custom-scroll rounded-2xl   bg-slate-900/30 backdrop-blur-sm p-1 md:p-6 shadow-2xl lg:mt-2">
+        <main className="flex-1 w-full max-w-full overflow-y-auto pb-20 custom-scroll rounded-2xl bg-slate-900/30 backdrop-blur-sm p-1 md:p-6 shadow-2xl lg:mt-2">
           
           {/* Welcome Header */}
-         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-  <div>
-    <h1 className="text-2xl md:text-3xl font-bold text-white">
-      Welcome back,{" "}
-      <span className="text-yellow-500 font-bold">
-        {user?.name || "User"}
-      </span>
-        
-    </h1>
-  </div>
-</div>
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">
+                Welcome back,{" "}
+                <span className="text-yellow-500 font-bold">
+                  {user?.name || "User"}
+                </span>
+              </h1>
+            </div>
+          </div>
 
-
-             
- 
           <div className="space-y-8">
             {/* Wallet Balance */}
             <section className="relative z-10">
@@ -197,29 +181,32 @@ const Dashboard = () => {
 
             {/* Income Summary & Binary */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-               <div className="bg-slate-800/40   p-1 h-full">
+               <div className="bg-slate-800/40 p-1 h-full">
                   <IncomeSummary income={income} user={user} />
                </div>
                <div className="space-y-6">
                   <ReferralLink link={referralLink} />
-                  <BinarySummary />
                </div>
             </div>
 
+ <section>
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <span className="w-1 h-6 bg-green-500 rounded-full"></span> Investment Plans
+                </h3>
+                {/* Ab ye hamesha render hoga */}
+                <DailyROIPlan dailyROI={user.dailyROI || []} onClaim={claimDailyROI} />
+            </section>
+            
             {/* Withdrawals Table */}
             <section>
                <PackageWithdrawals />
             </section>
+                              <BinarySummary />
 
-            {/* Daily ROI */}
-            {user.dailyROI && user.dailyROI.length > 0 && (
-              <section>
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <span className="w-1 h-6 bg-green-500 rounded-full"></span> Active Investments
-                </h3>
-                <DailyROIPlan dailyROI={user.dailyROI} onClaim={claimDailyROI} />
-              </section>
-            )}
+
+            {/* ✅ FIXED: Active Investments (Now shows even if user has 0 plans) */}
+           
+
           </div>
 
           {/* General Modals */}

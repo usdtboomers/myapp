@@ -4,9 +4,11 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const listEndpoints = require('express-list-endpoints');
 
-// 📦 Routes aur Cron functions import karein
+// 📦 Routes import
 const allRoutes = require('./routes');
-const { runDailyPlanIncome, migratePlanIncome } = require('./roiCron');
+
+// ✅ CHANGE 1: Sirf 'startCron' import karein (Yeh sab kuch handle karega)
+const { startCron } = require('./roiCron');
 
 const app = express();
 
@@ -16,24 +18,22 @@ app.use(express.json());
 // Routes setup
 app.use('/api', allRoutes);
 
-// Debugging: API list dekhne ke liye
+// Debugging: API list print
 console.log(listEndpoints(app));
 
 // 🌐 Connect to MongoDB and start server
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(async () => {  // <-- Yahan 'async' lagaya hai taaki await kaam kare
+mongoose.connect(process.env.MONGO_URI) // options ki zaroorat nahi hoti naye mongoose me
+.then(async () => { 
   console.log('✅ MongoDB connected');
 
   try {
-    // Database connect hote hi migration aur cron functions chalenge
-    await migratePlanIncome();
-    await runDailyPlanIncome();
-    console.log('✅ Initial Cron tasks completed');
+    // ✅ CHANGE 2: 'startCron' call karein. 
+    // Yeh Migration karega -> Daily Income dega -> Aur Raat 12 baje ka Timer set karega.
+    await startCron(); 
+    
+    console.log('✅ Cron Scheduler & Initial Tasks Started');
   } catch (error) {
-    console.error('⚠️ Error running cron functions:', error);
+    console.error('⚠️ Error starting Cron:', error);
   }
 
   const PORT = process.env.PORT || 5000;
