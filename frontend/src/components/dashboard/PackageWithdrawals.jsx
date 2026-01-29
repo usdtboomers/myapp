@@ -150,7 +150,7 @@ const PackageWithdrawals = () => {
               <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                   <BarChart3 size={40} />
               </div>
-              <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-bold tracking-wider">Total Limit (2x)</span>
+              <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-bold tracking-wider">Total Limit </span>
               <div className="text-2xl sm:text-3xl font-black text-white mt-1">
                  ${summary.totalMax.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
               </div>
