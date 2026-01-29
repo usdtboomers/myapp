@@ -214,9 +214,8 @@ router.put(
         return res.status(403).json({ message: 'Not authorized to top up this user.' });
       }
 
-      // 🔹 3. Package Validation & Step-by-Step Check
-      // Available Packages List
-      const allPackages = [10, 25, 50, 100, 200, 500, 1000];
+      // 🔹 3. Package Validation
+     const allPackages = [10, 25, 50, 100, 200, 500, 1000];
       
       if (!allPackages.includes(amount)) {
         return res.status(400).json({ message: "Invalid package amount." });
@@ -227,7 +226,8 @@ router.put(
         return res.status(400).json({ message: `Package $${amount} already purchased.` });
       }
 
-      // ✅ LOGIC: Step-by-Step Restriction (Above 100)
+      // ✅ NEW LOGIC: Restriction only applies for amounts > 100
+      // Matlab 10, 25, 50, 100 koi bhi le sakta hai bina pichle package ke.
       if (amount > 100) {
         const currentIndex = allPackages.indexOf(amount);
         const previousPackageAmount = allPackages[currentIndex - 1];
@@ -242,17 +242,16 @@ router.put(
         }
       }
 
-      // 🔹 4. Wallet Balance Check (Skip for Promo)
+      // 🔹 4. Wallet Balance Check
       if (currentUser.role !== 'promo') {
         if (currentUser.walletBalance < amount) {
           return res.status(400).json({ message: 'Insufficient balance in wallet' });
         }
-        // Deduct
         currentUser.walletBalance -= amount;
         await currentUser.save();
       }
 
-      // 🔹 5. Plan Mapping & ROI Calculation
+      // 🔹 5. Plan Calculation
       const packageToPlan = {
         10: "plan1", 25: "plan2", 50: "plan3",
         100: "plan4", 200: "plan5", 500: "plan6",
@@ -260,24 +259,19 @@ router.put(
       };
       const assignedPlan = packageToPlan[amount] || "plan1";
 
-      // ✅ LOGIC: Dynamic ROI % based on Package
       let roiPercent = 0;
-      if (amount <= 50) {
-        roiPercent = 4; // 10, 25, 50 -> 4%
-      } else if (amount <= 500) {
-        roiPercent = 5; // 100, 200, 500 -> 5%
-      } else {
-        roiPercent = 6; // 1000 -> 6%
-      }
+      if (amount <= 50) roiPercent = 4;
+      else if (amount <= 500) roiPercent = 5;
+      else roiPercent = 6;
 
       const dailyIncome = (amount * roiPercent) / 100;
-      const totalReturnTarget = amount * 2; // 2x Earning
-      const maxDays = Math.ceil(totalReturnTarget / dailyIncome); // Calculate days automatically
+      const totalReturnTarget = amount * 2; 
+      const maxDays = Math.ceil(totalReturnTarget / dailyIncome);
 
-      // Helper for Transactions
+      // Helper
       const createTransaction = async (data) => Transaction.create({ ...data, date: new Date() });
 
-      // 🔹 6. Record Transactions
+      // 🔹 6. Record Topup Transactions
       const descSuffix = currentUser.role === 'promo' ? ' (Promo)' : '';
       
       if (isSelf) {
@@ -293,7 +287,6 @@ router.put(
           plan: assignedPlan,
         });
       } else {
-        // Sender Debit Record
         await createTransaction({
           userId: currentUser.userId,
           type: "topup",
@@ -305,7 +298,6 @@ router.put(
           package: amount,
           plan: assignedPlan,
         });
-        // Receiver Credit Record
         await createTransaction({
           userId: targetUser.userId,
           type: "topup",
@@ -319,7 +311,6 @@ router.put(
         });
       }
 
-      // TopUp Collection Log
       await TopUp.create({
         funderUserId: currentUser.userId,
         targetUserId: targetUser.userId,
@@ -328,39 +319,26 @@ router.put(
         date: new Date(),
       });
 
-      // 🔹 7. Update Target User Profile (ROI Push)
+      // 🔹 7. Update Target User Profile (ROI Setup ONLY - NO INSTANT CREDIT)
       targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
       targetUser.topUpDate = new Date();
       targetUser.isToppedUp = true;
 
+      // ✅ CHANGE HERE: claimedDays 0 aur totalEarned 0 kar diya
       targetUser.dailyROI.push({
         amount,
         startDate: new Date(),
-        claimedDays: 1, // Giving Day 1 instantly?
+        claimedDays: 0,   // ✅ Started at 0 (Cron will handle Day 1 tomorrow)
         maxDays,
-        totalEarned: dailyIncome,
+        totalEarned: 0,   // ✅ Started at 0
         plan: assignedPlan,
       });
 
-      // Credit Day 1 ROI instantly
-      targetUser.planIncome = targetUser.planIncome || { plan1: 0, plan2: 0, plan3: 0, plan4: 0, plan5: 0, plan6: 0, plan7: 0 };
-      targetUser.planIncome[assignedPlan] += dailyIncome;
-
-      await createTransaction({
-        userId: targetUser.userId,
-        type: "plan_income",
-        source: "plan",
-        amount: dailyIncome,
-        description: `Day 1 ROI (${roiPercent}%) credited for package $${amount}`,
-        package: amount,
-        plan: assignedPlan,
-      });
+      // ❌ REMOVED: Instant Plan Income Credit logic
+      // ❌ REMOVED: Instant Transaction log for ROI
 
       // 🔹 8. Income Distribution (Direct & Level)
-
-      // ✅ A. LEVEL INCOME (10 Levels, 1% Each)
       const distributeLevelIncome = async (currentUserId, topupUserId, pkgAmount, level = 1) => {
-        // Stop after 10 levels
         if (level > 10) return;
 
         const current = await User.findOne({ userId: currentUserId });
@@ -369,9 +347,7 @@ router.put(
         const sponsor = await User.findOne({ userId: current.sponsorId });
         if (!sponsor) return;
 
-        // Flat 1% for all 10 levels
         const rate = 1; 
-        
         if (rate > 0) {
           const income = (pkgAmount * rate) / 100;
           sponsor.levelIncome = (sponsor.levelIncome || 0) + income;
@@ -388,17 +364,13 @@ router.put(
             plan: assignedPlan,
           });
         }
-
-        // Recursive Call
         await distributeLevelIncome(sponsor.userId, topupUserId, pkgAmount, level + 1);
       };
 
       if (targetUser.sponsorId) {
         const sponsor = await User.findOne({ userId: targetUser.sponsorId });
         if (sponsor) {
-          // ✅ B. DIRECT INCOME (10%)
           const directIncome = (amount * 10) / 100;
-          
           sponsor.directIncome = (sponsor.directIncome || 0) + directIncome;
           await sponsor.save();
 
@@ -413,9 +385,6 @@ router.put(
             plan: assignedPlan,
           });
 
-          // Trigger Level Income (starting from sponsor's sponsor, or including sponsor as level 1? 
-          // Usually direct is separate, and level starts from upline. 
-          // Assuming standard flow: pass sponsor ID to start level distribution upwards)
           await distributeLevelIncome(sponsor.userId, targetUser.userId, amount, 1);
         }
       }
@@ -424,7 +393,7 @@ router.put(
 
       res.json({
         success: true,
-        message: `Top-up successful: Package $${amount} purchased (${roiPercent}% Daily).`,
+        message: `Top-up successful: Package $${amount} purchased. ROI starts in 24 hours.`,
         funderUserId: currentUser.userId,
         targetUserId: targetUser.userId,
         funderBalance: currentUser.walletBalance,
