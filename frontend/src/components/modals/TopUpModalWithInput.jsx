@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react"; // 1. useMemo add kiya
-import api from "../../api/axios"; // Path check kar lena
+import React, { useState, useEffect, useMemo } from "react";
+import api from "../../api/axios"; // Path check kar lena agar alag ho to
 import SuccessModal from "./SuccessModal";
 import MessageModal from "./MessageModal";
 import { useAuth } from "../../context/AuthContext";
@@ -57,15 +57,13 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
     fetchBalance();
   }, [loggedInUser?.userId, token]);
 
-  // ---------------------------------------------------------
-  // ✅ 2. YEH MISSING THA (User Package Status Calculation)
-  // ---------------------------------------------------------
+  // --- 2. Calculate User's Package Status (Logic Setup) ---
   const userPackageStatus = useMemo(() => {
     if (!userInfo) return { boughtSet: new Set(), nextAvailable: 10 };
 
     const bought = new Set(userInfo.dailyROI?.map(p => Number(p.amount)) || []);
     
-    // Auto-select logic: Find first unbought package
+    // Auto-select logic logic (optional)
     let next = 10; 
     for (let i = 0; i < packages.length; i++) {
         if (!bought.has(packages[i])) {
@@ -77,13 +75,12 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
     return { boughtSet: bought, nextAvailable: next };
   }, [userInfo]);
 
-  // ✅ Auto-Select Effect
+  // --- 3. Auto Select Next Available ---
   useEffect(() => {
     if (userInfo && userPackageStatus.nextAvailable) {
         setSelectedAmount(userPackageStatus.nextAvailable);
     }
   }, [userInfo, userPackageStatus.nextAvailable]);
-  // ---------------------------------------------------------
 
 
   // --- LOGIC: Fetch User ---
@@ -101,11 +98,13 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
 
   // --- LOGIC: Handle Top Up ---
   const handleTopUp = async () => {
+    // 1. Basic Checks
     if (!userInfo) return showMessage("Error", "❌ Please fetch user first.", "error");
 
     if (!transactionPassword)
       return showMessage("Error", "❌ Enter transaction password.", "error");
 
+    // Wallet Balance Check (Skip for Promo Users)
     if (!isPromoUser && walletBalance < selectedAmount)
       return showMessage(
         "Error",
@@ -113,24 +112,30 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
         "error"
       );
 
-    // 🔹 STRICT VALIDATION
+    // 🔹 2. PACKAGE RESTRICTIONS (LOGIC UPDATE)
     if (!isPromoUser) {
-        // ✅ Rule: Lock sirf tab check hoga jab amount > 100 ho
+        
+        // Rule A: Lock tabhi check karein jab Amount > 100 ho
+        // (10, 25, 50, 100 are FREE TO BUY)
         if (selectedAmount > 100) { 
             const currentIndex = packages.indexOf(selectedAmount);
             if (currentIndex > 0) {
                 const prevPackage = packages[currentIndex - 1];
-                // Check if previous package is bought
+                
+                // Agar pichla package nahi khareeda hai to error do
                 if (!userPackageStatus.boughtSet.has(prevPackage)) {
                     return showMessage("Locked", `🔒 You must unlock Plan $${prevPackage} first!`, "warning");
                 }
             }
         }
+
+        // Rule B: Already Active Check (Duplicate purchase rokne ke liye)
         if (userPackageStatus.boughtSet.has(selectedAmount)) {
              return showMessage("Active", `✅ You already have Plan $${selectedAmount}.`, "warning");
         }
     }
 
+    // 3. API Call & Processing
     setLoading(true);
     try {
       await api.put(
@@ -139,14 +144,17 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      // Success Handling
       setSuccessData({ userId: userInfo.userId, name: userInfo.name, amount: selectedAmount });
       setSuccessModalOpen(true);
 
+      // Refresh User Data (Jis user ka topup kiya uska data refresh karo)
       const refreshedRes = await api.get(`/user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const refreshedUser = refreshedRes.data.user;
 
+      // Agar khud ka topup kiya hai to Auth Context update karo (Balance update ke liye)
       if (Number(userId) === loggedInUser.userId) {
         login(refreshedUser, token);
         setWalletBalance(refreshedUser.walletBalance);
@@ -155,6 +163,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
       }
 
       if (onTopUpSuccess) onTopUpSuccess();
+
     } catch (err) {
       console.error('Top-up Error:', err);
       const msg = err.response?.data?.message || "❌ Top-up failed";
@@ -214,6 +223,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
             background-image: radial-gradient(#334155 1px, transparent 1px);
             background-size: 24px 24px;
         }
+        /* Custom Scrollbar */
         .custom-scroll {
             scrollbar-width: thin;
             scrollbar-color: #334155 transparent;
@@ -308,8 +318,9 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                 const isBought = userPackageStatus.boughtSet.has(pkgAmount);
                 const isSelected = selectedAmount === pkgAmount;
                 const isVip = details.isVip;
+                const isPopular = details.isPopular;
                 
-                // 🔒 LOCK LOGIC (Fixed UI Logic)
+                // 🔒 LOCK LOGIC (Only for > 100)
                 let isLocked = false;
                 if (pkgAmount > 100) { 
                     const prevPkg = packages[index - 1];
@@ -317,6 +328,8 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                         isLocked = true;
                     }
                 }
+                
+                // Active hai to unlock rahega
                 if (isBought) isLocked = false;
 
                 return (
@@ -326,11 +339,12 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                         if (!isLocked && !isBought) setSelectedAmount(pkgAmount);
                     }}
                     className={`
-                      glass-card relative rounded-2xl p-5 group select-none
+                      glass-card relative rounded-2xl p-5 cursor-pointer group select-none
                       ${isLocked ? 'locked' : 'cursor-pointer'}
                       ${isBought ? 'bought' : ''}
                       ${isSelected ? 'selected' : ''}
                       ${isVip ? 'md:col-span-2 lg:col-span-2 bg-gradient-to-br from-blue-900/20 to-purple-900/20' : ''}
+                      ${isPopular ? 'bg-yellow-900/10 border-yellow-500/30' : ''}
                     `}
                   >
                     {/* Status Badge */}
@@ -345,6 +359,10 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                             </div>
                         ) : (
                             details.isPopular && <div className="bg-yellow-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-lg">POPULAR</div>
+                        )}
+                        {/* 10 wala starter badge */}
+                        {pkgAmount === 10 && !isPopular && (
+                           <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-lg">STARTER</div>
                         )}
                     </div>
 
@@ -372,9 +390,17 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                       </div>
                     ) : (
                       <div className="text-center">
-                        <h3 className={`text-lg font-medium mb-1 ${isLocked ? 'text-gray-500' : 'text-gray-300'}`}>{details.title}</h3>
+                        <h3 className={`text-lg font-medium mb-1 ${isPopular ? 'gold-text' : (isLocked ? 'text-gray-500' : 'text-gray-300')}`}>{details.title}</h3>
                         <div className={`text-3xl font-bold mb-1 ${isLocked ? 'text-gray-600' : 'text-white'}`}>${pkgAmount}</div>
-                        <p className="text-xs mb-4 text-gray-500">{details.subtitle}</p>
+                        <p className={`text-xs mb-4 ${isPopular ? 'text-yellow-500/70' : 'text-gray-500'}`}>{details.subtitle}</p>
+                        
+                        <ul className={`text-xs space-y-2 mb-5 text-left pl-2 ${isPopular ? 'text-gray-300' : 'text-gray-400'}`}>
+                           {details.features.map((feat, i) => (
+                             <li key={i} className="flex items-center">
+                               <span className={`${isPopular ? 'text-yellow-400' : 'text-green-400'} mr-2`}>✓</span> {feat}
+                             </li>
+                           ))}
+                        </ul>
                         
                         <div className={`w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors 
                             ${isBought ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 
@@ -403,7 +429,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                   placeholder="Enter Transaction Password"
                   value={transactionPassword}
                   onChange={(e) => setTransactionPassword(e.target.value)}
-                  className="w-full h-full bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 md:py-0 focus:ring-2 focus:ring-yellow-500 outline-none"
+                  className="w-full h-full bg-slate-900 border border-slate-700 text-balck rounded-xl px-4 py-3 md:py-0 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none transition-all placeholder-gray-600"
                 />
              </div>
              <button 
