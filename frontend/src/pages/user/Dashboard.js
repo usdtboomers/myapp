@@ -198,9 +198,9 @@ const Dashboard = () => {
             </section>
             
             {/* Withdrawals Table */}
-            <section>
+            {/* <section>
                <PackageWithdrawals />
-            </section>
+            </section> */}
                               <BinarySummary />
 
 
