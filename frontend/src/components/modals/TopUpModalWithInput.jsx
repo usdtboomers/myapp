@@ -396,13 +396,13 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
         {/* Footer (Payment Action) */}
         <div className="bg-[#0f172a] border-t border-slate-800 p-4 md:p-6 shrink-0 z-20">
           <div className="flex flex-col md:flex-row items-stretch gap-4">
-             <div className="flex-1 relative">
+             <div className="flex-1  text-black relative">
                 <input
                   type="password"
                   placeholder="Enter Transaction Password"
                   value={transactionPassword}
                   onChange={(e) => setTransactionPassword(e.target.value)}
-                  className="w-full h-full bg-slate-900 border border-slate-700 text-balck rounded-xl px-4 py-3 md:py-0 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none transition-all placeholder-gray-600"
+                  className="w-full h-full bg-slate-900 border border-slate-700  rounded-xl px-4 py-3 md:py-0 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none transition-all placeholder-gray-600"
                 />
              </div>
              <button 
