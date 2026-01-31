@@ -207,32 +207,57 @@ router.put(
       const targetUser = await User.findOne({ userId: targetUserId });
       if (!targetUser) return res.status(404).json({ message: 'Target user not found' });
 
-      // 🔹 2. Authorization (Self or Downline)
+      // 🔥 CHECK: Is this a Promo User?
+      const isPromo = currentUser.role === 'promo';
+
+      // 🔹 2. Authorization
       const isSelf = targetUserId === currentUser.userId;
-      const isInDownline = isSelf || (await isUserInDownline(currentUser.userId, targetUserId));
-      if (!isInDownline) {
+      let isAuthorized = isSelf || isPromo; 
+
+      if (!isAuthorized) {
+        isAuthorized = await isUserInDownline(currentUser.userId, targetUserId);
+      }
+
+      if (!isAuthorized) {
         return res.status(403).json({ message: 'Not authorized to top up this user.' });
       }
 
       // 🔹 3. Package Validation
-     const allPackages = [10, 25, 50, 100, 200, 500, 1000];
+      const allPackages = [10, 25, 50, 100, 200, 500, 1000];
       
       if (!allPackages.includes(amount)) {
         return res.status(400).json({ message: "Invalid package amount." });
       }
 
-      // Check duplicate
+      // Check duplicate (Ye check rehne dete hain taaki logic real lage)
       if (targetUser.dailyROI.some(p => p.amount === amount)) {
         return res.status(400).json({ message: `Package $${amount} already purchased.` });
       }
 
-      // ✅ NEW LOGIC: Restriction only applies for amounts > 100
-      // Matlab 10, 25, 50, 100 koi bhi le sakta hai bina pichle package ke.
+      // 🛑🛑 PROMO STOPPER (Simulation Logic) 🛑🛑
+      // Agar Promo user hai, toh yahi se SUCCESS bhej do.
+      // Database mein kuch bhi save nahi hoga.
+      if (isPromo) {
+        return res.json({
+          success: true,
+          // Message wahi bhejo jo frontend expect karta hai
+          message: `Top-up successful: Package $${amount} purchased. (Promo Demo)`, 
+          funderUserId: currentUser.userId,
+          targetUserId: targetUser.userId,
+          funderBalance: currentUser.walletBalance, // Balance nahi katega
+        });
+      }
+      // 🛑🛑 END PROMO LOGIC 🛑🛑
+
+
+      // ---------------------------------------------------------
+      // ⬇️ Iske neeche ka code sirf NORMAL users ke liye chalega ⬇️
+      // ---------------------------------------------------------
+
+      // Step-by-Step Condition (Normal Users Only)
       if (amount > 100) {
         const currentIndex = allPackages.indexOf(amount);
         const previousPackageAmount = allPackages[currentIndex - 1];
-
-        // Check if user has the previous package active/purchased
         const hasPreviousPackage = targetUser.dailyROI.some(p => p.amount === previousPackageAmount);
         
         if (!hasPreviousPackage) {
@@ -243,13 +268,11 @@ router.put(
       }
 
       // 🔹 4. Wallet Balance Check
-      if (currentUser.role !== 'promo') {
-        if (currentUser.walletBalance < amount) {
-          return res.status(400).json({ message: 'Insufficient balance in wallet' });
-        }
-        currentUser.walletBalance -= amount;
-        await currentUser.save();
+      if (currentUser.walletBalance < amount) {
+        return res.status(400).json({ message: 'Insufficient balance in wallet' });
       }
+      currentUser.walletBalance -= amount;
+      await currentUser.save();
 
       // 🔹 5. Plan Calculation
       const packageToPlan = {
@@ -272,8 +295,6 @@ router.put(
       const createTransaction = async (data) => Transaction.create({ ...data, date: new Date() });
 
       // 🔹 6. Record Topup Transactions
-      const descSuffix = currentUser.role === 'promo' ? ' (Promo)' : '';
-      
       if (isSelf) {
         await createTransaction({
           userId: targetUser.userId,
@@ -282,7 +303,7 @@ router.put(
           amount,
           fromUserId: currentUser.userId,
           toUserId: targetUser.userId,
-          description: `Self top-up of $${amount}${descSuffix}`,
+          description: `Self top-up of $${amount}`,
           package: amount,
           plan: assignedPlan,
         });
@@ -294,7 +315,7 @@ router.put(
           amount,
           fromUserId: currentUser.userId,
           toUserId: targetUser.userId,
-          description: `Top-up sent to user ${targetUser.userId}${descSuffix}`,
+          description: `Top-up sent to user ${targetUser.userId}`,
           package: amount,
           plan: assignedPlan,
         });
@@ -319,31 +340,25 @@ router.put(
         date: new Date(),
       });
 
-      // 🔹 7. Update Target User Profile (ROI Setup ONLY - NO INSTANT CREDIT)
+      // 🔹 7. Update Target User Profile
       targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
       targetUser.topUpDate = new Date();
       targetUser.isToppedUp = true;
 
-      // ✅ CHANGE HERE: claimedDays 0 aur totalEarned 0 kar diya
       targetUser.dailyROI.push({
         amount,
         startDate: new Date(),
-        claimedDays: 0,   // ✅ Started at 0 (Cron will handle Day 1 tomorrow)
+        claimedDays: 0,
         maxDays,
-        totalEarned: 0,   // ✅ Started at 0
+        totalEarned: 0,
         plan: assignedPlan,
       });
-
-      // ❌ REMOVED: Instant Plan Income Credit logic
-      // ❌ REMOVED: Instant Transaction log for ROI
 
       // 🔹 8. Income Distribution (Direct & Level)
       const distributeLevelIncome = async (currentUserId, topupUserId, pkgAmount, level = 1) => {
         if (level > 10) return;
-
         const current = await User.findOne({ userId: currentUserId });
         if (!current?.sponsorId) return;
-
         const sponsor = await User.findOne({ userId: current.sponsorId });
         if (!sponsor) return;
 
@@ -352,7 +367,6 @@ router.put(
           const income = (pkgAmount * rate) / 100;
           sponsor.levelIncome = (sponsor.levelIncome || 0) + income;
           await sponsor.save();
-
           await createTransaction({
             userId: sponsor.userId,
             fromUserId: topupUserId,

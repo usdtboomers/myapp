@@ -13,13 +13,13 @@ const packageNames = {
 };
 
 const packageDetails = {
-  10: { title: "Plan 1", subtitle: "Bronze", features: ["Daily Income", "10 Days", "24/7 Support"] },
-  25: { title: "Plan 2", subtitle: "Silver", features: ["Daily Income", "10 Days", "Silver Badge"] },
-  50: { title: "Plan 3", subtitle: "Gold", features: ["Higher Daily Income", "10 Days", "Gold Badge"] },
-  100: { title: "Plan 4", subtitle: "Platinum", isPopular: true, features: ["Higher Daily Income", "10 Days", "Platinum Badge"] },
-  200: { title: "Plan 5", subtitle: "Diamond", features: ["Maximum Daily Income", "10 Days", "Diamond Badge"] },
-  500: { title: "Plan 6", subtitle: "Elite", features: ["Maximum Daily Cap", "10 Days", "Elite Badge"] },
-  1000: { title: "Plan 7 (VIP)", subtitle: "Infinity", isVip: true, features: ["Ultimate Daily Cap", "10 Days", "Infinity Badge", "All Bonuses Unlocked"] },
+  10: { title: "Plan 1", subtitle: "Bronze", features: ["4% Daily ROI", "200% Total Return", "24/7 Support"] },
+  25: { title: "Plan 2", subtitle: "Silver", features: ["4% Daily ROI", "200% Total Return", "Silver Badge"] },
+  50: { title: "Plan 3", subtitle: "Gold", features: ["4% Daily ROI", "200% Total Return", "Gold Badge"] },
+  100: { title: "Plan 4", subtitle: "Platinum", isPopular: true, features: ["5% Daily ROI", "200% Total Return", "Platinum Badge"] },
+  200: { title: "Plan 5", subtitle: "Diamond", features: ["5% Daily ROI", "200% Total Return", "Diamond Badge"] },
+  500: { title: "Plan 6", subtitle: "Elite", features: ["5% Daily ROI", "200% Total Return", "Elite Badge"] },
+  1000: { title: "Plan 7 (VIP)", subtitle: "Infinity", isVip: true, features: ["6% Daily ROI", "200% Total Return", "Infinity Badge", "All Bonuses Unlocked"] },
 };
 
 const TopUpModal = ({ onClose, onTopUpSuccess }) => {
@@ -97,6 +97,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   };
 
   // --- LOGIC: Handle Top Up ---
+ // --- LOGIC: Handle Top Up ---
   const handleTopUp = async () => {
     // 1. Basic Checks
     if (!userInfo) return showMessage("Error", "❌ Please fetch user first.", "error");
@@ -112,24 +113,13 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
         "error"
       );
 
-    // 🔹 2. PACKAGE RESTRICTIONS (LOGIC UPDATE)
+    // 🔹 2. PACKAGE RESTRICTIONS (UPDATED: NO LOCK)
     if (!isPromoUser) {
         
-        // Rule A: Lock tabhi check karein jab Amount > 100 ho
-        // (10, 25, 50, 100 are FREE TO BUY)
-        if (selectedAmount > 100) { 
-            const currentIndex = packages.indexOf(selectedAmount);
-            if (currentIndex > 0) {
-                const prevPackage = packages[currentIndex - 1];
-                
-                // Agar pichla package nahi khareeda hai to error do
-                if (!userPackageStatus.boughtSet.has(prevPackage)) {
-                    return showMessage("Locked", `🔒 You must unlock Plan $${prevPackage} first!`, "warning");
-                }
-            }
-        }
+        // ❌ REMOVED: Rule A (Lock Check for > 100)
+        // Ab koi bhi direct bada package le sakta hai.
 
-        // Rule B: Already Active Check (Duplicate purchase rokne ke liye)
+        // Rule B: Already Active Check (Duplicate purchase rokne ke liye ye zaroori hai)
         if (userPackageStatus.boughtSet.has(selectedAmount)) {
              return showMessage("Active", `✅ You already have Plan $${selectedAmount}.`, "warning");
         }
@@ -148,13 +138,12 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
       setSuccessData({ userId: userInfo.userId, name: userInfo.name, amount: selectedAmount });
       setSuccessModalOpen(true);
 
-      // Refresh User Data (Jis user ka topup kiya uska data refresh karo)
+      // Refresh User Data
       const refreshedRes = await api.get(`/user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const refreshedUser = refreshedRes.data.user;
 
-      // Agar khud ka topup kiya hai to Auth Context update karo (Balance update ke liye)
       if (Number(userId) === loggedInUser.userId) {
         login(refreshedUser, token);
         setWalletBalance(refreshedUser.walletBalance);
@@ -305,12 +294,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
           </div>
 
           {/* 2. Packages Grid */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-8 w-1 bg-gradient-to-b from-yellow-400 to-yellow-600 rounded-full"></div>
-              <h3 className="text-white text-lg font-bold">Select a Plan</h3>
-            </div>
-            
+        {/* 2. Packages Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {packages.map((pkgAmount, index) => {
                 const details = packageDetails[pkgAmount];
@@ -320,27 +304,22 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                 const isVip = details.isVip;
                 const isPopular = details.isPopular;
                 
-                // 🔒 LOCK LOGIC (Only for > 100)
-                let isLocked = false;
-                if (pkgAmount > 100) { 
-                    const prevPkg = packages[index - 1];
-                    if (!userPackageStatus.boughtSet.has(prevPkg)) {
-                        isLocked = true;
-                    }
-                }
+                // ❌ REMOVED: Lock Logic
+                // let isLocked = false;
+                // if (pkgAmount > 100) { ... } 
                 
-                // Active hai to unlock rahega
-                if (isBought) isLocked = false;
+                // Ab hamesha False rahega
+                const isLocked = false; 
 
                 return (
                   <div 
                     key={pkgAmount}
                     onClick={() => {
-                        if (!isLocked && !isBought) setSelectedAmount(pkgAmount);
+                      // Click logic update: Locked check hata diya
+                      if (!isBought) setSelectedAmount(pkgAmount);
                     }}
                     className={`
                       glass-card relative rounded-2xl p-5 cursor-pointer group select-none
-                      ${isLocked ? 'locked' : 'cursor-pointer'}
                       ${isBought ? 'bought' : ''}
                       ${isSelected ? 'selected' : ''}
                       ${isVip ? 'md:col-span-2 lg:col-span-2 bg-gradient-to-br from-blue-900/20 to-purple-900/20' : ''}
@@ -353,15 +332,13 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                             <div className="bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-lg flex items-center gap-1">
                                 <CheckCircle size={10} /> ACTIVE
                             </div>
-                        ) : isLocked ? (
-                            <div className="bg-slate-700 text-gray-400 text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-lg flex items-center gap-1">
-                                <Lock size={10} /> LOCKED
-                            </div>
                         ) : (
+                            // Removed Locked Badge Condition
                             details.isPopular && <div className="bg-yellow-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-lg">POPULAR</div>
                         )}
+                        
                         {/* 10 wala starter badge */}
-                        {pkgAmount === 10 && !isPopular && (
+                        {pkgAmount === 10 && !isPopular && !isBought && (
                            <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-lg">STARTER</div>
                         )}
                     </div>
@@ -370,7 +347,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                       <div className="flex flex-col sm:flex-row items-center justify-between h-full gap-4">
                         <div className="text-left">
                            <h3 className="text-white text-xl font-bold">{details.title}</h3>
-                           <div className={`text-4xl font-extrabold my-1 ${isLocked ? 'text-gray-500' : 'gold-text'}`}>${pkgAmount}</div>
+                           <div className={`text-4xl font-extrabold my-1 gold-text`}>${pkgAmount}</div>
                            <p className="text-gray-400 text-xs">{details.subtitle}</p>
                         </div>
                         <div className="w-full sm:w-auto">
@@ -381,17 +358,16 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                             </ul>
                             <div className={`text-center py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors 
                                 ${isBought ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 
-                                  isLocked ? 'bg-slate-800 text-gray-500 border border-slate-700' :
                                   isSelected ? 'bg-green-500 text-white' : 'bg-slate-800 text-gray-400 group-hover:bg-slate-700'}
                             `}>
-                               {isBought ? 'Purchased' : isLocked ? 'Locked' : isSelected ? 'Selected' : 'Click to Select'}
+                               {isBought ? 'Purchased' : isSelected ? 'Selected' : 'Click to Select'}
                             </div>
                         </div>
                       </div>
                     ) : (
                       <div className="text-center">
-                        <h3 className={`text-lg font-medium mb-1 ${isPopular ? 'gold-text' : (isLocked ? 'text-gray-500' : 'text-gray-300')}`}>{details.title}</h3>
-                        <div className={`text-3xl font-bold mb-1 ${isLocked ? 'text-gray-600' : 'text-white'}`}>${pkgAmount}</div>
+                        <h3 className={`text-lg font-medium mb-1 ${isPopular ? 'gold-text' : 'text-gray-300'}`}>{details.title}</h3>
+                        <div className={`text-3xl font-bold mb-1 text-white`}>${pkgAmount}</div>
                         <p className={`text-xs mb-4 ${isPopular ? 'text-yellow-500/70' : 'text-gray-500'}`}>{details.subtitle}</p>
                         
                         <ul className={`text-xs space-y-2 mb-5 text-left pl-2 ${isPopular ? 'text-gray-300' : 'text-gray-400'}`}>
@@ -404,11 +380,9 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                         
                         <div className={`w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors 
                             ${isBought ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 
-                              isLocked ? 'bg-slate-800 text-gray-500 cursor-not-allowed' :
                               isSelected ? 'bg-green-500 text-white shadow-lg' : 'border border-slate-600 text-gray-400 group-hover:border-blue-500 group-hover:text-blue-400'}
                         `}>
                            {isBought ? <span className="flex items-center justify-center gap-1"><ShieldCheck size={14}/> Active</span> : 
-                            isLocked ? <span className="flex items-center justify-center gap-1"><Lock size={14}/> Locked</span> : 
                             isSelected ? 'Selected' : 'Select'}
                         </div>
                       </div>
@@ -417,7 +391,6 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                 );
               })}
             </div>
-          </div>
         </div>
 
         {/* Footer (Payment Action) */}

@@ -1067,7 +1067,7 @@ router.post("/instant-withdraw", async (req, res) => {
     // 1. Total Amount
     const totalAmount = dDirect + dLevel + dSpin + dBinary;
 
-    if (totalAmount < 10) {
+    if (totalAmount < 1) {
       return res.status(400).json({ message: `Total withdrawal amount must be at least $10.` });
     }
     if (totalAmount % 1 !== 0) {

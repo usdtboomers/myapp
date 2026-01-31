@@ -92,7 +92,7 @@ const InstantWithdrawModal = ({ userId, onClose }) => {
     const totalAmount = dDirect + dLevel + dSpin + dBinary;
 
     // 2. Check Total >= 10
-    if (totalAmount < 10) {
+    if (totalAmount < 1) {
       return showMessage("Warning", `Minimum total withdrawal is $10. You entered $${totalAmount.toFixed(2)}.`, "warning");
     }
 
