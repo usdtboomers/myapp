@@ -153,7 +153,7 @@ const UserLogin = () => {
     
     {/* Brand */}
     <span className="text-yellow-400 pr-2 font-extrabold text-2xl tracking-wide">
-      ELITE INFINITY
+      USDT BOOMERS
     </span>
 
     {/* Right Buttons */}
