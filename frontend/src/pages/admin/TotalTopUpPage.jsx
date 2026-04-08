@@ -4,9 +4,8 @@ import Papa from 'papaparse';
 import { saveAs } from 'file-saver';
 
 const ITEMS_PER_PAGE = 10;
-const packages = [10, 25, 50, 100, 200, 500, 1000];
+const packages = [30, 60, 120, 240, 480, 960];
 
-// 🔐 Helper: safely convert Decimal128 / string / number to JS number
 const toNumber = (val) => {
   if (val == null) return 0;
   if (typeof val === 'number') return val;
@@ -21,35 +20,31 @@ const TotalTopUpPage = () => {
   const [topupUsers, setTopupUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [searchId, setSearchId] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [error, setError] = useState(null);
 
-  // 🟢 Fetch Data
+  // FETCH
   useEffect(() => {
     const fetchTopupUsers = async () => {
       try {
         const token = localStorage.getItem('adminToken');
-        if (!token) throw new Error('Missing admin token');
 
         const res = await api.get('/admin/topup-users', {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        const rawUsers = res.data || [];
-
-        // ✅ Normalize topUpAmount here (Decimal128 → number)
-        const users = rawUsers.map((u) => ({
+        const users = (res.data || []).map((u) => ({
           ...u,
           topUpAmount: toNumber(u.topUpAmount),
         }));
 
         setTopupUsers(users);
       } catch (err) {
-        console.error('❌ Failed to fetch top-up users:', err);
-        setError('Unauthorized or failed to fetch data.');
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -58,42 +53,54 @@ const TotalTopUpPage = () => {
     fetchTopupUsers();
   }, []);
 
-  // 🔍 Filter Logic
+  // FILTER
   useEffect(() => {
     const filtered = topupUsers.filter((user) => {
-      const matchesId = searchId ? String(user.userId).includes(searchId) : true;
+      const matchesId = searchId
+        ? String(user.userId).includes(searchId)
+        : true;
+
+      const matchesPlan = selectedPlan
+        ? toNumber(user.topUpAmount) === Number(selectedPlan)
+        : true;
+
       const date = user.topUpDate ? new Date(user.topUpDate) : null;
-      const matchesFrom = fromDate ? (date && date >= new Date(fromDate)) : true;
-      const matchesTo = toDate ? (date && date <= new Date(toDate)) : true;
-      return matchesId && matchesFrom && matchesTo;
+
+      const matchesFrom = fromDate
+        ? date && date >= new Date(fromDate)
+        : true;
+
+      const matchesTo = toDate
+        ? date && date <= new Date(toDate)
+        : true;
+
+      return matchesId && matchesPlan && matchesFrom && matchesTo;
     });
 
     setFilteredUsers(filtered);
     setCurrentPage(1);
-  }, [searchId, fromDate, toDate, topupUsers]);
+  }, [searchId, selectedPlan, fromDate, toDate, topupUsers]);
 
-  // 📊 Calculations
+  // STATS
   const today = new Date().toISOString().split('T')[0];
 
   const todayTopUps = filteredUsers.filter((user) => {
     const date = user.topUpDate ? new Date(user.topUpDate) : null;
-    if (!date || isNaN(date)) return false;
-    return date.toISOString().split('T')[0] === today;
+    return date && date.toISOString().split('T')[0] === today;
   });
 
   const todayBusiness = todayTopUps.reduce(
-    (sum, user) => sum + toNumber(user.topUpAmount),
+    (sum, u) => sum + toNumber(u.topUpAmount),
     0
   );
 
   const totalBusiness = filteredUsers.reduce(
-    (sum, user) => sum + toNumber(user.topUpAmount),
+    (sum, u) => sum + toNumber(u.topUpAmount),
     0
   );
 
   const totalIds = filteredUsers.length;
 
-  // 🔹 Count by package
   const planCount = {};
   packages.forEach((pkg) => {
     planCount[pkg] = filteredUsers.filter(
@@ -101,174 +108,151 @@ const TotalTopUpPage = () => {
     ).length;
   });
 
-  // 📦 Pagination
+  // PAGINATION
   const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+
   const paginatedUsers = filteredUsers.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
 
-  // 📤 Export CSV
+  // ✅ CSV EXPORT (MOBILE ADDED)
   const exportToCSV = () => {
-    const csvData = filteredUsers.map((user) => ({
-      UserID: user.userId,
-      Name: user.name || '',
-      TopUpAmount: toNumber(user.topUpAmount),
-      TopUpDate: user.topUpDate ? new Date(user.topUpDate).toLocaleString() : '',
+    const summary = [
+      { Metric: 'Total Business', Value: totalBusiness },
+      { Metric: 'Total IDs', Value: totalIds },
+      { Metric: 'Today TopUps', Value: todayTopUps.length },
+      { Metric: 'Today Business', Value: todayBusiness },
+    ];
+
+    packages.forEach((pkg) => {
+      summary.push({
+        Metric: `Plan ${pkg}`,
+        Value: planCount[pkg],
+      });
+    });
+
+    const table = filteredUsers.map((u) => ({
+      UserID: u.userId,
+      Name: u.name || '',
+      Mobile: u.mobile || '',   // ✅ NEW
+      Amount: toNumber(u.topUpAmount),
+      Date: u.topUpDate
+        ? new Date(u.topUpDate).toLocaleString()
+        : '',
     }));
-    const csv = Papa.unparse(csvData);
+
+    const csv =
+      Papa.unparse(summary) +
+      '\n\n' +
+      Papa.unparse(table);
+
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+
     saveAs(blob, `topup-report-${Date.now()}.csv`);
   };
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <h2 className="text-3xl font-bold text-indigo-700 mb-6">💰 Total Top-Up Report</h2>
+      <h2 className="text-3xl font-bold text-indigo-700 mb-6">
+        💰 Total Top-Up Report
+      </h2>
 
-      {/* Filters */}
+      {/* FILTERS */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <input
           type="text"
-          placeholder="🔎 Search by User ID"
+          placeholder="Search User ID"
           value={searchId}
           onChange={(e) => setSearchId(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded w-full md:w-1/3"
+          className="px-4 py-2 border rounded w-full md:w-1/4"
         />
+
+        <select
+          value={selectedPlan}
+          onChange={(e) => setSelectedPlan(e.target.value)}
+          className="px-4 py-2 border rounded w-full md:w-1/4"
+        >
+          <option value="">All Plans</option>
+          {packages.map((p) => (
+            <option key={p} value={p}>
+              ${p}
+            </option>
+          ))}
+        </select>
+
         <input
           type="date"
           value={fromDate}
           onChange={(e) => setFromDate(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded w-full md:w-1/3"
+          className="px-4 py-2 border rounded w-full md:w-1/4"
         />
+
         <input
           type="date"
           value={toDate}
           onChange={(e) => setToDate(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded w-full md:w-1/3"
+          className="px-4 py-2 border rounded w-full md:w-1/4"
         />
       </div>
 
-      {/* Summary Cards */}
+      {/* SUMMARY */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-        <SummaryCard
-          label="💵 Total Business"
-          value={`$${totalBusiness.toFixed(2)}`}
-          color="bg-green-100"
-        />
-        <SummaryCard
-          label="👥 Total IDs Top-Ups"
-          value={totalIds}
-          color="bg-blue-100"
-        />
-        <SummaryCard
-          label="📆 Today's Top-Ups"
-          value={todayTopUps.length}
-          color="bg-yellow-100"
-        />
-        <SummaryCard
-          label="📈 Today's Business"
-          value={`$${todayBusiness.toFixed(2)}`}
-          color="bg-orange-100"
-        />
-        {Object.entries(planCount).map(([plan, count]) => (
-          <SummaryCard
-            key={plan}
-            label={`📄 Plan $${plan}`}
-            value={count}
-            color="bg-purple-100"
-          />
+        <SummaryCard label="Total Business" value={`$${totalBusiness}`} color="bg-green-100" />
+        <SummaryCard label="Total IDs" value={totalIds} color="bg-blue-100" />
+        <SummaryCard label="Today TopUps" value={todayTopUps.length} color="bg-yellow-100" />
+        <SummaryCard label="Today Business" value={`$${todayBusiness}`} color="bg-orange-100" />
+
+        {packages.map((pkg) => (
+          <SummaryCard key={pkg} label={`$${pkg}`} value={planCount[pkg]} color="bg-purple-100" />
         ))}
       </div>
 
-      {/* Export Button */}
-      <div className="mb-4 text-right">
+      {/* EXPORT */}
+      <div className="text-right mb-4">
         <button
           onClick={exportToCSV}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow"
+          className="bg-green-600 text-white px-4 py-2 rounded"
         >
-          📁 Export to CSV
+          Export CSV
         </button>
       </div>
 
-      {/* Error & Loading */}
-      {loading && <p className="text-gray-500">Loading data...</p>}
-      {error && <p className="text-red-600">{error}</p>}
-
-      {/* Table */}
-      {!loading && !error && (
-        <div className="overflow-auto border rounded shadow">
-          <table className="min-w-full bg-white text-sm text-left">
-            <thead className="bg-indigo-100">
+      {/* TABLE */}
+      {!loading && (
+        <div className="overflow-auto border rounded">
+          <table className="min-w-full text-sm">
+            <thead>
               <tr>
-                <th className="px-4 py-3 border">User ID</th>
-                <th className="px-4 py-3 border">Name</th>
-                <th className="px-4 py-3 border">Top-Up Amount</th>
-                <th className="px-4 py-3 border">Top-Up Date</th>
+                <th>User ID</th>
+                <th>Name</th>
+                <th>Mobile</th> {/* ✅ NEW */}
+                <th>Amount</th>
+                <th>Date</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedUsers.length > 0 ? (
-                paginatedUsers.map((user) => (
-                  <tr key={user._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 border">{user.userId}</td>
-                    <td className="px-4 py-2 border">{user.name || '-'}</td>
-                    <td className="px-4 py-2 border">
-                      ${toNumber(user.topUpAmount).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2 border">
-                      {user.topUpDate
-                        ? new Date(user.topUpDate).toLocaleString()
-                        : '-'}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="4" className="text-center px-4 py-6 text-gray-500">
-                    No matching records found.
-                  </td>
+              {paginatedUsers.map((u) => (
+                <tr key={u._id}>
+                  <td>{u.userId}</td>
+                  <td>{u.name}</td>
+                  <td>{u.mobile || '-'}</td> {/* ✅ NEW */}
+                  <td>${toNumber(u.topUpAmount)}</td>
+                  <td>{new Date(u.topUpDate).toLocaleString()}</td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center mt-6 gap-4">
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-          >
-            ◀ Prev
-          </button>
-          <span className="text-gray-600">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-          >
-            Next ▶
-          </button>
         </div>
       )}
     </div>
   );
 };
 
-// ✅ SummaryCard Component (safe)
 const SummaryCard = ({ label, value, color }) => (
-  <div className={`${color} p-4 rounded shadow`}>
-    <h4 className="text-sm font-semibold text-gray-700">{label}</h4>
-    <p className="text-xl font-bold">
-      {typeof value === 'object' && value !== null
-        ? JSON.stringify(value)
-        : value}
-    </p>
+  <div className={`${color} p-4 rounded`}>
+    <h4>{label}</h4>
+    <p>{value}</p>
   </div>
 );
 

@@ -38,7 +38,7 @@ const QuickActions = ({
       borderHover: "group-hover:border-emerald-500/50"
     },
     { 
-      label: "Transfer", 
+      label: "Wallet Transfer ", 
       icon: Send, 
       onClick: onWalletTransferClick, 
       color: "text-purple-400",
@@ -53,16 +53,9 @@ const QuickActions = ({
       bgHover: "group-hover:bg-orange-500/10",
       borderHover: "group-hover:border-orange-500/50"
     },
+    
     { 
-      label: "Instant", 
-      icon: Zap, 
-      onClick: onInstantWithdrawClick, 
-      color: "text-yellow-400",
-      bgHover: "group-hover:bg-yellow-500/10",
-      borderHover: "group-hover:border-yellow-500/50"
-    },
-    { 
-      label: "Credit", 
+      label: "Create Wallet", 
       icon: CreditCard, 
       onClick: onCreditToWalletClick, 
       color: "text-cyan-400",
@@ -98,39 +91,9 @@ const QuickActions = ({
       ))}
 
       {/* 🎰 Premium Spin Button (Full Width on Mobile if needed, or fits in grid) */}
-      <button
-        onClick={onSpinClick}
-        disabled={disabled}
-        className={`
-          relative group flex flex-col items-center justify-center p-3 rounded-xl 
-          bg-gradient-to-br from-yellow-500 to-amber-700 border border-yellow-400/50
-          transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-500/30
-          overflow-hidden
-          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-          col-span-3 md:col-span-1 lg:col-span-1
-        `}
-      >
-        <div className="mb-2 p-2.5 rounded-full bg-black/20 text-yellow-100 group-hover:scale-110 transition-transform duration-300 border border-white/10">
-          <Dices size={18} className="animate-spin-slow" />
-        </div>
-        <span className="text-[11px] font-bold text-white tracking-wider uppercase drop-shadow-sm">
-          Spin & Win
-        </span>
-        
-        {/* Shiny Effect */}
-        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />
-      </button>
-
-      {/* Animation Style for Spin Icon */}
-      <style>{`
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .animate-spin-slow {
-          animation: spin-slow 3s linear infinite;
-        }
-      `}</style>
+      
+   
+ 
     </div>
   );
 };

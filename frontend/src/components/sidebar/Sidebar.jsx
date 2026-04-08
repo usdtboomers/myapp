@@ -77,8 +77,8 @@ const Sidebar = ({ user }) => {
 
 const downloadPDF = () => {
   const link = document.createElement("a");
-  link.href = "/files/eliteinfinity.pdf";  // path relative to public folder
-  link.download = "EliteInfinity.pdf"; // filename jo user ke paas download hoga
+  link.href = "/files/usdtboomers.pdf";  // path relative to public folder
+  link.download = "usdtboomers.pdf"; // filename jo user ke paas download hoga
   link.click();
 };
 
@@ -86,8 +86,7 @@ const downloadPDF = () => {
   const menuItems = [
 
     { label: "Download PDF", icon: Banknote, path: "#", onClick: downloadPDF },
-    { label: "Spin Income", icon: BadgeDollarSign, path: "/spin-income" },
-
+ 
     { label: "Dashboard", icon: Home, path: "/dashboard" },
     { label: "Profile", icon: UserCircle2, path: "/profile" },
     { label: "Deposit History", icon: History, path: "/deposit-history" },
@@ -98,13 +97,14 @@ const downloadPDF = () => {
     { label: "Wallet History", icon: History, path: "/wallet-history" },
     { label: "Downline Business", icon: BarChart, path: "/downline-business" },
     { label: "Credit To Wallet", icon: BadgeDollarSign, path: "/credit-to-wallet" },
-    { label: "Direct Income", icon: Banknote, path: "/direct-income" },
-    { label: "Level Income", icon: Banknote, path: "/level-income" },
-    { label: "My Transfers", icon: History, path: "/my-transfers" },
+     { label: "My Transfers", icon: History, path: "/my-transfers" },
     { label: "Transaction Details", icon: Wallet, path: "/transaction-details" },
     { label: "Notifications", icon: Bell, path: "/notifications", badge: notifCount },
     { label: "Support", icon: HelpCircle, path: "/support" },
 
+     { label: "System Deposit History", icon: History, path: "/system-deposit-history" },
+    { label: "System Withdrawal History", icon: History, path: "/system-withdrawal-history" },
+    
  
 
   ];

@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { FaCopy } from 'react-icons/fa';
 import { ethers } from 'ethers';
 import Swal from 'sweetalert2'; // ✅ Professional Alerts
+import { ExternalLink } from 'lucide-react';
 
 const AdminWithdrawalTable = () => {
   const token = localStorage.getItem('adminToken');
@@ -22,6 +23,41 @@ const AdminWithdrawalTable = () => {
   const [statusFilter, setStatusFilter] = useState('pending'); 
   const [loading, setLoading] = useState(false);
 
+
+
+  // ----------------- 0. Impersonate User -----------------
+  const handleImpersonate = async (userId) => {
+    const result = await Swal.fire({
+      title: 'Login as User?',
+      text: `Kya aap User ID: ${userId} ke account mein login karna chahte hain?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Login'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      Swal.fire({ title: 'Logging in...', didOpen: () => { Swal.showLoading(); } });
+      
+      const res = await api.post('/admin/impersonate', { userId }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.data.token) {
+        Swal.close();
+        // User ka data localStorage mein set karein taaki dashboard khul sake
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user', JSON.stringify(res.data.user)); 
+        
+        // Naye tab mein user ka dashboard kholna
+        window.open('/dashboard', '_blank'); 
+      }
+    } catch (error) {
+      console.error("Impersonation error:", error);
+      Swal.fire('Error', error.response?.data?.message || "Failed to login as user", 'error');
+    }
+  };
   // ----------------- 1. Professional Blockchain Approve -----------------
   const handleBlockchainApprove = async (item) => {
     try {
@@ -354,7 +390,7 @@ if (!value) return 'Transaction hash is required!';
 
   return (
     <div className="p-6 bg-white rounded-lg shadow">
-      <h2 className="text-2xl font-semibold mb-6 text-gray-800">💸 Withdrawal Requests</h2>
+      <h2 className="text-2xl font-semibold mb-6 text-gray-800">💸Pending Withdrawal Requests</h2>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 mb-4">
@@ -408,8 +444,26 @@ if (!value) return 'Transaction hash is required!';
           paginatedData.map((w, idx) => (
             <tr key={w._id} className="hover:bg-gray-50 transition">
               <td className="px-4 py-3">{(currentPage-1)*entriesPerPage + idx + 1}</td>
-              <td className="px-4 py-3 font-medium text-gray-900">{w.userId}</td>
-              <td className="px-4 py-3">{w.name}</td>
+<td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                <div className="flex items-center gap-3">
+                  {/* Clickable User ID */}
+                  <button
+                    onClick={() => handleImpersonate(w.userId)}
+                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-bold hover:underline"
+                    title="Login as this User"
+                  >
+                    {w.userId}
+                    <ExternalLink size={14} className="opacity-50" />
+                  </button>
+
+                  {/* Copy Button */}
+                  <FaCopy 
+                    className="cursor-pointer text-gray-400 hover:text-gray-800 transition" 
+                    onClick={() => handleCopy(w.userId)} 
+                    title="Copy User ID"
+                  />
+                </div>
+              </td>              <td className="px-4 py-3">{w.name}</td>
               
               {/* Source Data Row */}
               <td className="px-4 py-3">

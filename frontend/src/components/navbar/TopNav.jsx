@@ -45,9 +45,9 @@ const TopNav = ({ onHamburgerClick }) => {
             onClick={() => navigate("/dashboard")}
           >
             <img
-              src="/eliteinfinitylogo.png"
-              alt="Elite Infinity"
-              className="pl-20 pt-1 h-16 object-contain"
+              src="/usdtboomer.png"
+              alt="USDT Boomer"
+              className="pr-16 pt-1 h-16 object-contain"
             />
           </div>
 

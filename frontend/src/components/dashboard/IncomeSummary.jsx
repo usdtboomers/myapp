@@ -1,84 +1,71 @@
 import React, { useEffect, useState } from "react";
-import api from "api/axios";
 import { 
-  Globe, Wallet, ArrowUpCircle, TrendingUp, 
-  UserPlus, Layers, Dices, RotateCw 
+  Wallet, ArrowUpCircle, TrendingUp, Dices 
 } from "lucide-react";
 
+// ✅ Packages Data (Achieved amount calculate karne ke liye)
+const packagesConfig = [
+  { amount: 30, levels: [ { earning: 5 }, { earning: 10 }, { earning: 15 }, { earning: 15 }, { earning: 15 } ] },
+  { amount: 60, levels: [ { earning: 10 }, { earning: 20 }, { earning: 30 }, { earning: 30 }, { earning: 30 } ] },
+  { amount: 120, levels: [ { earning: 20 }, { earning: 40 }, { earning: 60 }, { earning: 60 }, { earning: 60 } ] },
+  { amount: 240, levels: [ { earning: 40 }, { earning: 80 }, { earning: 120 }, { earning: 120 }, { earning: 120 } ] },
+  { amount: 480, levels: [ { earning: 80 }, { earning: 160 }, { earning: 240 }, { earning: 240 }, { earning: 240 } ] },
+  { amount: 960, levels: [ { earning: 160 }, { earning: 320 }, { earning: 480 }, { earning: 480 }, { earning: 480 } ] }
+];
+
+const packageOffsets = { 30: 0, 60: 5, 120: 10, 240: 15, 480: 20, 960: 25 };
+
 const IncomeSummary = ({ income = {}, user = {} }) => {
-  // ✅ Change 1: LocalStorage hata diya. Global Count ke liye state.
-  const [globalTeamCount, setGlobalTeamCount] = useState("Loading...");
+  const [globalGrowth, setGlobalGrowth] = useState(0); 
 
-  // Income calculations (Same as before)
-  const directIncome = Number(income.directIncome) || 0;
-  const levelIncome = Number(income.levelIncome) || 0;
-  const planIncomeRaw = income.planIncome ?? 0;
-  const dailyIncome = typeof planIncomeRaw === "number"
-    ? planIncomeRaw
-    : Object.values(planIncomeRaw).reduce((sum, val) => sum + Number(val || 0), 0);
-  const spinIncome = Number(income.spinIncome) || 0;
-  const availableSpins = Number(income.availableSpins) || 0;
+  // ✅ 1. LIFETIME INCOMES FROM BACKEND (Withdrawal ke baad kam nahi honge)
+  const directIncome = Number(income.totalDirectIncome) || Number(income.directIncome) || 0;
+  const levelIncome = Number(income.totalLevelIncome) || Number(income.levelIncome) || 0;
+  const spinIncome = Number(income.totalSpinIncome) || Number(income.spinIncome) || 0;
+  
+  // ✅ 2. USDT REWARD (Backend se aayega, Total sum jo kam nahi hoga)
+  const rewardIncome = Number(income.totalRewardIncome) || Number(income.rewardIncome) || Number(user.rewardIncome) || 0;
+  
   const topUpAmount = Number(user.topUpAmount) || 0;
-  const totalIncome = directIncome + levelIncome + dailyIncome + spinIncome;
 
+  // ✅ 3. GLOBAL GROWTH (Frontend par calculate hoga - Jo pehle logic tha wahi hai)
   useEffect(() => {
-    let isMounted = true;
+    if (!user) return;
 
-    const fetchGlobalCount = async () => {
-      try {
-        // ✅ Change 2: User ID hata diya (Agar backend support kare). 
-        // Agar backend me Global API nahi hai, to purana wala hi rehne de 
-        // lekin niche wala logic 'extra' count ko sabke liye same kar dega.
-        const res = await api.get(`/user/global-team-count/${user.userId}`);
-        
-        if (!isMounted) return;
+    const currentTopUpAmount = Number(user.topUpAmount) || 0; 
+    const joinDate = user.createdAt ? new Date(user.createdAt).getTime() : Date.now();
+    const daysSinceJoined = Math.max(0, Math.floor((Date.now() - joinDate) / (1000 * 60 * 60 * 24)));
 
-        const realBackendCount = res.data.count || 0;
+    let totalAchieved = 0;
 
-        
-        
-const FIXED_START_TIME = 1765000000000;
-const SPEED_MS = 6 * 60 * 1000;
-        
-        const currentTime = Date.now();
-        // Ye formula sabke liye same result dega
-        const globalVirtualIncrement = Math.floor((currentTime - FIXED_START_TIME) / SPEED_MS); 
-        
-        // Final Global Count = Real Database Count + Global Time Count
-        // Agar negative aaye (date se pehle) to 0 maano
-        const extraCount = globalVirtualIncrement > 0 ? globalVirtualIncrement : 0;
-        
-        setGlobalTeamCount(realBackendCount + extraCount);
+    packagesConfig.forEach((pkg) => {
+      const pkgOffset = packageOffsets[pkg.amount];
 
-      } catch (err) {
-        console.log("Error fetching global count:", err);
-      }
-    };
+      pkg.levels.forEach((lvl, idx) => {
+        let isAchieved = false;
 
-    fetchGlobalCount();
+        if (currentTopUpAmount >= pkg.amount) {
+          // Top-up ho gaya hai to wait nahi karna
+          isAchieved = daysSinceJoined >= idx; 
+        } else {
+          // Agar top-up nahi hai (ya chhota package hai), to din ke hisaab se count hoga
+          const requiredGlobalDays = pkgOffset + idx;
+          isAchieved = daysSinceJoined >= requiredGlobalDays;
+        }
 
-    // Har 10 second me UI update karega (Backend call nahi karega, sirf math update)
-    const interval = setInterval(() => {
-        fetchGlobalCount(); 
-    }, 10000);
+        if (isAchieved) {
+          totalAchieved += lvl.earning;
+        }
+      });
+    });
 
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, [user?.userId]);
+    setGlobalGrowth(totalAchieved);
+  }, [user]);
+
+  // ✅ TOTAL INCOME = Sabhi Incomes + Global Growth
+  const totalIncome = directIncome + levelIncome + spinIncome + rewardIncome + globalGrowth;
 
   const cardData = [
-    { 
-      label: "Elite Network", 
-      // ✅ Ab ye value sabke liye same aayegi
-      value: typeof globalTeamCount === 'number' ? globalTeamCount.toLocaleString() : globalTeamCount, 
-      icon: Globe,
-      color: "text-blue-400",
-      bg: "bg-blue-500/10",
-      border: "border-blue-500/20"
-    },
-    // ... Baki saare cards same rahenge ...
     { 
       label: "Total Income", 
       value: `$${totalIncome.toFixed(2)}`, 
@@ -96,45 +83,21 @@ const SPEED_MS = 6 * 60 * 1000;
       border: "border-indigo-500/20"
     },
     { 
-      label: "Plan Income", 
-      value: `$${dailyIncome.toFixed(2)}`, 
+      label: "Global Growth", 
+      value: `$${globalGrowth.toFixed(2)}`, 
       icon: TrendingUp,
       color: "text-purple-400",
       bg: "bg-purple-500/10",
       border: "border-purple-500/20"
     },
     { 
-      label: "Direct Income", 
-      value: `$${directIncome.toFixed(2)}`, 
-      icon: UserPlus,
-      color: "text-emerald-400",
-      bg: "bg-emerald-500/10",
-      border: "border-emerald-500/20"
-    },
-    { 
-      label: "Level Income", 
-      value: `$${levelIncome.toFixed(2)}`, 
-      icon: Layers,
-      color: "text-yellow-400",
-      bg: "bg-yellow-500/10",
-      border: "border-yellow-500/20"
-    },
-    { 
-      label: "Spin Income", 
-      value: `$${spinIncome.toFixed(2)}`, 
-      icon: Dices,
+      label: "USDT Reward", 
+      value: `$${rewardIncome.toFixed(2)}`, 
+      icon: Dices, 
       color: "text-pink-400",
       bg: "bg-pink-500/10",
       border: "border-pink-500/20"
-    },
-    { 
-      label: "Available Spins", 
-      value: availableSpins.toLocaleString(), 
-      icon: RotateCw,
-      color: "text-orange-400",
-      bg: "bg-orange-500/10",
-      border: "border-orange-500/20"
-    },
+    }
   ];
 
   return (

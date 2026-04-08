@@ -98,21 +98,13 @@ const Sidebar = () => {
               <FaMoneyBill className="inline-block mr-2" /> Deposit Log
             </NavLink>
             <NavLink to={`${BASE_PATH}/withdrawals/request`} className={linkClass} onClick={toggleSidebar}>
-              <FaArrowCircleDown className="inline-block mr-2" /> Withdrawal Req
+              <FaArrowCircleDown className="inline-block mr-2" /> Pending Withdrawals
             </NavLink>
             <NavLink to={`${BASE_PATH}/withdrawals/all`} className={linkClass} onClick={toggleSidebar}>
               <FaClipboardList className="inline-block mr-2" /> All Withdrawals
             </NavLink>
 
-            <NavLink to={`${BASE_PATH}/direct-income`} className={linkClass} onClick={toggleSidebar}>
-              <FaProjectDiagram className="inline-block mr-2" /> Direct Income
-            </NavLink>
-            <NavLink to={`${BASE_PATH}/level-income`} className={linkClass} onClick={toggleSidebar}>
-              <FaSitemap className="inline-block mr-2" /> Level Income
-            </NavLink>
-            <NavLink to={`${BASE_PATH}/spin-income`} className={linkClass} onClick={toggleSidebar}>
-              <FaCoins className="inline-block mr-2" /> Spin Income
-            </NavLink>
+            
 
             <NavLink to={`${BASE_PATH}/manual-deposit`} className={linkClass} onClick={toggleSidebar}>
               <FaCoins className="inline-block mr-2" /> Manual Deposit
@@ -126,7 +118,7 @@ const Sidebar = () => {
               <FaWallet className="inline-block mr-2" /> Wallet Summary
             </NavLink>
             <NavLink to={`${BASE_PATH}/credit-to-wallet`} className={linkClass} onClick={toggleSidebar}>
-              <FaCoins className="inline-block mr-2" /> Credit Wallet
+              <FaCoins className="inline-block mr-2" /> Create Wallet
             </NavLink>
             <NavLink to={`${BASE_PATH}/transactions`} className={linkClass} onClick={toggleSidebar}>
               <FaListAlt className="inline-block mr-2" /> Transactions

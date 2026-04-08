@@ -9,9 +9,8 @@ const Setting = require('../models/Setting');
  const TopUp = require('../models/TopUp');
 const Package = require('../models/Package');
 const ethers = require("ethers"); // ✅ add this
-const Spin = require("../models/Spin");
-
-
+ 
+ 
  const authMiddleware = require("../middleware/authMiddleware"); // sets req.user
 const checkFeature = require("../middleware/checkFeatureEnabled");
 // Helper: Get Settings
@@ -27,130 +26,131 @@ router.get("/admin-address", (req, res) => {
   res.json({ address });
 });
 
-// 🔹 Helper: Calculate Available Incomes
-// ---------------------------
-// HELPER: Calculate Available Incomes
-// ---------------------------
-// HELPER: Calculate Available Incomes per plan
-// ---------------------------
-// ---------------------------
-// HELPER: Calculate Available Incomes per user
-// ---------------------------
-// 🔹 Helper: Calculate available incomes per plan (per purchase)
-// Helper: get available incomes (direct, level, spin, plans)
-// Pre-calc balances assumed stored in user object
-// ---------------------------
- // Calculate plan balance based on claimed days and pending withdrawals
-
-// Helper: calculate available plan balance from dailyROI
-const calculatePlanBalanceByClaimedDays = (user) => {
-  const balances = { plan1: 0, plan2: 0, plan3: 0, plan4: 0, plan5: 0, plan6: 0, plan7: 0  };
-  if (!user.dailyROI) return balances;
-
-  user.dailyROI.forEach(plan => {
-    const remainingDays = plan.maxDays - plan.claimedDays;
-    if (remainingDays > 0) {
-      balances[plan.plan] += plan.amount * remainingDays;
-    }
-  });
-
-  return balances;
-};
-
-// Updated getAvailableIncomes
-const getAvailableIncomes = async (userId) => {
-  const user = await User.findOne({ userId: Number(userId) });
-  if (!user) return { planIncome: { plan1:0, plan2:0, plan3:0, plan4:0 ,plan5:0 , plan6:0 , plan7:0  }, direct:0, level:0, spin:0, topupBonus:0 };
-
-  const planIncome = calculatePlanBalanceByClaimedDays(user);
-
-  return {
-    planIncome,
-    direct: user.directIncome || 0,
-    level: user.levelIncome || 0,
-    spin: user.spinIncome || 0,
-   };
-};
+ 
 
 
-// 🔹 Simple helper: get available direct / level / spin incomes
-const getAvailableIncomesFixed = async (userId) => {
-  const user = await User.findOne({ userId: Number(userId) });
-  if (!user) {
-    return { direct: 0, level: 0, spin: 0 };
-  }
+ 
+ 
 
-  return {
-    direct: user.directIncome || 0,
-    level:  user.levelIncome  || 0,
-    spin:   user.spinIncome   || 0,
-        binary: user.binaryIncome || 0, // ✅ added
-
-  };
-};
+ 
 
 
+// ==========================================
+// ✅ HELPER: Get Lifetime Incomes (Har type ki total earning)
+// ==========================================
+ 
 
-
-
-
-// 🔹 Lifetime incomes from Transaction collection (no withdraw minus)
+// ==========================================
+// ✅ HELPER: Get Lifetime Incomes (Har type ki total earning)
+// ==========================================
 const getLifetimeIncomes = async (userId) => {
   const numericId = Number(userId);
 
+  // Fetch sum of all incomes from Transaction history (Added "reward_income")
   const txns = await Transaction.find({
     userId: numericId,
-    type: { $in: ["direct_income", "level_income", "plan_income", "spin_income"] },
+    type: { $in: ["direct_income", "level_income", "plan_income", "spin_income", "binary_income", "reward_income"] },
   });
 
   let direct = 0;
   let level  = 0;
   let plan   = 0;
   let spin   = 0;
+  let binary = 0;
+  let reward = 0; // Naya variable reward ke liye
 
   for (const t of txns) {
-    const amt = t.amount
-      ? parseFloat(t.amount.toString())
-      : 0;
-
+    const amt = t.amount ? parseFloat(t.amount.toString()) : 0;
     if (t.type === "direct_income")  direct += amt;
     if (t.type === "level_income")   level  += amt;
     if (t.type === "plan_income")    plan   += amt;
     if (t.type === "spin_income")    spin   += amt;
+    if (t.type === "binary_income")  binary += amt;
+    if (t.type === "reward_income")  reward += amt; // Reward amount jodo
   }
 
-  return { direct, level, plan, spin };
+  return { direct, level, plan, spin, binary, reward };
 };
 
 
+const packageEarnings = {
+  30: [5, 10, 15, 15, 15],
+  60: [10, 20, 30, 30, 30],
+  120: [20, 40, 60, 60, 60],
+  240: [40, 80, 120, 120, 120],
+  480: [80, 160, 240, 240, 240],
+  960: [160, 320, 480, 480, 480]
+};
 
+const unlockDays = [3, 13, 43, 73, 103];
 
+// ✅ NEW FUNCTION
+const calculatePackageEarnings = (packages, planKey) => {
+  const filtered = (packages || []).filter(p => p.plan === planKey);
+  let total = 0;
+
+  filtered.forEach(pkg => {
+    const earningsArray = packageEarnings[pkg.amount];
+    if (!earningsArray) return;
+
+    const diffDays = Math.floor((Date.now() - new Date(pkg.startDate)) / (1000 * 60 * 60 * 24));
+
+    if (diffDays >= unlockDays[0]) total += earningsArray[0];
+    if (diffDays >= unlockDays[1]) total += earningsArray[1];
+    if (diffDays >= unlockDays[2]) total += earningsArray[2];
+    if (diffDays >= unlockDays[3]) total += earningsArray[3];
+    if (diffDays >= unlockDays[4]) total += earningsArray[4];
+  });
+
+  return total;
+};
+ 
+
+// ==========================================
+// ✅ HELPER: Get Lifetime Incomes (Har type ki total earning)
+// ==========================================
+ 
+
+// ==========================================
+// ✅ UPDATED ROUTE: Get User Wallet & Income Stats
+// (Isko file mein sabse NEECHE rakho)
+// ==========================================
 router.get("/:userId", async (req, res) => {
   try {
     const userId = Number(req.params.userId);
 
+    // 1. User validation
     const user = await User.findOne({ userId });
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // ⭐ Lifetime incomes (jaise pehle banaya tha)
+    // 2. Lifetime incomes nikalna (Helper function se)
     const life = await getLifetimeIncomes(userId);
 
-    // ⭐ Yaha se sahi available spins
-    const availableSpins = await Spin.countDocuments({ userId, used: false });
+    // 3. Current Plan Income calculation (Naye 10-minute logic ke basis par)
+    // Hum saare active plans ki current earnings ko sum karenge
+    const planKeys = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6"];
+    let currentTotalPlanIncome = 0;
 
+    planKeys.forEach(key => {
+      // calculatePlanEarnings function upar file mein defined hona chahiye
+currentTotalPlanIncome += calculatePackageEarnings(user.packages, key);
+    });
+
+    // 4. Final Response
     res.json({
       success: true,
       walletBalance: user.walletBalance || 0,
 
-      // Lifetime totals
-      directIncome: life.direct,
-      levelIncome:  life.level,
-      planIncome:   life.plan,
-      spinIncome:   life.spin,
-
-      availableSpins,   // ✅ yaha ab sahi value aayegi
+      // Dashboard pe dikhane ke liye real-time incomes
+      directIncome: life.direct || 0,
+      levelIncome:  life.level  || 0,
+      // Plan income ko realtime timer wale logic se bhej rahe hain
+      planIncome:   currentTotalPlanIncome || 0,
+      
+      // Additional data agar dashboard pe chahiye ho
+      totalLifetimeIncome: (life.direct + life.level + currentTotalPlanIncome + life.spin)
     });
 
   } catch (err) {
@@ -158,10 +158,6 @@ router.get("/:userId", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error while fetching wallet" });
   }
 });
-
-
-
- 
  
   
 
@@ -171,8 +167,7 @@ const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // USDT BEP-2
 const SYSTEM_WALLET = process.env.PLATFORM_WALLET; // .env check karein
 
 // Provider Setup
-const provider = new ethers.providers.JsonRpcProvider(BSC_RPC);
-
+const provider = new ethers.JsonRpcProvider(BSC_RPC);
 // ----------------------------------------------------------------------
 // POST /api/wallet/web3-deposit
 // Auto-Verify Transaction Hash & Credit Wallet
@@ -320,41 +315,9 @@ router.get('/deposit-history/:userId', async (req, res) => {
 // 🔹 Wallet Transfer
 const bcrypt = require('bcrypt');
 
-
-
-// ===============================
-// 🔷 BINARY MATCHING (SYSTEM MODE)
-// NO carry forward
-// ===============================
-// ===============================
-// 🔷 BINARY MATCHING (WITH CARRY FORWARD)
-// ===============================
-// ===============================
-// 🔷 BINARY MATCHING HELPER
-// ✅ Only eligible users (withdrawn >= $100) get binary
-// ===============================
-
-// 🔹 Strong / Weak helpers
-function addStrong(user, amount) {
-  user.strongLegBusiness = (user.strongLegBusiness || 0) + amount;
-}
-
-function addWeak(user, amount) {
-  user.weakLegBusiness = (user.weakLegBusiness || 0) + amount;
-}
-
-// 🔹 Decide which leg to add
-function addBusinessOrLeg(sponsor, amount, fromUserId) {
-  if (!sponsor.primaryStrongDirect) {
-    sponsor.primaryStrongDirect = fromUserId;
-  }
-
-  if (sponsor.primaryStrongDirect === fromUserId) {
-    addStrong(sponsor, amount);
-  } else {
-    addWeak(sponsor, amount);
-  }
-}
+ 
+ 
+ 
 
 // 🔹 Calculate total withdrawn from DB
 async function getTotalWithdrawn(userId) {
@@ -366,88 +329,12 @@ async function getTotalWithdrawn(userId) {
 }
 
 // 🔹 Run binary matching for eligible users only
-async function runBinaryMatchingForUser(user) {
-
-
-  if (!user.hasWithdrawn100) {
-    console.log(`Skipping binary for ${user.userId}: Not eligible yet (Withdrawal < $100)`);
-    return; 
-  }
-
-
-  const MIN_MATCH = 100;
-  const PERCENT = 0.05;
-
-  // ✅ optional: allow binary income regardless of first withdrawal
-  // const totalWithdrawn = await getTotalWithdrawn(user.userId);
-  // if (totalWithdrawn < 100) return;
-
-  let strong = user.strongLegBusiness || 0;
-  let weak = user.weakLegBusiness || 0;
-
-  if (strong < MIN_MATCH || weak < MIN_MATCH) return;
-
-  const match = Math.min(strong, weak);
-  const income = +(match * PERCENT).toFixed(2);
-
-  user.binaryIncome = (user.binaryIncome || 0) + income;
-  user.strongLegBusiness = strong - match;
-  user.weakLegBusiness = weak - match;
-
-  await user.save();
-
-  await Transaction.create({
-    userId: user.userId,
-    type: "binary_income",
-    amount: income,
-    source: "binary",
-    status: "pending", // 🔹 pending until first $100 withdrawal if you want
-    description: "Binary income matched",
-    date: new Date()
-  });
-
-  console.log(`Binary income $${income} matched for ${user.userId}`);
-}
+ 
 
 
 
 
-// 🔹 Propagate binary business up the sponsorship chain
-async function propagateBinaryBusiness(startUserId, amount, maxLevels = 10) {
-  let current = await User.findOne({ userId: startUserId });
-
-  for (let level = 0; level < maxLevels; level++) {
-    if (!current || !current.sponsorId) break;
-
-    const sponsor = await User.findOne({ userId: current.sponsorId });
-    if (!sponsor) break;
-
-    if (sponsor.hasWithdrawn100) {
-
-    // ✅ Add business to correct leg
-    if (!sponsor.primaryStrongDirect) {
-      sponsor.primaryStrongDirect = current.userId;
-    }
-
-    if (sponsor.primaryStrongDirect === current.userId) {
-      sponsor.strongLegBusiness = (sponsor.strongLegBusiness || 0) + amount;
-    } else {
-      sponsor.weakLegBusiness = (sponsor.weakLegBusiness || 0) + amount;
-    }
-
-    // 🔒 Run binary income for eligible sponsor
-    await runBinaryMatchingForUser(sponsor);
-
-    // ✅ Save sponsor after update
-    await sponsor.save();
-  } else {
-       console.log(`User ${sponsor.userId} skipped for Binary Business (Not Eligible: Withdraw < 100)`);
-    }
-    // Move to next level
-    current = sponsor;
-  }
-}
-
+ 
 
 
 
@@ -489,7 +376,7 @@ router.post('/transfer', async (req, res) => {
     // ============================================
 
     // 1. Password Check
-    const isPasswordValid = await bcrypt.compare(transactionPassword, sender.transactionPassword);
+const isPasswordValid = (transactionPassword === user.transactionPassword);
     if (!isPasswordValid) {
       return res.status(400).json({ message: 'Invalid transaction password' });
     }
@@ -555,293 +442,158 @@ router.post('/transfer', async (req, res) => {
 
 
 
-
- 
-
-
-
-
-
-
-
-
-
-
- 
-// ==========================
-// ---------------------------
-// GET withdrawable summary
-// ---------------------------
-// GET /api/wallet/withdrawable/:userId
- 
-
   
-// GET withdrawable balances per plan
- 
-// GET /api/wallet/withdrawable/:userId
+
+
+// ==========================================
+// ✅ UPDATED ROUTE: Get User Wallet & Income Stats
+// ==========================================
+    // ... rest of your existing route code ...
+// ==========================================
+// 1. UPDATED WITHDRAWABLE API (Directs removed)
+// ==========================================
+// ==========================================
+// 1. UPDATED WITHDRAWABLE API 
+// ==========================================
 router.get("/withdrawable/:userId", async (req, res) => {
   try {
     const user = await User.findOne({ userId: Number(req.params.userId) });
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const planBalances = {};
-    const planKeys = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6", "plan7"];
-
-    // ✅ Helper to match ROI Logic (Same as TopUp)
-    const getDailyRate = (amount) => {
-      if (amount <= 50) return 0.04;  // 4%
-      if (amount <= 500) return 0.05; // 5%
-      return 0.06;                    // 6%
-    };
+    const planKeys = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6"];
 
     planKeys.forEach(planKey => {
-      // 1. Is Plan Key ke saare active packages dhundo
-      const activePackages = (user.dailyROI || []).filter(d => d.plan === planKey);
-      
-      let totalGrossEarned = 0;
+      const activePkg = user.packages && user.packages.find(p => p.plan === planKey);
+      if (!activePkg) {
+        planBalances[planKey] = 0;
+        return;
+      }
 
-      // 2. Har package ki earning calculate karke jodo
-      activePackages.forEach(pkg => {
-        // Agar database me totalEarned saved hai to wo lo, nahi to calculate karo
-        if (pkg.totalEarned) {
-          totalGrossEarned += pkg.totalEarned;
-        } else {
-          // Fallback Calculation
-          const dailyIncome = pkg.amount * getDailyRate(pkg.amount);
-          totalGrossEarned += (pkg.claimedDays * dailyIncome);
-        }
-      });
-
-      // 3. Is Plan se aaj tak kitna withdraw kiya hai
+      // Everyone gets the generated income calculated strictly by time
+      const systemEarned = calculatePackageEarnings(user.packages, planKey);
       const alreadyWithdrawn = user.pendingWithdrawals?.[planKey] || 0;
-
-      // 4. Available Balance = Total Earned - Already Withdrawn
-      // (Math.floor/toFixed use kar sakte hain decimals fix karne ke liye)
-      planBalances[planKey] = Math.max(parseFloat((totalGrossEarned - alreadyWithdrawn).toFixed(2)), 0);
+      planBalances[planKey] = Math.max(parseFloat((systemEarned - alreadyWithdrawn).toFixed(2)), 0);
     });
 
-    // 🔥 Response Shape (Frontend Compatible)
     res.json({
       walletBalance: user.walletBalance || 0,
-      directIncome:  user.directIncome  || 0,
-      levelIncome:   user.levelIncome   || 0,
-      spinIncome:    user.spinIncome    || 0,
-      binaryIncome:  user.binaryIncome  || 0, // ✅ Binary Added
-      planIncomes:   planBalances,            // ✅ Calculated Plan Balances
+      planIncomes: planBalances,
+      direct: user.directIncome || 0, 
+      level: user.levelIncome || 0,   
+      reward: user.rewardIncome || 0, // ✅ Ensure Reward Income is passed
+      spin: user.spinIncome || 0,
+      isUserToppedUp: user.isToppedUp
     });
 
   } catch (err) {
-    console.error("Withdrawable API Error:", err);
+    console.error("Withdrawable Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
+// ==========================================
+// 2. UPDATED WITHDRAW POST API (Directs removed)
+// ==========================================
+// ==========================================
+// 2. UPDATED WITHDRAW POST API 
+// ==========================================
+router.post("/withdraw", authMiddleware, async (req, res) => {
+  try {
+    const { amount, source, transactionPassword, package: packageAmount, level } = req.body;
+    const amt = Math.floor(parseFloat(amount));
 
+    const user = await User.findOne({ userId: req.user.userId });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
+    // 🛡️ User must have an active ID to withdraw
+    if (!user.isToppedUp) return res.status(400).json({ message: "You need an Active ID (Top-up required)." });
+    
+    const isPasswordValid = (transactionPassword === user.transactionPassword);
+    if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
 
+    if (amt <= 0) return res.status(400).json({ message: "Invalid amount." });
 
+    // ✅ "reward" ko allow kar diya hai
+    const isOtherIncome = ["direct", "level", "reward", "spin", "pool"].includes(source);
+    let finalSourceForDB = source;
 
+    if (isOtherIncome) {
+      // Find dynamic balance field (e.g. rewardIncome)
+      const balanceField = `${source}Income`; 
+      
+      if ((user[balanceField] || 0) < amt) {
+        return res.status(400).json({ message: `Insufficient balance in ${source.toUpperCase()} wallet.` });
+      }
 
+      // Deduct Balance
+      user[balanceField] -= amt;
+      user.totalWithdrawn = (user.totalWithdrawn || 0) + amt;
+      finalSourceForDB = source;
 
+    } else {
+      // 📦 LOGIC FOR PACKAGE (POOL) WITHDRAWAL
+      const pkg = user.packages && user.packages.find(p => p.plan === source);
+      if (!pkg) return res.status(400).json({ message: "This package is not currently active." });
+      if (level === undefined) return res.status(400).json({ message: "Invalid Request: Level missing." });
 
-
-
-// ---------------------------
-// POST withdraw from specific plan
-// Atomic and race-condition safe
-// ---------------------------
-// Helper: calculate available plan balance from dailyROI
- 
-
-// Withdraw route
-// POST /api/wallet/withdraw
-router.post(
-  "/withdraw",
-  authMiddleware,                  // ✅ ensure user is authenticated
-  checkFeature("allowWithdrawals"),  // ✅ feature toggle
-  async (req, res) => {
-    try {
-      const { amount, source, transactionPassword, package: packageAmount } = req.body;
-      const amt = parseFloat(amount);
       const pkgAmt = parseFloat(packageAmount);
-
-      // 🔹 Basic Amount Checks
-      if (!amt || !pkgAmt) return res.status(400).json({ message: "Amount and Package value required." });
-      if (amt % 1 !== 0) return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
-
-      // ✅ 1. MINIMUM WITHDRAWAL CHECK (10% of Package)
-      const minWithdrawal = pkgAmt * 0.10;
-      if (amt < minWithdrawal) {
-        return res.status(400).json({ 
-          message: `Minimum withdrawal is 10% of package ($${minWithdrawal})` 
-        });
+      const earningsArray = packageEarnings[pkgAmt];
+      
+      // ✅ Assume getLevelUnlockData is defined elsewhere in your file
+      const { isUnlocked, timeLeft } = getLevelUnlockData(pkg, level);
+      if (!isUnlocked) {
+        return res.status(400).json({ message: `Level is locked. Wait for the timer to complete.` });
       }
 
-      const validPlans = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6", "plan7"];
-      if (!validPlans.includes(source))
-        return res.status(400).json({ message: "Invalid plan selected." });
-
-      const authUserId = req.user.userId;   // 🔐 token se
-      const user = await User.findOne({ userId: authUserId });
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      // Check balance availability 
+      let withdrawnTotal = user.pendingWithdrawals?.[source] || 0;
+      let totalAvailable = 0;
+      for (let i = 0; i <= level; i++) {
+        const used = Math.min(withdrawnTotal, earningsArray[i]);
+        withdrawnTotal -= used;
+        totalAvailable += (earningsArray[i] - used);
       }
 
-      // ===============================
-      // 🔐 TRANSACTION PASSWORD CHECK
-      // ===============================
-      if (!transactionPassword)
-        return res.status(400).json({ message: "Transaction password is required" });
-
-      const isPasswordValid = await bcrypt.compare(transactionPassword, user.transactionPassword);
-      if (!isPasswordValid)
-        return res.status(403).json({ message: "Invalid transaction password" });
-
-      // ===============================
-      // 🔴 PROMO USER (Fake Success)
-      // ===============================
-      if (user.role === "promo") {
-        return res.json({
-          success: true,
-          message: "Withdrawal request submitted successfully (Promo Mode)",
-          transaction: {},
-          withdrawal: {},
-          withdrawableRemaining: 0
-        });
+      if (amt > totalAvailable) {
+          return res.status(400).json({ message: `Requested amount exceeds available Level balance.` });
       }
 
-      // ===============================
-      // 🔹 PLAN EARNING CHECK (ROI)
-      // ===============================
       user.pendingWithdrawals = user.pendingWithdrawals || {};
-      
-      // Check if user has earned enough ROI in this plan
-      const roiEntry = user.dailyROI.find(d => d.plan === source && d.amount === pkgAmt);
-      
-      // Agar specific package match nahi karta, to total plan income check karein
-      // (Assuming user might have multiple packs of same plan, simplifying to plan check)
-      // For stricter check, use roiEntry logic. Here using accumulated planIncome vs withdrawn.
-      
-      // Calculate Total ROI Earned Available
-      const earned = user.dailyROI
-        .filter(d => d.plan === source)
-        .reduce((acc, curr) => acc + (curr.totalEarned || 0), 0); // Or use claimedDays logic
-
-      // Or simply verify against current ROI balance if you store it separately
-      // Here using the logic: Can't withdraw more than earned - alreadyWithdrawn
-      
-      const withdrawn = user.pendingWithdrawals[source] || 0;
-      const withdrawable = Math.max(earned - withdrawn, 0);
-
-      // (Optional: You can also just check walletBalance if ROI goes to wallet first. 
-      // But assuming ROI is a separate 'withdrawable' balance inside plan):
-      
-      if (amt > withdrawable)
-        return res.status(400).json({
-          message: `Insufficient earnings in this plan. Available: $${withdrawable}`
-        });
-
-      // ✅ 2. NO WALLET DEDUCTION (Code removed)
-      
-      // Update Withdrawn Amount
       user.pendingWithdrawals[source] = (user.pendingWithdrawals[source] || 0) + amt;
       user.totalWithdrawn = (user.totalWithdrawn || 0) + amt;
-
-      // First $100 withdrawal Flag
-      if (user.totalWithdrawn >= 100) {
-        user.hasWithdrawn100 = true;
-      }
-
-      // ===============================
-      // 🔹 FEES Calculation (Direct)
-      // ===============================
-      const feePercent = 0.10; // 10% Admin Fee
-      const totalFee = parseFloat((amt * feePercent).toFixed(2));
-      let netAmount = parseFloat((amt - totalFee).toFixed(2));
-
-      // ===============================
-      // 🔷 BINARY INCOME MERGE (Optional)
-      // ===============================
-      // Agar user purana hai (hasWithdrawn100) aur binary income padi hai, to saath me nikal do
-      let binaryAdded = 0;
-      if (user.hasWithdrawn100 && user.binaryIncome > 0) {
-        binaryAdded = user.binaryIncome;
-        netAmount += binaryAdded;
-
-        // Log Binary Payout
-        await Transaction.create({
-          userId: user.userId,
-          type: "binary_income",
-          amount: binaryAdded,
-          description: "Binary income released with withdrawal",
-          status: "completed",
-          date: new Date()
-        });
-
-        user.binaryIncome = 0; // Reset Binary
-      }
-
-      await user.save();
-
-      // ===============================
-      // 🔹 SAVE WITHDRAWAL & TRANSACTION
-      // ===============================
-      
-      // Create Withdrawal Record (Status: Pending for Admin Approval)
-      const withdrawal = await Withdrawal.create({
-        userId: user.userId,
-        source,
-        package: pkgAmt,
-        grossAmount: amt,
-        fee: totalFee,
-        netAmount: netAmount,
-        walletAddress: user.walletAddress,
-        status: "pending", // Admin will approve
-        date: new Date()
-        // No schedule array here
-      });
-
-      const txn = await Transaction.create({
-        userId: authUserId,
-        type: "withdrawal",
-        source: "plan",
-        plan: source,
-        package: pkgAmt,
-        amount: amt,
-        grossAmount: amt,
-        fee: totalFee,
-        netAmount: netAmount,
-        description: `Withdrawal request from ${source} (Package $${pkgAmt})`,
-        status: "pending",
-        date: new Date()
-      });
-
-      // ===============================
-      // 🔹 RESPONSE
-      // ===============================
-      res.json({
-        success: true,
-        message: `Withdrawal request of $${amt} submitted successfully.`,
-        transaction: txn,
-        withdrawal,
-        withdrawableRemaining: withdrawable - amt,
-        netReceivable: netAmount
-      });
-
-    } catch (err) {
-      console.error("Withdraw error:", err);
-      res.status(500).json({ message: "Server error" });
+      finalSourceForDB = source; 
     }
+
+    await user.save();
+
+    await Withdrawal.create({
+      userId: user.userId,
+      source: finalSourceForDB, 
+      grossAmount: amt,
+      fee: amt * 0.10, // 10% deduction on all withdrawals
+      netAmount: amt * 0.90,
+      walletAddress: user.walletAddress,
+      status: "pending",
+      date: new Date()
+    });
+
+    await Transaction.create({
+      userId: user.userId,
+      type: "withdrawal",
+      source: finalSourceForDB, 
+      amount: amt,
+      description: `Withdrawal from ${source.toUpperCase()}`,
+      status: "pending"
+    });
+
+    return res.json({ success: true, message: `Withdrawal request for $${amt} submitted.` });
+
+  } catch (err) {
+    console.error("Withdraw Error:", err);
+    res.status(500).json({ message: "Server processing error." });
   }
-);
-
-
-
-
-
-
-
+});
 
 
 
@@ -898,6 +650,9 @@ router.get('/wallet-history/:userId', async (req, res) => {
 // CREDIT TO WALLET ROUTE
 // Atomic and safe
 // ---------------------------
+// ---------------------------
+// CREDIT TO WALLET ROUTE (UPDATED FOR REWARD & POOL ONLY)
+// ---------------------------
 router.post(
   "/credit-to-wallet",
   authMiddleware,
@@ -907,137 +662,141 @@ router.post(
       let { 
         userId, 
         transactionPassword,
-        deductDirect = 0,
-        deductLevel = 0,
-        deductSpin = 0,
-        deductBinary = 0
+        deductReward = 0,
+        deductPool = 0
       } = req.body;
 
       // Numbers me convert karo
-      const dDirect = parseFloat(deductDirect) || 0;
-      const dLevel = parseFloat(deductLevel) || 0;
-      const dSpin = parseFloat(deductSpin) || 0;
-      const dBinary = parseFloat(deductBinary) || 0;
+      const dReward = parseFloat(deductReward) || 0;
+      const dPool = parseFloat(deductPool) || 0;
 
       // 1. Total Amount Calculate
-      const totalAmount = dDirect + dLevel + dSpin + dBinary;
+      const totalAmount = dReward + dPool;
 
-      // 🛑 Rule: Minimum $10
+      // 🛑 Rule: Minimum $10 & No Decimals
       if (totalAmount < 10) {
         return res.status(400).json({ message: `Minimum credit amount is $10. You entered $${totalAmount}.` });
       }
-
       if (totalAmount % 1 !== 0) {
         return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
       }
 
       // 🔥 SMART SOURCE LOGIC 🔥
       let activeSources = [];
-      if (dDirect > 0) activeSources.push("direct");
-      if (dLevel > 0) activeSources.push("level");
-      if (dSpin > 0) activeSources.push("spin");
-      if (dBinary > 0) activeSources.push("binary");
+      if (dReward > 0) activeSources.push("reward");
+      if (dPool > 0) activeSources.push("pool");
 
-      let finalSource = "mixed";
-      if (activeSources.length === 1) {
-        finalSource = activeSources[0]; // e.g., "binary"
-      } else if (activeSources.length === 0) {
-        return res.status(400).json({ message: "Please select at least one income source." });
+      if (activeSources.length === 0) {
+        return res.status(400).json({ message: "Please enter an amount to credit." });
       }
+      
+      const finalSource = activeSources.length === 1 ? activeSources[0] : "mixed";
 
       const user = await User.findOne({ userId: Number(userId) });
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      // 🔥 PROMO USER LOGIC 🔥
-      if (user.role === "promo") {
-        const txn = await Transaction.create({
-          userId: user.userId,
-          type: "credit_to_wallet",
-          source: finalSource,
-          amount: totalAmount,
-          grossAmount: totalAmount,
-          netAmount: totalAmount,
-          fee: 0,
-          description: `PROMO CREDIT: ${activeSources.join(' + ')}`,
-          status: "completed",
-          date: new Date(),      // ✅ Aaj ki Date
-          createdAt: new Date()  // ✅ Aaj ka Time
-        });
-
-        return res.json({
-          success: true,
-          message: `Successfully credited $${totalAmount} (Promo)`,
-          transaction: txn,
-          walletBalance: user.walletBalance,
-        });
-      }
-
-      // ... Normal User Logic ...
-      const isPasswordValid = await bcrypt.compare(transactionPassword, user.transactionPassword);
+      // Transaction Password Check
+const isPasswordValid = (transactionPassword === user.transactionPassword);
       if (!isPasswordValid) {
         return res.status(400).json({ message: "Invalid transaction password" });
       }
 
       const settings = await Setting.findOne({});
-      if (!settings.allowTopUps) {
+      if (!settings.allowTopUps) { // Using allowTopUps as generic toggle per your old code
         return res.status(403).json({ message: "Credit to wallet disabled by admin" });
       }
 
-      // 🛑 Individual Balance Checks
-      if ((user.directIncome || 0) < dDirect) return res.status(400).json({ message: `Insufficient Direct Income.` });
-      if ((user.levelIncome || 0) < dLevel) return res.status(400).json({ message: `Insufficient Level Income.` });
-      if ((user.spinIncome || 0) < dSpin) return res.status(400).json({ message: `Insufficient Spin Income.` });
-      if ((user.binaryIncome || 0) < dBinary) return res.status(400).json({ message: `Insufficient Binary Income.` });
-
-      // 🔥 ATOMIC UPDATE (Paisa Income se nikalo, Wallet me daalo)
-      const updateResult = await User.updateOne(
-        { userId: Number(userId) },
-        { 
-          $inc: { 
-            walletBalance: totalAmount, // ✅ Main Wallet Badhao
-            directIncome: -dDirect,     // 🔻 Income Ghatao
-            levelIncome: -dLevel,
-            spinIncome: -dSpin,
-            binaryIncome: -dBinary
-          } 
-        }
-      );
-
-      if (updateResult.modifiedCount === 0) {
-        return res.status(400).json({ message: "Transaction failed. Please try again." });
+      // 🛑 1. Check USDT Reward Balance
+      if ((user.rewardIncome || 0) < dReward) {
+        return res.status(400).json({ message: `Insufficient USDT Reward Income.` });
       }
 
-      const updatedUser = await User.findOne({ userId: Number(userId) });
+      // 🛑 2. Check Pool Income (Achieved levels only)
+      let totalPoolAvailable = 0;
+      const availablePerPlan = {};
+      const planKeys = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6"];
+      
+      // We must use the same package config and unlock days used in Withdrawal
+       
 
-      // Transaction Record
+      if (dPool > 0) {
+        const now = Date.now();
+        planKeys.forEach(planKey => {
+const pkg = user.packages.find(p => p.plan === planKey);
+          if (!pkg) return;
+          
+          const earningsArray = packageEarnings[pkg.amount];
+          if(!earningsArray) return;
+
+         const earnedInPlan = calculatePackageEarnings(user.packages, planKey);
+
+          const withdrawnFromPlan = user.pendingWithdrawals?.[planKey] || 0;
+          const available = Math.max(0, earnedInPlan - withdrawnFromPlan);
+          
+          totalPoolAvailable += available;
+          availablePerPlan[planKey] = available;
+        });
+
+        if (dPool > totalPoolAvailable) {
+          return res.status(400).json({ message: `Insufficient Achieved Pool Income. You only have $${totalPoolAvailable} available.` });
+        }
+      }
+
+      // 🔥 EXECUTE ATOMIC UPDATE 🔥
+      // 1. Deduct Reward
+      if (dReward > 0) {
+        user.rewardIncome -= dReward;
+      }
+
+      // 2. Deduct Pool (Distribute deduction across available plans)
+      if (dPool > 0) {
+        let poolRemainingToDeduct = dPool;
+        user.pendingWithdrawals = user.pendingWithdrawals || {};
+        
+        for (let key of planKeys) {
+          if (poolRemainingToDeduct <= 0) break;
+          if (availablePerPlan[key] > 0) {
+            const deductFromThis = Math.min(availablePerPlan[key], poolRemainingToDeduct);
+            user.pendingWithdrawals[key] = (user.pendingWithdrawals[key] || 0) + deductFromThis;
+            poolRemainingToDeduct -= deductFromThis;
+          }
+        }
+      }
+
+      // 3. Add to Wallet Balance
+      user.walletBalance += totalAmount;
+      
+      // Save changes to Database
+      await user.save();
+
+      // Create Transaction Record
       const txn = await Transaction.create({
-        userId: updatedUser.userId,
+        userId: user.userId,
         type: "credit_to_wallet",
-        source: finalSource, // Smart Source
+        source: finalSource, 
         amount: totalAmount,
         grossAmount: totalAmount,
         netAmount: totalAmount,
         fee: 0,
-        description: `Credited $${totalAmount} to Wallet (${activeSources.join(' + ')})`,
+        description: `Credited $${totalAmount} to Wallet (${activeSources.join(' + ').toUpperCase()})`,
         status: "completed",
-        date: new Date(),      // ✅ Current Date (Abhi ki)
-        createdAt: new Date(), // ✅ Current Time
+        date: new Date(),
+        createdAt: new Date(),
       });
 
       res.json({
         success: true,
         message: `Successfully credited $${totalAmount} to wallet`,
         transaction: txn,
-        walletBalance: updatedUser.walletBalance,
+        walletBalance: user.walletBalance,
       });
 
     } catch (err) {
       console.error("Credit-to-wallet error:", err);
-      res.status(500).json({ message: "Server error" });
+      res.status(500).json({ message: "Server processing error" });
     }
   }
 );
-
 
 
 // ---------------------------
@@ -1045,147 +804,25 @@ router.post(
 // For direct, level, spin only with fee
 // Atomic and race-condition safe
 // ---------------------------
-router.post("/instant-withdraw", async (req, res) => {
+ 
+
+
+
+
+
+// 🔹 GET specific withdrawal history for a user
+router.get('/withdrawals/:userId', async (req, res) => {
   try {
-    let { 
-      userId, 
-      transactionPassword, 
-      walletAddress,
-      deductDirect = 0,
-      deductLevel = 0,
-      deductSpin = 0,
-      deductBinary = 0
-    } = req.body;
-
-    userId = Number(userId);
+    const userId = Number(req.params.userId);
+    // Withdrawal model se data fetch karega
+    const withdrawals = await Withdrawal.find({ userId }).sort({ date: -1 });
     
-    const dDirect = parseFloat(deductDirect) || 0;
-    const dLevel = parseFloat(deductLevel) || 0;
-    const dSpin = parseFloat(deductSpin) || 0;
-    const dBinary = parseFloat(deductBinary) || 0;
-
-    // 1. Total Amount
-    const totalAmount = dDirect + dLevel + dSpin + dBinary;
-
-    if (totalAmount < 1) {
-      return res.status(400).json({ message: `Total withdrawal amount must be at least $10.` });
-    }
-    if (totalAmount % 1 !== 0) {
-      return res.status(400).json({ message: "Decimals not allowed. Enter round figure." });
-    }
-
-    // 🔥 SMART SOURCE LOGIC START 🔥
-    let activeSources = [];
-    if (dDirect > 0) activeSources.push("direct");
-    if (dLevel > 0) activeSources.push("level");
-    if (dSpin > 0) activeSources.push("spin");
-    if (dBinary > 0) activeSources.push("binary");
-
-    let finalSource = "mixed";
-    if (activeSources.length === 1) {
-      finalSource = activeSources[0]; // e.g., "binary"
-    }
-    // 🔥 SMART SOURCE LOGIC END 🔥
-
-    const user = await User.findOne({ userId });
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    // Date Logic (Tomorrow)
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-
-    // --- Password Check ---
-    const isPasswordValid = await bcrypt.compare(transactionPassword, user.transactionPassword);
-    if (!isPasswordValid) {
-      return res.status(400).json({ success: false, message: "Invalid transaction password" });
-    }
-
-    // 🔥 CHANGE START: Identify Promo User
-    const isPromo = user.role === "promo";
-
-    // --- Balance Check (Skip if Promo User) ---
-    // Agar Promo nahi hai, tabhi check karo balance
-    if (!isPromo) {
-        if ((user.directIncome || 0) < dDirect) return res.status(400).json({ success: false, message: `Insufficient Direct Income.` });
-        if ((user.levelIncome || 0) < dLevel) return res.status(400).json({ success: false, message: `Insufficient Level Income.` });
-        if ((user.spinIncome || 0) < dSpin) return res.status(400).json({ success: false, message: `Insufficient Spin Income.` });
-        if ((user.binaryIncome || 0) < dBinary) return res.status(400).json({ success: false, message: `Insufficient Binary Income.` });
-    }
-
-    // Fees
-    const feePercent = 0.10;
-    const fee = parseFloat((totalAmount * feePercent).toFixed(2));
-    const netAmount = parseFloat((totalAmount - fee).toFixed(2));
-    const walletAddr = walletAddress || user.walletAddress || "N/A";
-
-    // --- DB Update (Deduct Balance) ---
-    // 🔥 CHANGE: Sirf Normal User ka balance kato, Promo ka nahi
-    if (!isPromo) {
-        await User.updateOne(
-          { userId },
-          { 
-            $inc: { 
-              directIncome: -dDirect,
-              levelIncome: -dLevel,
-              spinIncome: -dSpin,
-              binaryIncome: -dBinary
-            } 
-          }
-        );
-    }
-
-    // Transaction Log (Ye sabke liye banega)
-    const txn = await Transaction.create({
-      userId,
-      type: "withdrawal",
-      source: finalSource, 
-      amount: totalAmount,
-      grossAmount: totalAmount,
-      fee,
-      netAmount,
-      walletAddress: walletAddr,
-      description: `Withdraw: ${activeSources.join(' + ')}`, 
-      status: "pending",
-      date: tomorrow,
-      createdAt: tomorrow,
-    });
-
-    // Withdrawal Log (Ye bhi sabke liye banega)
-    const withdrawal = await Withdrawal.create({
-      userId,
-      source: finalSource, 
-      type: finalSource,
-      grossAmount: totalAmount,
-      fee,
-      netAmount,
-      walletUsed: 0,
-      incomeUsed: totalAmount,
-      walletAddress: walletAddr,
-      status: "pending",
-      schedule: [],
-      createdAt: tomorrow,
-    });
-
-    res.json({
-      success: true,
-      message: "Instant withdrawal submitted successfully",
-      transaction: txn,
-      withdrawal,
-      netAmount,
-    });
-
+    res.json({ success: true, withdrawals });
   } catch (err) {
-    console.error("Instant withdraw error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Withdrawal history error:", err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
-
-
-
-
-
-
 
 // 🔹 Get Transaction History
 router.get('/history/:userId', async (req, res) => {
@@ -1208,54 +845,7 @@ router.get('/history/:userId', async (req, res) => {
 
 
 // 🔹 Get Withdrawal History
-// ✅ GET /api/wallet/withdrawals/:userId
-router.get("/withdrawals/:userId", async (req, res) => {
-  try {
-    const userId = Number(req.params.userId);
-
-    const user = await User.findOne({ userId });
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    const withdrawals = await Withdrawal.find({ userId }).sort({ createdAt: -1 });
-
-    const result = withdrawals.map((w) => {
-  const wObj = w.toObject();
-
-  // Calculate fee and net if missing (fallback for older records)
-  const fee = wObj.fee ?? 0;
-  const netAmount = wObj.netAmount ?? (wObj.grossAmount - fee);
-
-  return {
-    ...wObj,
-
-    // 🔥 ENSURE package is always sent (NEW + OLD withdrawals)
-    package: wObj.package ?? (
-      wObj.plan === "plan1" ? 10 :
-      wObj.plan === "plan2" ? 25 :
-      wObj.plan === "plan3" ? 50 :
-      wObj.plan === "plan4" ? 100 :
-      wObj.plan === "plan5" ? 200 :
-      wObj.plan === "plan6" ? 500 :
-      wObj.plan === "plan7" ? 1000 : null
-    ),
-
-    plan: wObj.plan ?? null,
-
-walletAddress: wObj.walletAddress || "N/A",
-    fee,
-    netAmount,
-  };
-});
-
-
-    res.json({ success: true, withdrawals: result });
-  } catch (err) {
-    console.error("Withdrawal history error:", err);
-    res.status(500).json({ success: false, message: "Server error while fetching withdrawals" });
-  }
-});
+ 
 
 
 
@@ -1280,5 +870,58 @@ router.get("/topup-history/:userId", async (req, res) => {
 
 
 
+
+// ==========================================
+// ✅ UPDATED ROUTE: Get User Wallet & Income Stats
+// (Isko file mein sabse NEECHE rakho)
+// ==========================================
+router.get("/:userId", async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+
+    // 1. User validation
+    const user = await User.findOne({ userId });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // 2. Lifetime incomes nikalna (Helper function se jisme ab reward bhi hai)
+    const life = await getLifetimeIncomes(userId);
+
+    // 3. Current Plan Income calculation (Naye 10-minute logic ke basis par)
+    const planKeys = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6"];
+    let currentTotalPlanIncome = 0;
+
+    planKeys.forEach(key => {
+      currentTotalPlanIncome += calculatePackageEarnings(user.packages, key);
+    });
+
+    // 4. Final Response
+    res.json({
+      success: true,
+      walletBalance: user.walletBalance || 0,
+
+      // Dashboard pe dikhane ke liye real-time incomes (Total based on History)
+      totalDirectIncome: life.direct || 0,
+      totalLevelIncome:  life.level  || 0,
+      totalSpinIncome:   life.spin   || 0,
+      totalRewardIncome: life.reward || 0, // ✅ Naya param jo UI catch karega
+      planIncome:        currentTotalPlanIncome || 0,
+      
+      // ✅ Original current values (For withdrawals checks inside UI)
+      directIncome: user.directIncome || 0,
+      levelIncome:  user.levelIncome || 0,
+      spinIncome:   user.spinIncome || 0,
+      rewardIncome: user.rewardIncome || 0, 
+
+      // Additional data agar dashboard pe chahiye ho
+      totalLifetimeIncome: (life.direct + life.level + currentTotalPlanIncome + life.spin + life.reward)
+    });
+
+  } catch (err) {
+    console.error("Fetch Wallet Error:", err);
+    res.status(500).json({ success: false, message: "Server error while fetching wallet" });
+  }
+});
 
 module.exports = router;

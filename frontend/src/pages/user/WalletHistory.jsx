@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import api from "api/axios";
+import api from "../../api/axios"; // Path thoda check kar lena
 import BASE_URL from "../../config";
 
 const WalletHistory = () => {
@@ -20,8 +20,7 @@ const WalletHistory = () => {
     "credit_to_wallet",
     "withdrawal",
     "topup",
-    "buy_spin",
-  ];
+   ];
   const types = ["all", ...allTypes];
 
   useEffect(() => {
@@ -42,60 +41,56 @@ const WalletHistory = () => {
 
   const fetchWalletHistory = async (uid) => {
     try {
-      const [txRes, withdrawRes, topupRes] = await Promise.all([
-        api.get(`/wallet/history/${uid}`),
-        api.get(`/wallet/withdrawals/${uid}`),
-        api.get(`/wallet/topup-history/${uid}`),
-      ]);
+      // ✅ 404 ERROR FIX: Sirf ek API call karni hai jisme saari history (withdraw, deposit, topup) aati hai.
+      const res = await api.get(`/wallet/history/${uid}`);
 
-      const txns = Array.isArray(txRes.data) ? txRes.data : [];
-      const withdrawals = Array.isArray(withdrawRes.data?.withdrawals)
-        ? withdrawRes.data.withdrawals.map(w => ({
-            ...w, 
-            type:"withdrawal", 
-            displayAmount:w.grossAmount||0, 
-            deductionAmount:w.walletUsed||0, 
-            description:`Required Wallet Used: $${(w.walletUsed||0).toFixed(2)}`, 
-            date:w.createdAt 
-          })) 
-        : [];
-      const topups = Array.isArray(topupRes.data)
-        ? topupRes.data
-            .filter(t => t.description && !/PROMOTION/i.test(t.description))
-            .map(t => ({ ...t, type: t.type || "topup", date: t.createdAt || t.date }))
-        : [];
+      // Backend array return karta hai ya object me history bhejta hai dono handle kar liya
+      let txns = [];
+      if (Array.isArray(res.data)) {
+        txns = res.data;
+      } else if (res.data && Array.isArray(res.data.history)) {
+        txns = res.data.history;
+      }
 
-      const allHistory = [
-        ...txns.filter(t => ["deposit","transfer","credit_to_wallet","buy_spin"].includes(t.type)), 
-        ...withdrawals, 
-        ...topups
-      ];
+      const formattedHistory = txns.map(t => ({
+        ...t,
+        date: t.createdAt || t.date,
+        displayAmount: t.amount || t.grossAmount || 0
+      }));
 
-      const uniqueHistory = Array.from(
-        new Map(allHistory.map(t => [`${t._id}-${t.date || t.createdAt}-${t.type}`,t])).values()
-      );
+      // Calculate running balance correctly by sorting Oldest to Newest first
+      formattedHistory.sort((a,b) => new Date(a.date) - new Date(b.date));
+      setTransactions(formattedHistory);
 
-      uniqueHistory.sort((a,b) => new Date(a.createdAt || a.date) - new Date(b.createdAt || b.date));
-      setTransactions(uniqueHistory);
     } catch (err) {
-      console.error(err); setError("Failed to load wallet history.");
-    } finally { setLoading(false); }
+      console.error("Wallet History Error:", err); 
+      setError("Failed to load wallet history.");
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const calculateBalances = () => {
     let balance = 0;
     return transactions.map(txn => {
-      const amount = txn.displayAmount || txn.amount || txn.grossAmount || 0;
+      const amount = Number(txn.displayAmount || txn.amount || txn.grossAmount || 0);
       switch(txn.type){
         case "deposit":
-        case "credit_to_wallet": balance += Math.abs(amount); break;
+        case "credit_to_wallet": 
+          balance += amount; 
+          break;
         case "topup":
         case "debit_topup":
-        case "buy_spin": balance -= Math.abs(amount); break;
-        case "withdrawal": balance -= txn.deductionAmount || 0; break;
+        case "buy_spin": 
+          balance -= amount; 
+          break;
         case "transfer": 
-          if(txn.toUserId===userId) balance+=Math.abs(amount);
-          if(txn.fromUserId===userId) balance-=Math.abs(amount);
+          if(txn.toUserId === userId) balance += amount;
+          if(txn.fromUserId === userId) balance -= amount;
+          break;
+        case "withdrawal": 
+          // Withdrawal seedha main wallet se nahi kat-ta, ye alg sources (pool/reward) se kat-ta hai, 
+          // toh running wallet balance math ko kharab hone se bachane ke liye deduction yaha add nahi ki hai.
           break;
         default: break;
       }
@@ -105,8 +100,12 @@ const WalletHistory = () => {
 
   const filtered = calculateBalances().filter(txn => {
     const s = searchTerm.toLowerCase();
-    const matchesType = typeFilter==="all" || txn.type===typeFilter;
-    const matchesSearch = txn.type?.toLowerCase().includes(s) || txn.description?.toLowerCase().includes(s) || txn.fromUserId?.toString().includes(s) || txn.toUserId?.toString().includes(s);
+    const matchesType = typeFilter === "all" || txn.type === typeFilter;
+    const matchesSearch = 
+      txn.type?.toLowerCase().includes(s) || 
+      txn.description?.toLowerCase().includes(s) || 
+      txn.fromUserId?.toString().includes(s) || 
+      txn.toUserId?.toString().includes(s);
     return matchesType && matchesSearch;
   });
 
@@ -202,14 +201,14 @@ const WalletHistory = () => {
                 const serialNumber = (currentPage - 1) * itemsPerPage + idx + 1;
 
                 return (
-                  <tr key={`${txn._id}-${txn.date || txn.createdAt}-${txn.type}-${idx}`} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9" }}>
+                  <tr key={`${txn._id}-${txn.date}-${txn.type}-${idx}`} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9" }}>
                     <td style={tdStyle}>{serialNumber}</td>
                     <td style={tdStyle}>{(txn.type || "unknown").replace(/_/g, " ").toUpperCase()}</td>
                     <td style={{ ...tdStyle, ...colorStyle }}>${amount.toFixed(2)}</td>
                     <td style={tdStyle}>{txn.fromUserId === userId ? "You" : txn.fromUserId || "-"}</td>
                     <td style={tdStyle}>{txn.toUserId === userId ? "You" : txn.toUserId || "-"}</td>
                     <td style={tdStyle}>{txn.description || "-"}</td>
-                    <td style={tdStyle}>{new Date(txn.createdAt || txn.date).toLocaleString()}</td>
+                    <td style={tdStyle}>{new Date(txn.date).toLocaleString()}</td>
                     <td style={tdStyle}>${txn.balance}</td>
                   </tr>
                 );
@@ -230,7 +229,7 @@ const WalletHistory = () => {
               value={itemsPerPage} 
               onChange={(e) => {
                 setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1); // Reset to page 1 when changing rows
+                setCurrentPage(1);
               }}
               style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #ccc" }}
             >
@@ -285,6 +284,6 @@ const WalletHistory = () => {
 };
 
 const thStyle = { padding: "6px 8px", fontWeight: 600, borderBottom: "1px solid #dee2e6" };
-const tdStyle = { padding: "6px 8px", borderBottom: "1px solid #f1f3f5" };
+const tdStyle = { padding: "6px 8px", borderBottom: "1px solid #f1f3f5", color: "black" };
 
 export default WalletHistory;

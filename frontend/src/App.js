@@ -34,13 +34,17 @@ import MyTransfers from './pages/user/MyTransfers';
 import DepositHistory from "./pages/user/DepositHistory";
 import TopupDetails from "./pages/user/TopupDetails";
 import Support from "./pages/user/Support";
-import SpinIncome from './pages/user/SpinIncome';
-import TransactionDetails from './pages/user/TransactionDetails';
+ import TransactionDetails from './pages/user/TransactionDetails';
 import DownlineBusiness from './pages/user/DownlineBusiness';
 import CreditToWallet from './pages/user/CreditToWallet';
 import Notifications from "./pages/user/Notifications";
 
 import UserLayout from "./components/layout/UserLayout";
+
+import SystemDepositHistory from "./pages/user/SystemDepositHistory";
+import SystemWithdrawalHistory from "./pages/user/SystemWithdrawalHistory";
+
+// Apne routes array ya JSX me add karein:
 
 // 🔹 Admin Pages
 import AdminLogin from './pages/admin/AdminLogin';
@@ -63,8 +67,7 @@ import AddUser from './pages/admin/AddUser';
 import AdminNotifications from './pages/admin/AdminCreateNotification.jsx';
 import AdminSupport from "./pages/admin/AdminSupport";
 import ManualDeposit from './pages/admin/ManualDeposit';
-import AdminSpinIncome from './pages/admin/SpinIncomePage';
-
+ 
 // 📜 Scroll Restoration
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -161,11 +164,11 @@ function AppContent() {
           <Route path="/deposit-history" element={<RequireUserAuth><UserLayout><DepositHistory /></UserLayout></RequireUserAuth>} />
           <Route path="/topup-details" element={<RequireUserAuth><UserLayout><TopupDetails /></UserLayout></RequireUserAuth>} />
           <Route path="/support" element={<RequireUserAuth><UserLayout><Support /></UserLayout></RequireUserAuth>} />
-          <Route path="/spin-income" element={<RequireUserAuth><UserLayout><SpinIncome /></UserLayout></RequireUserAuth>} />
-          <Route path="/transaction-details" element={<RequireUserAuth><UserLayout><TransactionDetails /></UserLayout></RequireUserAuth>} />
+           <Route path="/transaction-details" element={<RequireUserAuth><UserLayout><TransactionDetails /></UserLayout></RequireUserAuth>} />
           <Route path="/downline-business" element={<RequireUserAuth><UserLayout><DownlineBusiness /></UserLayout></RequireUserAuth>} />
           <Route path="/credit-to-wallet" element={<RequireUserAuth><UserLayout><CreditToWallet /></UserLayout></RequireUserAuth>} />
-
+<Route path="/system-deposit-history" element={<SystemDepositHistory />} />
+<Route path="/system-withdrawal-history" element={<SystemWithdrawalHistory />} />
 
           {/* 🔐 Admin Routes */}
           
@@ -185,8 +188,7 @@ function AppContent() {
             <Route path="notifications" element={<AdminNotifications />} />
             <Route path="level-income" element={<LevelIncomePage />} />
             <Route path="wallet-summary" element={<WalletSummaryPage />} />
-            <Route path="spin-income" element={<AdminSpinIncome />} />
-            <Route path="credit-to-wallet" element={<CreditToWalletPage />} />
+             <Route path="credit-to-wallet" element={<CreditToWalletPage />} />
             <Route path="blocked-users" element={<BlockedUsers />} />
             <Route path="transactions" element={<AdminTransactions />} />
             <Route path="settings" element={<AdminSettingsPage />} />

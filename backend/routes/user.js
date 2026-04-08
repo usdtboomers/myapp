@@ -181,6 +181,10 @@ router.get('/', getAllUsers);
 // ---------------------------
 // Top-up Route with Daily ROI
 // 📌 Top-up API
+// 🛑 Top par ye import zaroor karna (agar rewardLogic.js utils folder me banaya hai)
+// 🛑 Top par ye import zaroor check kar lena
+const { checkAndAwardManagerReward } = require('../utils/rewardLogic'); 
+
 router.put(
   '/topup/:userId',
   authMiddleware,
@@ -197,7 +201,8 @@ router.put(
       if (!transactionPassword) {
         return res.status(400).json({ message: "Transaction password is required" });
       }
-      const isValidPassword = await bcrypt.compare(transactionPassword, currentUser.transactionPassword);
+      
+      const isValidPassword = (transactionPassword === currentUser.transactionPassword);
       if (!isValidPassword) {
         return res.status(403).json({ message: "Invalid transaction password" });
       }
@@ -222,52 +227,51 @@ router.put(
         return res.status(403).json({ message: 'Not authorized to top up this user.' });
       }
 
-      // 🔹 3. Package Validation
-      const allPackages = [10, 25, 50, 100, 200, 500, 1000];
+      // 🔹 3. Package Validation & STEP-BY-STEP CHECK
+      const allPackages = [30, 60, 120, 240, 480, 960];
       
       if (!allPackages.includes(amount)) {
         return res.status(400).json({ message: "Invalid package amount." });
       }
 
-      // Check duplicate (Ye check rehne dete hain taaki logic real lage)
-      if (targetUser.dailyROI.some(p => p.amount === amount)) {
+      // 🌟 YAHAN DALNA THA YE CODE: Accurate bought packages check
+      const boughtSet = new Set();
+      if (targetUser.packages) {
+        targetUser.packages.forEach(p => boughtSet.add(Number(p.amount)));
+      }
+      if (targetUser.purchasedPackages) {
+        targetUser.purchasedPackages.forEach(p => boughtSet.add(Number(p)));
+      }
+
+      // Check if already purchased
+      if (boughtSet.has(amount)) {
         return res.status(400).json({ message: `Package $${amount} already purchased.` });
       }
 
-      // 🛑🛑 PROMO STOPPER (Simulation Logic) 🛑🛑
-      // Agar Promo user hai, toh yahi se SUCCESS bhej do.
-      // Database mein kuch bhi save nahi hoga.
+      // 🛑🛑 PROMO STOPPER 🛑🛑
       if (isPromo) {
         return res.json({
           success: true,
-          // Message wahi bhejo jo frontend expect karta hai
           message: `Top-up successful: Package $${amount} purchased. (Promo Demo)`, 
           funderUserId: currentUser.userId,
           targetUserId: targetUser.userId,
-          funderBalance: currentUser.walletBalance, // Balance nahi katega
+          funderBalance: currentUser.walletBalance, 
         });
       }
-      // 🛑🛑 END PROMO LOGIC 🛑🛑
 
-
-      // ---------------------------------------------------------
-      // ⬇️ Iske neeche ka code sirf NORMAL users ke liye chalega ⬇️
-      // ---------------------------------------------------------
-
-      // Step-by-Step Condition (Normal Users Only)
-      if (amount > 100) {
+      // Step-by-Step Condition Check (Using the safe boughtSet)
+      if (amount > 30) {
         const currentIndex = allPackages.indexOf(amount);
         const previousPackageAmount = allPackages[currentIndex - 1];
-        const hasPreviousPackage = targetUser.dailyROI.some(p => p.amount === previousPackageAmount);
         
-        if (!hasPreviousPackage) {
+        if (!boughtSet.has(previousPackageAmount)) {
           return res.status(400).json({ 
             message: `Locked! You must purchase the $${previousPackageAmount} package before buying $${amount}.` 
           });
         }
       }
 
-      // 🔹 4. Wallet Balance Check
+      // 🔹 4. Wallet Balance Check & Deduction
       if (currentUser.walletBalance < amount) {
         return res.status(400).json({ message: 'Insufficient balance in wallet' });
       }
@@ -276,22 +280,11 @@ router.put(
 
       // 🔹 5. Plan Calculation
       const packageToPlan = {
-        10: "plan1", 25: "plan2", 50: "plan3",
-        100: "plan4", 200: "plan5", 500: "plan6",
-        1000: "plan7"
+        30: "plan1", 60: "plan2", 120: "plan3",
+        240: "plan4", 480: "plan5", 960: "plan6"
       };
       const assignedPlan = packageToPlan[amount] || "plan1";
 
-      let roiPercent = 0;
-      if (amount <= 50) roiPercent = 4;
-      else if (amount <= 500) roiPercent = 5;
-      else roiPercent = 6;
-
-      const dailyIncome = (amount * roiPercent) / 100;
-      const totalReturnTarget = amount * 2; 
-      const maxDays = Math.ceil(totalReturnTarget / dailyIncome);
-
-      // Helper
       const createTransaction = async (data) => Transaction.create({ ...data, date: new Date() });
 
       // 🔹 6. Record Topup Transactions
@@ -332,82 +325,60 @@ router.put(
         });
       }
 
-      await TopUp.create({
-        funderUserId: currentUser.userId,
-        targetUserId: targetUser.userId,
-        amount,
-        plan: assignedPlan,
-        date: new Date(),
-      });
+      // Update TopUp Log
+      if (typeof TopUp !== 'undefined') {
+        await TopUp.create({
+            funderUserId: currentUser.userId,
+            targetUserId: targetUser.userId,
+            amount,
+            plan: assignedPlan,
+            date: new Date(),
+        });
+      }
 
       // 🔹 7. Update Target User Profile
       targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
       targetUser.topUpDate = new Date();
       targetUser.isToppedUp = true;
 
-      targetUser.dailyROI.push({
-        amount,
-        startDate: new Date(),
-        claimedDays: 0,
-        maxDays,
-        totalEarned: 0,
+      // Update packages array
+      if (!targetUser.packages) targetUser.packages = [];
+      targetUser.packages.push({
         plan: assignedPlan,
+        amount: amount,
+        startDate: new Date(),
+        withdrawn: 0
       });
 
-      // 🔹 8. Income Distribution (Direct & Level)
-      const distributeLevelIncome = async (currentUserId, topupUserId, pkgAmount, level = 1) => {
-        if (level > 10) return;
-        const current = await User.findOne({ userId: currentUserId });
-        if (!current?.sponsorId) return;
-        const sponsor = await User.findOne({ userId: current.sponsorId });
-        if (!sponsor) return;
-
-        const rate = 1; 
-        if (rate > 0) {
-          const income = (pkgAmount * rate) / 100;
-          sponsor.levelIncome = (sponsor.levelIncome || 0) + income;
-          await sponsor.save();
-          await createTransaction({
-            userId: sponsor.userId,
-            fromUserId: topupUserId,
-            type: "level_income",
-            source: "level",
-            amount: income,
-            description: `Level ${level} income (1%) from user ${topupUserId}`,
-            package: pkgAmount,
-            plan: assignedPlan,
-          });
-        }
-        await distributeLevelIncome(sponsor.userId, topupUserId, pkgAmount, level + 1);
-      };
-
-      if (targetUser.sponsorId) {
-        const sponsor = await User.findOne({ userId: targetUser.sponsorId });
-        if (sponsor) {
-          const directIncome = (amount * 10) / 100;
-          sponsor.directIncome = (sponsor.directIncome || 0) + directIncome;
-          await sponsor.save();
-
-          await createTransaction({
-            userId: sponsor.userId,
-            fromUserId: targetUser.userId,
-            type: "direct_income",
-            source: "direct",
-            amount: directIncome,
-            description: `Direct income (10%) from user ${targetUser.userId}`,
-            package: amount,
-            plan: assignedPlan,
-          });
-
-          await distributeLevelIncome(sponsor.userId, targetUser.userId, amount, 1);
-        }
-      }
+      // Update purchasedPackages list (Ye important hai step-by-step ke liye)
+      if (!targetUser.purchasedPackages) targetUser.purchasedPackages = [];
+      targetUser.purchasedPackages.push(amount);
 
       await targetUser.save();
 
+      // 🔹 8. 🔥 MANAGER USDT REWARD LOGIC 🔥
+      if (amount >= 60 && targetUser.sponsorId) {
+          setTimeout(async () => {
+              try {
+                  let sponsorId = targetUser.sponsorId;
+                  let levelsChecked = 0;
+                  while (sponsorId && levelsChecked < 15) {
+                      const sponsor = await User.findOne({ userId: sponsorId });
+                      if (!sponsor) break;
+                      await checkAndAwardManagerReward(sponsor.userId);
+                      sponsorId = sponsor.sponsorId; 
+                      levelsChecked++;
+                  }
+              } catch (error) {
+                  console.error("Manager Reward Error:", error);
+              }
+          }, 0);
+      }
+
+      // 🔹 9. DONE!
       res.json({
         success: true,
-        message: `Top-up successful: Package $${amount} purchased. ROI starts in 24 hours.`,
+        message: `Top-up successful: Package $${amount} purchased.`,
         funderUserId: currentUser.userId,
         targetUserId: targetUser.userId,
         funderBalance: currentUser.walletBalance,
@@ -419,9 +390,6 @@ router.put(
     }
   }
 );
-
-
-
 
  // Downline Team Business Details
 router.get("/binary-summary/:userId", async (req, res) => {  
@@ -617,55 +585,37 @@ router.get('/sponsor-name/:id', async (req, res) => {
 
 // ---------------------------
 // Update user
+// Update user - REPLACE YOUR EXISTING router.put('/:userId' ...) WITH THIS:
 router.put('/:userId', authMiddleware, async (req, res) => {
   try {
-    const { walletAddress, oldTxnPassword, name, email, mobile } = req.body;
+    const { walletAddress, oldTxnPassword } = req.body;
     const user = await User.findOne({ userId: Number(req.params.userId) });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // ✅ Transaction password verify
-    const validTxn = await bcrypt.compare(oldTxnPassword, user.transactionPassword);
-    if (!validTxn)
-      return res.status(403).json({ message: 'Invalid transaction password' });
+    // 🔥 LOCK LOGIC: Check if any withdrawal is pending
+    // Hum Withdrawal model me ja kar check karenge ki is user ki koi "pending" request hai ya nahi
+    const Withdrawal = require('../models/Withdrawal'); // Model import ensure karein
+    const pendingRequest = await Withdrawal.findOne({ userId: user.userId, status: 'pending' });
 
-    // 🔒 Wallet uniqueness check
     if (walletAddress && walletAddress !== user.walletAddress) {
-      const exists = await User.findOne({ walletAddress });
-      if (exists)
-        return res.status(403).json({
-          message: 'This wallet address is already used by another user.',
+      if (pendingRequest) {
+        return res.status(403).json({ 
+          message: 'Wallet Locked: You cannot change address while a withdrawal is pending.' 
         });
+      }
 
-      // Optional: check 2 times/24h limit, pending withdrawals, etc.
-      if (user.pendingWithdrawals && Object.values(user.pendingWithdrawals).some(v => v > 0))
-        return res.status(403).json({ message: 'Wallet locked due to pending withdrawal.' });
-
-      const now = new Date();
-      if (!user.walletAddressChangeWindowStart || now - user.walletAddressChangeWindowStart > 24*60*60*1000)
-        user.walletAddressChangeCount = 0, user.walletAddressChangeWindowStart = now;
-
-      if (user.walletAddressChangeCount >= 2)
-        return res.status(403).json({ message: 'Wallet can be changed max 2 times in 24h.' });
-
-      // Save history
-      if (user.walletAddress)
-        user.walletAddressHistory.push({ address: user.walletAddress, changedAt: now });
+      // Baaki uniqueness check...
+      const exists = await User.findOne({ walletAddress });
+      if (exists) return res.status(403).json({ message: 'Address already in use.' });
 
       user.walletAddress = walletAddress;
-      user.walletAddressChangeCount += 1;
     }
 
-    // Update other profile info
-    if (name) user.name = name;
-    if (email) user.email = email;
-    if (mobile) user.mobile = mobile;
-
+    // Baaki profile update logic...
     await user.save();
     res.json({ user });
-
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Profile update failed' });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -693,7 +643,7 @@ router.put('/change-password/:userId', async (req, res) => {
     }
 
     if (oldTxnPassword && newTxnPassword) {
-      const matchTxn = await bcrypt.compare(oldTxnPassword, user.transactionPassword);
+const matchTxn = (oldTxnPassword === user.transactionPassword);
       if (!matchTxn) return res.status(403).json({ message: 'Incorrect old transaction password' });
       user.transactionPassword = await bcrypt.hash(newTxnPassword, 10);
     }

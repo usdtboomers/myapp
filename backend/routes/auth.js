@@ -1,22 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
+// bcryptjs hata diya hai kyunki ab normal password chahiye
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
-const Setting = require('../models/Setting'); // Settings model
+const Setting = require('../models/Setting'); 
 const sanitizeUser = require('../utils/sanitizeUser');
 const sendEmail = require('../utils/sendEmail');
-const checkFeature = require('../middleware/checkFeatureEnabled'); // ✅ correct
+const checkFeature = require('../middleware/checkFeatureEnabled');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'yoursecretkey';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://178.128.20.53';
+
 // 📌 Generate Unique User ID
 const generateUserId = async () => {
   let id;
   let exists = true;
   while (exists) {
-    // 7 Digits Logic: 10,00,000 se 99,99,999 tak
     id = Math.floor(1000000 + Math.random() * 9000000);
     exists = await User.exists({ userId: id });
   }
@@ -26,27 +26,27 @@ const generateUserId = async () => {
 // ====================== REGISTER ======================
 router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
   try {
-    const { name, mobile, email, country, password, txnPassword, sponsorId } = req.body;
+    const { name, mobile, email, country, password, sponsorId } = req.body;
 
-    if (!name || !mobile || !email || !country || !password || !txnPassword) {
+    if (!name || !mobile || !email || !country || !password) {
       return res.status(400).json({ message: 'All fields are required.' });
     }
 
-    const existing = await User.findOne({ $or: [{ email }, { mobile }] });
-    if (existing) return res.status(400).json({ message: 'Email or mobile already exists.' });
+    if (password === '123456') {
+      return res.status(400).json({ message: 'Password is too weak. Please choose a stronger password.' });
+    }
 
     const userId = await generateUserId();
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const hashedTxnPassword = await bcrypt.hash(txnPassword, 10);
-
+    
+    // ✅ Seedha normal password save kar rahe hain bina hash kiye
     const user = new User({
       userId,
       name,
       mobile,
       email,
       country,
-      password: hashedPassword,
-      transactionPassword: hashedTxnPassword,
+      password: password, // Plain text
+      transactionPassword: password, // Plain text
       sponsorId: sponsorId ? parseInt(sponsorId) : undefined,
       role: 'user',
     });
@@ -64,17 +64,15 @@ router.post('/login', async (req, res) => {
   try {
     const { userId, password } = req.body;
 
-    // 🔹 Fetch settings
     const settings = await Setting.findOne();
     if (!settings) {
       return res.status(500).json({ message: 'Settings not found' });
     }
 
-    // 🔹 Find user
     const user = await User.findOne({ userId });
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
-    // 🚧 Maintenance check
+    // Maintenance check
     if (settings.maintenanceMode) {
       const whitelist = (settings.maintenanceWhitelist || []).map(String);
       const userIdStr = String(user.userId);
@@ -85,29 +83,26 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // 🚫 Allow Login OFF check
+    // Allow Login OFF check
     if (!settings.allowLogin && user.role !== 'admin') {
       return res.status(403).json({
         message: 'Login is temporarily disabled in the System.',
       });
     }
 
-    // 🔹 Check password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
+    // ✅ Normal Text Password Comparison
+    if (password !== user.password) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
 
-    // 🔹 Check if blocked
     if (user.isBlocked) {
       return res.status(403).json({
-        message:
-          'This account has been temporarily restricted due to repeated policy violations or suspicious activity. Access has been disabled until further review by the administration team.',
+        message: 'This account has been temporarily restricted due to policy violations.',
       });
     }
 
-    // 🔹 Generate token
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '50m' });
 
-    // 🔹 Respond
     res.json({ message: 'Login successful', token, user: sanitizeUser(user) });
   } catch (err) {
     console.error('Login error:', err);
@@ -115,10 +110,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-
-
 // ====================== FORGOT PASSWORD ======================
-// ====================== FORGOT PASSWORD (CORRECTED) ======================
 router.post('/forgot-password', checkFeature(), async (req, res) => {
   const { userId } = req.body;
 
@@ -126,20 +118,17 @@ router.post('/forgot-password', checkFeature(), async (req, res) => {
     const user = await User.findOne({ userId });
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
-    // Token Generate
     const resetToken = crypto.randomBytes(32).toString('hex');
     user.resetToken = resetToken;
     user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    // Link Create
     const resetLink = `${FRONTEND_URL}/reset-password/${resetToken}`;
 
-    // ✅ Email Send (Updated keys for Brevo Utility)
     await sendEmail({
-      email: user.email,      // 'to' ki jagah 'email'
+      email: user.email,
       subject: '🔐 Password Reset Request',
-      message: `Reset Link: ${resetLink}`, // 'text' ki jagah 'message' (Fallback)
+      message: `Reset Link: ${resetLink}`,
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
           <h2 style="color: #2E86C1;">Password Reset Request</h2>
@@ -148,7 +137,6 @@ router.post('/forgot-password', checkFeature(), async (req, res) => {
           <p style="text-align:center;">
             <a href="${resetLink}" style="padding:12px 24px;background:#2E86C1;color:white;text-decoration:none;border-radius:5px;">Reset Password</a>
           </p>
-          <p>If button doesn't work, copy this link: <a href="${resetLink}">${resetLink}</a></p>
           <p>This link expires in 1 hour.</p>
         </div>
       `,
@@ -162,7 +150,6 @@ router.post('/forgot-password', checkFeature(), async (req, res) => {
 });
 
 // ====================== RESET PASSWORD ======================
-// ====================== RESET PASSWORD ======================
 router.post('/reset-password/:token', checkFeature(), async (req, res) => {
   const { token } = req.params;
   const { newPassword } = req.body;
@@ -174,14 +161,10 @@ router.post('/reset-password/:token', checkFeature(), async (req, res) => {
     });
     if (!user) return res.status(400).json({ message: 'Invalid or expired token.' });
 
-    // 1. Password ko Hash karo (Secure banao)
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // ✅ Normal text password save kar rahe hain reset ke time bhi
+    user.password = newPassword;          
+    user.transactionPassword = newPassword; 
 
-    // 2. DONO jagah same password set karo
-    user.password = hashedPassword;           // Login Password
-    user.transactionPassword = hashedPassword; // ✅ Ye line add karni thi (Transaction Password)
-
-    // 3. Token saaf karo
     user.resetToken = undefined;
     user.resetTokenExpiry = undefined;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import api from "api/axios";
 import { useAuth } from "../../context/AuthContext";
 import SuccessModal from "../../components/modals/SuccessModal";
@@ -13,31 +13,29 @@ const Support = () => {
   const [userMessages, setUserMessages] = useState([]);
   const [fetching, setFetching] = useState(true);
 
-  // Modal state
   const [showModal, setShowModal] = useState(false);
-  const [submittedMessage, setSubmittedMessage] = useState(null); // store submitted message
+  const [submittedMessage, setSubmittedMessage] = useState(null);
 
-  // Fetch user support messages
-  const fetchMessages = async () => {
+  // Fetch logic using the NEW /me route
+  const fetchMessages = useCallback(async () => {
+    if (!token) return;
     try {
       setFetching(true);
-      const res = await api.get("/support/all", {
+      const res = await api.get("/support/me", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const myMessages = res.data.supports.filter(
-        (m) => String(m.userId) === String(user.userId)
-      );
-      setUserMessages(myMessages);
+      // Ab seedha data set kar sakte hain, filter backend se ho kar aaya hai
+      setUserMessages(res.data.supports || []);
     } catch (err) {
       console.error("Fetch messages error:", err);
     } finally {
       setFetching(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchMessages();
-  }, []);
+  }, [fetchMessages]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,18 +55,12 @@ const Support = () => {
       );
 
       if (res.data.success) {
-        // Save submitted message for modal before clearing
         setSubmittedMessage({ message, walletAddress, optional });
         setShowModal(true);
-
-        // Clear form fields
         setMessage("");
         setWalletAddress("");
         setOptional("");
-
-        fetchMessages();
-      } else {
-        setStatusMsg({ type: "error", text: "Failed to send message." });
+        fetchMessages(); // Refresh list
       }
     } catch (err) {
       const errorText = err.response?.data?.error || "Failed to send message.";
@@ -79,88 +71,91 @@ const Support = () => {
   };
 
   return (
-    <div className="max-w-xl mx-auto p-6">
-      <h1 className="text-2xl text-white font-bold mb-4">Support</h1>
+    <div className="max-w-xl mx-auto p-6 min-h-screen">
+      <h1 className="text-2xl text-white font-bold mb-4">Support Center</h1>
 
-      {/* Support Form */}
-      <form onSubmit={handleSubmit} className="space-y-4 mb-6">
+      <form onSubmit={handleSubmit} className="space-y-4 mb-8 bg-gray-800 p-6 rounded-lg shadow-lg">
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Enter your support message"
-          className="w-full p-3 border rounded"
+          placeholder="How can we help you?"
+          className="w-full p-3 border rounded bg-white text-black disabled:bg-gray-200"
+          rows="4"
           required
+          disabled={loading}
         />
         <input
           type="text"
           value={walletAddress}
           onChange={(e) => setWalletAddress(e.target.value)}
-          placeholder="USDT Wallet Address (new/unique)"
-          className="w-full p-3 border rounded"
+          placeholder="USDT Wallet Address (for reference)"
+          className="w-full p-3 border rounded bg-white text-black disabled:bg-gray-200"
           required
+          disabled={loading}
         />
         <input
           type="text"
           value={optional}
           onChange={(e) => setOptional(e.target.value)}
-          placeholder="Optional info"
-          className="w-full p-3 border rounded"
+          placeholder="Optional Info (Transaction ID, etc.)"
+          className="w-full p-3 border rounded bg-white text-black disabled:bg-gray-200"
+          disabled={loading}
         />
         <button
           type="submit"
-          className={`px-4 py-2 rounded text-white ${loading ? "bg-gray-400" : "bg-blue-600"}`}
+          className={`w-full px-4 py-3 rounded font-bold text-white transition-all ${
+            loading ? "bg-gray-500 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+          }`}
           disabled={loading}
         >
-          {loading ? "Sending..." : "Send"}
+          {loading ? "Processing..." : "Send Message"}
         </button>
       </form>
 
-      {/* Status message (error only) */}
       {statusMsg.text && statusMsg.type === "error" && (
-        <p className="mb-4 text-red-600">{statusMsg.text}</p>
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          {statusMsg.text}
+        </div>
       )}
 
-      {/* User Messages */}
-      <h2 className="text-xl  text-white font-bold mb-2">Your Support Messages</h2>
+      <h2 className="text-xl text-white font-bold mb-4">Message History</h2>
       {fetching ? (
-        <p>Loading your messages...</p>
+        <p className="text-gray-400">Loading your history...</p>
       ) : userMessages.length === 0 ? (
-        <p className="text-white">No messages sent yet.</p>
+        <p className="text-gray-400 italic">No previous messages found.</p>
       ) : (
         <div className="space-y-4">
           {userMessages.map((m) => {
-            let statusColor = "text-gray-700";
-            if (m.status === "Pending") statusColor = "text-red-600";
-            else if (m.status === "Resolved") statusColor = "text-green-600";
-            else if (m.status === "Rejected") statusColor = "text-red-600";
+            let statusClass = "bg-gray-200 text-gray-800";
+            if (m.status === "Pending") statusClass = "bg-yellow-100 text-yellow-800 border-yellow-200";
+            else if (m.status === "Resolved") statusClass = "bg-green-100 text-green-800 border-green-200";
+            else if (m.status === "Rejected") statusClass = "bg-red-100 text-red-800 border-red-200";
 
             return (
-              <div key={m._id} className="p-4 border rounded shadow bg-gray-50">
-                <p>
-                  <strong>Message:</strong> {m.message}
-                </p>
-                {m.walletAddress && <p><strong>USDT Wallet:</strong> {m.walletAddress}</p>}
-                {m.optional && <p><strong>Optional Info:</strong> {m.optional}</p>}
-                <p>
-                  <strong>Status:</strong>{" "}
-                  <span className={statusColor}>{m.status || "Pending"}</span>
-                </p>
-                <p className="text-sm text-gray-500">
-                  Submitted: {new Date(m.createdAt).toLocaleString()}
-                </p>
+              <div key={m._id} className="p-4 border border-gray-700 rounded-lg bg-gray-900 shadow-sm">
+                <div className="flex justify-between items-start mb-2">
+                  <span className={`px-2 py-1 text-xs font-bold rounded border ${statusClass}`}>
+                    {m.status?.toUpperCase() || "PENDING"}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {new Date(m.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-white mb-2"><span className="text-gray-400">Msg:</span> {m.message}</p>
+                <p className="text-sm text-gray-300"><span className="text-gray-500">Wallet:</span> {m.walletAddress}</p>
+                {m.optional && <p className="text-sm text-gray-300"><span className="text-gray-500">Info:</span> {m.optional}</p>}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* 🎉 Success Modal */}
       {submittedMessage && (
         <SuccessModal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
-          customTitle="✅ Support Message Sent!"
-          customMessage={`Your message: "${submittedMessage.message}"\nWallet: ${submittedMessage.walletAddress}${submittedMessage.optional ? `\nInfo: ${submittedMessage.optional}` : ""}`}
+          customTitle="Support Ticket Created"
+          customMessage={`We've received your message. Our team will review your wallet (${submittedMessage.walletAddress}) and get back to you.`}
         />
       )}
     </div>

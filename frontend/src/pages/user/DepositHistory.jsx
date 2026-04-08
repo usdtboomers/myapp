@@ -18,7 +18,7 @@ const DepositHistory = () => {
         }
 
         const res = await api.get(
-`/api/wallet/deposit-history/${user.userId}`        );
+`/wallet/deposit-history/${user.userId}`        );
         setDeposits(res.data);
         setFilteredDeposits(res.data); // initially all
       } catch (err) {

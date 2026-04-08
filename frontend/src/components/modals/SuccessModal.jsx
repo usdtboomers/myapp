@@ -55,8 +55,8 @@ const SuccessModal = ({
       {/* Logo */}
       <div className="flex justify-center items-center my-0.5">
         <img
-          src="/eliteinfinitylogo.png"
-          alt="Elite Infinity Logo"
+          src="/usdtboomer.png"
+          alt="Usdt Boomers Logo"
           className="w-44 h-20 sm:w-28 sm:h-24 md:w-44 md:h-28 object-contain drop-shadow-[0_2px_6px_rgba(255,215,0,0.45)]"
         />
       </div>
@@ -158,12 +158,7 @@ const SuccessModal = ({
         const topupPkgName = packageNames[amount] || "Unknown Package";
         return (
           <SuccessLayout title="Top-Up Successful">
-            <p className="text-white text-lg font-bold text-center mt-2">
-              <span className="text-gray-300">Package: </span>
-              <span className="text-green-400 uppercase tracking-wider">
-                {topupPkgName}
-              </span>
-            </p>
+          
             <p className="text-white text-md font-semibold text-center mt-1">
               <span className="font-bold">Amount: </span>
               <span className="text-yellow-400 font-extrabold"> ${amount}</span>

@@ -7,15 +7,15 @@ const Transaction = require("../models/Transaction");
 const Deposit = require("../models/Deposit");
 const bcrypt = require("bcryptjs");
 
+// 💸 POST: Manual Credit/Debit processing
 router.post("/manual-transaction", adminAuth, async (req, res) => {
   try {
     console.log("\n--- 👉 Manual Transaction Processing ---");
 
     // 1. Data Extract karo
-    // Note: Frontend kabhi 'password' bhejta hai, kabhi 'adminPassword'. Hum dono check karenge.
     const { userId, amount, type, txHash, reason, adminNote, adminPassword, password } = req.body;
     
-    // Jo bhi password aaya ho use le lo
+    // Admin password handle karein (Frontend se dono naam se aa sakta hai)
     const finalPassword = adminPassword || password;
 
     if (!finalPassword) {
@@ -23,15 +23,15 @@ router.post("/manual-transaction", adminAuth, async (req, res) => {
     }
 
     // 🔍 2. Token se Admin ID nikalo
-    // Middleware (adminAuth) ne token decode karke req.user ya req.admin me data dala hoga
     const tokenData = req.admin || req.user;
     
-    // Token me humesha MongoDB ki unique '_id' hoti hai. Wahi sabse reliable hai.
+    // Token me humesha MongoDB ki unique '_id' (24 characters) hoti hai
     const adminDbId = tokenData.adminId || tokenData.id || tokenData._id;
 
     console.log(`👉 Searching Admin by DB ID: "${adminDbId}"`);
 
-    // 🔍 3. Database Search (Direct ID se)
+    // 🔍 3. Database Search (Corrected to use findById)
+    // ✅ FIX: Token me jo ID hai wo MongoDB ki '_id' hai, isliye findById use karna hai
     const admin = await Admin.findById(adminDbId);
 
     if (!admin) {
@@ -40,7 +40,6 @@ router.post("/manual-transaction", adminAuth, async (req, res) => {
     }
 
     // 4. Password Verification (Bcrypt)
-    // Ab hum database wale hash se user ka password match karenge
     const isMatch = await bcrypt.compare(finalPassword, admin.password);
     
     if (!isMatch) {
@@ -60,7 +59,7 @@ router.post("/manual-transaction", adminAuth, async (req, res) => {
 
     const amt = parseFloat(amount);
     
-    // Duplicate check
+    // Duplicate check for TxHash (Agar manual hash provide kiya gaya ho)
     if (txHash) {
       const existingTx = await Transaction.findOne({ txHash });
       const existingDeposit = await Deposit.findOne({ txnHash: txHash });
@@ -69,24 +68,28 @@ router.post("/manual-transaction", adminAuth, async (req, res) => {
       }
     }
 
-    // Update Wallet
+    // Update User Wallet Balance
     if (type === "manual_credit") {
       targetUser.walletBalance += amt;
-    } else {
-      if (targetUser.walletBalance < amt) return res.status(400).json({ message: "Insufficient balance." });
+    } else if (type === "manual_debit") {
+      if (targetUser.walletBalance < amt) {
+        return res.status(400).json({ message: "Insufficient balance in user's wallet." });
+      }
       targetUser.walletBalance -= amt;
+    } else {
+      return res.status(400).json({ message: "Invalid transaction type." });
     }
     
-    // Save User Balance
+    // Save User updated balance
     await targetUser.save();
 
-    // Create History
+    // Create Transaction History Record
     const transaction = new Transaction({
       userId,
       type,
       amount: amt,
-      txHash: txHash || `MANUAL-${Date.now()}`, // Agar hash nahi diya to auto-generate
-      description: reason || "Manual By Admin",
+      txHash: txHash || `MANUAL-${Date.now()}-${Math.floor(Math.random() * 1000)}`, 
+      description: reason || `Manual ${type === 'manual_credit' ? 'Credit' : 'Debit'} by admin`,
       adminNote: adminNote || null,
       source: "manual",
       status: "completed",
@@ -97,7 +100,7 @@ router.post("/manual-transaction", adminAuth, async (req, res) => {
 
     res.json({
       success: true,
-      message: "Transaction Successful",
+      message: `Successfully ${type === 'manual_credit' ? 'credited' : 'debited'} $${amt} to user ${userId}`,
       transaction,
     });
 
@@ -107,16 +110,27 @@ router.post("/manual-transaction", adminAuth, async (req, res) => {
   }
 });
 
-// GET Route (Same as before)
+// 📜 GET: Fetch recent manual transactions for history table
 router.get("/manual-transactions", adminAuth, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const filter = { source: "manual" };
+        
         const total = await Transaction.countDocuments(filter);
-        const transactions = await Transaction.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit);
-        res.json({ transactions, total, totalPages: Math.ceil(total / limit), currentPage: page });
+        const transactions = await Transaction.find(filter)
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit);
+            
+        res.json({ 
+            transactions, 
+            total, 
+            totalPages: Math.ceil(total / limit), 
+            currentPage: page 
+        });
     } catch (err) {
+        console.error("❌ Error loading transactions:", err);
         res.status(500).json({ message: "Error loading transactions" });
     }
 });

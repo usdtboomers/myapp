@@ -12,7 +12,9 @@ const withdrawalSchema = new mongoose.Schema({
       "level", 
       "spin",   
       "binary", 
-      "mixed",  // ✅ YAHAN "mixed" ADD KIYA HAI
+      "reward", // ✅ YAHAN "reward" ADD KIYA HAI (Naye frontend boxes ke liye)
+      "mixed",  
+      "plan",   // ✅ YAHAN "plan" ADD KIYA HAI (Taki fallback me error na aaye)
       "plan1","plan2","plan3","plan4","plan5","plan6","plan7"
     ]
   },
@@ -24,7 +26,7 @@ const withdrawalSchema = new mongoose.Schema({
   walletUsed: { type: Number, default: 0 },
   incomeUsed: { type: Number, default: 0 },
 
-  walletAddress: { type: String, default: "" }, // 🔐 parent only
+  walletAddress: { type: String, default: "" }, 
   txnHash: { type: String, default: "" },
 
   status: { type: String, default: "pending" },

@@ -182,8 +182,8 @@ const UserLogin = () => {
         <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-slate-800/80 mb-6 animate-float animate-glow border border-slate-700 shadow-xl overflow-hidden p-3">
                 <img 
-                  src="/eliteinfinitylogo.png" 
-                  alt="Elite Infinity" 
+                  src="/usdtboomer.png" 
+                  alt="USDT BOOMERS" 
                   className="w-full h-full object-contain"
                 />
             </div>
@@ -201,7 +201,7 @@ const UserLogin = () => {
             >
               Welcome Back
             </h2>
-            <p className="text-white mt-2 text-sm">Sign in to your Elite Infinity account</p>
+            <p className="text-white mt-2 text-sm">Sign in to your USDT BOOMERS account</p>
         </div>
 
         {/* Error Message */}

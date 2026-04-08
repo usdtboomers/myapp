@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from "react";
-import api from "api/axios";
+import api from "../../api/axios";
 import MessageModal from "./MessageModal";
 import SuccessModal from "./SuccessModal";
 import { useAuth } from "../../context/AuthContext";
 
 const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
   // --- STATE ---
-  const [credits, setCredits] = useState({ direct: "", level: "", spin: "", binary: "" });
+  // ✅ Pura state update kar diya (Sirf Reward aur Pool bacha hai)
+  const [credits, setCredits] = useState({ reward: "", pool: "" });
   const [transactionPassword, setTransactionPassword] = useState("");
-  const [available, setAvailable] = useState({
-    directIncome: 0,
-    levelIncome: 0,
-    spinIncome: 0,
-    binaryIncome: 0,
-    walletBalance: 0,
-  });
+  const [available, setAvailable] = useState({});
   const [loading, setLoading] = useState(false);
 
   const [messageModal, setMessageModal] = useState({ open: false, title: "", message: "", type: "info" });
@@ -42,15 +37,19 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
     fetchAvailable();
   }, [userId]);
 
+  // ✅ CALCULATE AVAILABLE BALANCES
+  // Backend gives { reward: 10, planIncomes: { plan1: 5, plan2: 10 } }
+  const availableReward = available.reward || 0;
+  const availablePool = Object.values(available.planIncomes || {}).reduce((acc, val) => acc + (Number(val) || 0), 0);
+  const totalAvailable = availableReward + availablePool;
+
   // --- 🔥 UPDATED LOGIC: Handle Credit (Single Call) ---
   const handleCredit = async () => {
     // 1. Prepare Values
-    const dDirect = parseFloat(credits.direct) || 0;
-    const dLevel = parseFloat(credits.level) || 0;
-    const dSpin = parseFloat(credits.spin) || 0;
-    const dBinary = parseFloat(credits.binary) || 0;
+    const dReward = parseFloat(credits.reward) || 0;
+    const dPool = parseFloat(credits.pool) || 0;
 
-    const totalAmount = dDirect + dLevel + dSpin + dBinary;
+    const totalAmount = dReward + dPool;
 
     // 2. Validate
     if (totalAmount < 10) {
@@ -62,16 +61,12 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
 
     setLoading(true);
     try {
-      // 3. Single API Request (No Loop)
+      // 3. Single API Request (Naye Backend Format Ke Hisaab Se)
       const payload = {
         userId,
         transactionPassword,
-        // Backend ke naye format ke hisaab se keys bhejo 👇
-        deductDirect: dDirect,
-        deductLevel: dLevel,
-        deductSpin: dSpin,
-        deductBinary: dBinary,
-        amount: totalAmount // Optional, but good for cross-check
+        deductReward: dReward,
+        deductPool: dPool
       };
 
       const res = await api.post(
@@ -87,7 +82,7 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
       if (res.data.success) {
         setSuccessData({ userId, amount: totalAmount });
         setSuccessModalOpen(true);
-        setCredits({ direct: "", level: "", spin: "", binary: "" }); // Reset inputs
+        setCredits({ reward: "", pool: "" }); // Reset inputs
         setTransactionPassword("");
         await fetchAvailable(); // Refresh balances
         
@@ -108,162 +103,36 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
     let value = e.target.value;
     // Prevent negative
     if (value < 0) value = 0;
-    // Prevent exceeding balance
-    if (parseFloat(value) > available[`${source}Income`]) {
-      value = available[`${source}Income`];
+    
+    // Prevent exceeding specific balance
+    const maxVal = source === "reward" ? availableReward : availablePool;
+    if (parseFloat(value) > maxVal) {
+      value = maxVal;
     }
+    
     setCredits({ ...credits, [source]: value });
   };
 
-  const totalAvailable =
-    (available.directIncome || 0) +
-    (available.levelIncome || 0) +
-    (available.spinIncome || 0) +
-    (available.binaryIncome || 0);
-
   // --- STYLES (No Change) ---
   const styles = {
-    overlay: {
-      position: "fixed",
-      inset: 0,
-      backgroundColor: "rgba(0, 0, 0, 0.9)", 
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 9999,
-      padding: "16px",
-      backdropFilter: "blur(5px)",
-    },
-    modal: {
-      backgroundColor: "#0f172a", 
-      width: "100%",
-      maxWidth: "480px",
-      borderRadius: "16px",
-      border: "1px solid #334155",
-      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-      display: "flex",
-      flexDirection: "column",
-      maxHeight: "90vh",
-      overflow: "hidden",
-    },
-    header: {
-      padding: "20px",
-      borderBottom: "1px solid #1e293b",
-      textAlign: "center",
-      backgroundColor: "#0f172a",
-      flexShrink: 0,
-    },
-    title: {
-      fontSize: "18px",
-      fontWeight: "700",
-      color: "#ffffff",
-      margin: 0,
-    },
-    body: {
-      padding: "20px",
-      overflowY: "auto",
-      display: "flex",
-      flexDirection: "column",
-      gap: "16px",
-      backgroundColor: "#0f172a",
-      flex: 1,
-      minHeight: 0, 
-    },
-    infoCard: {
-      backgroundColor: "#1e293b",
-      padding: "16px",
-      borderRadius: "12px",
-      border: "1px solid #334155",
-      textAlign: "center",
-      flexShrink: 0,
-    },
-    infoLabel: {
-      fontSize: "12px",
-      color: "#94a3b8",
-      textTransform: "uppercase",
-      fontWeight: "bold",
-      marginBottom: "4px",
-      display: "block",
-    },
-    infoValue: {
-      fontSize: "18px",
-      fontWeight: "bold",
-      color: "#34d399", 
-      fontFamily: "monospace",
-    },
-    tableContainer: {
-        border: "1px solid #334155",
-        borderRadius: "12px",
-        overflow: "hidden",
-        backgroundColor: "#1e293b",
-        flexShrink: 0,
-    },
-    tableRow: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "12px 16px",
-        borderBottom: "1px solid #334155",
-    },
-    sourceName: {
-        color: "white",
-        fontWeight: "500",
-        fontSize: "14px",
-    },
-    sourceBal: {
-        fontSize: "13px",
-color: "#22c55e"
-,        marginTop: "2px",
-    },
-    input: {
-        backgroundColor: "#0f172a",
-        border: "1px solid #475569",
-        color: "white",
-        padding: "8px",
-        borderRadius: "8px",
-        width: "100px",
-        fontSize: "14px",
-        textAlign: "right",
-        outline: "none",
-    },
-    mainInput: {
-        width: "100%",
-        backgroundColor: "#1e293b",
-        border: "1px solid #475569",
-        color: "white",
-        padding: "12px",
-        borderRadius: "8px",
-        fontSize: "14px",
-        outline: "none",
-        marginTop: "6px",
-    },
-    footer: {
-        padding: "20px",
-        borderTop: "1px solid #334155",
-        display: "flex",
-        gap: "12px",
-        backgroundColor: "#0f172a",
-        flexShrink: 0,
-    },
-    btn: {
-        flex: 1,
-        padding: "12px",
-        borderRadius: "8px",
-        fontWeight: "bold",
-        fontSize: "14px",
-        cursor: "pointer",
-        border: "none",
-    },
-    confirmBtn: {
-        background: "linear-gradient(90deg, #eab308 0%, #ca8a04 100%)",
-        color: "black",
-        boxShadow: "0 4px 6px -1px rgba(234, 179, 8, 0.2)",
-    },
-    cancelBtn: {
-        backgroundColor: "#1e293b",
-        color: "#cbd5e1",
-        border: "1px solid #334155",
-    }
+    overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0, 0, 0, 0.9)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "16px", backdropFilter: "blur(5px)" },
+    modal: { backgroundColor: "#0f172a", width: "100%", maxWidth: "480px", borderRadius: "16px", border: "1px solid #334155", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)", display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden" },
+    header: { padding: "20px", borderBottom: "1px solid #1e293b", textAlign: "center", backgroundColor: "#0f172a", flexShrink: 0 },
+    title: { fontSize: "18px", fontWeight: "700", color: "#ffffff", margin: 0 },
+    body: { padding: "20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px", backgroundColor: "#0f172a", flex: 1, minHeight: 0 },
+    infoCard: { backgroundColor: "#1e293b", padding: "16px", borderRadius: "12px", border: "1px solid #334155", textAlign: "center", flexShrink: 0 },
+    infoLabel: { fontSize: "12px", color: "#94a3b8", textTransform: "uppercase", fontWeight: "bold", marginBottom: "4px", display: "block" },
+    infoValue: { fontSize: "18px", fontWeight: "bold", color: "#34d399", fontFamily: "monospace" },
+    tableContainer: { border: "1px solid #334155", borderRadius: "12px", overflow: "hidden", backgroundColor: "#1e293b", flexShrink: 0 },
+    tableRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px" },
+    sourceName: { color: "white", fontWeight: "500", fontSize: "14px" },
+    sourceBal: { fontSize: "13px", color: "#22c55e", marginTop: "2px" },
+    input: { backgroundColor: "#0f172a", border: "1px solid #475569", color: "white", padding: "8px", borderRadius: "8px", width: "110px", fontSize: "14px", textAlign: "right", outline: "none" },
+    mainInput: { width: "100%", backgroundColor: "#1e293b", border: "1px solid #475569", color: "white", padding: "12px", borderRadius: "8px", fontSize: "14px", outline: "none", marginTop: "6px" },
+    footer: { padding: "20px", borderTop: "1px solid #334155", display: "flex", gap: "12px", backgroundColor: "#0f172a", flexShrink: 0 },
+    btn: { flex: 1, padding: "12px", borderRadius: "8px", fontWeight: "bold", fontSize: "14px", cursor: "pointer", border: "none" },
+    confirmBtn: { background: "linear-gradient(90deg, #eab308 0%, #ca8a04 100%)", color: "black", boxShadow: "0 4px 6px -1px rgba(234, 179, 8, 0.2)" },
+    cancelBtn: { backgroundColor: "#1e293b", color: "#cbd5e1", border: "1px solid #334155" }
   };
 
   return (
@@ -299,33 +168,50 @@ color: "#22c55e"
               </div>
            </div>
 
-           {/* Input Table */}
+           {/* Input Table (Only 2 Options Now) */}
            <div style={styles.tableContainer}>
               <div style={{padding: '10px 16px', backgroundColor: '#0f172a', borderBottom: '1px solid #334155'}}>
                  <span style={{fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', textTransform:'uppercase'}}>Select Amount to Credit</span>
               </div>
-              {["direct", "level", "spin", "binary"].map((src, index) => (
-                <div key={src} style={{
-                    ...styles.tableRow,
-                    borderBottom: index === 3 ? 'none' : '1px solid #334155'
-                }}>
-                    <div>
-                        <div style={styles.sourceName}>{src.charAt(0).toUpperCase() + src.slice(1)} Income</div>
-                        <div style={styles.sourceBal}>Avl: ${(available[`${src}Income`] || 0).toFixed(2)}</div>
-                    </div>
-                    <div>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                          style={styles.input}
-                          value={credits[src]}
-                          onChange={(e) => handleInputChange(e, src)}
-                        />
-                    </div>
-                </div>
-              ))}
+              
+              {/* Row 1: USDT Reward */}
+              <div style={{ ...styles.tableRow, borderBottom: '1px solid #334155' }}>
+                  <div>
+                      <div style={styles.sourceName}>USDT Reward</div>
+                      <div style={styles.sourceBal}>Avl: ${availableReward.toFixed(2)}</div>
+                  </div>
+                  <div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        style={styles.input}
+                        value={credits.reward}
+                        onChange={(e) => handleInputChange(e, "reward")}
+                      />
+                  </div>
+              </div>
+
+              {/* Row 2: Pool Income */}
+              <div style={{ ...styles.tableRow, borderBottom: 'none' }}>
+                  <div>
+                      <div style={styles.sourceName}>Pool Income</div>
+                      <div style={styles.sourceBal}>Avl: ${availablePool.toFixed(2)}</div>
+                  </div>
+                  <div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        style={styles.input}
+                        value={credits.pool}
+                        onChange={(e) => handleInputChange(e, "pool")}
+                      />
+                  </div>
+              </div>
+
            </div>
 
            {/* Transaction Password */}

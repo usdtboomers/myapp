@@ -10,10 +10,23 @@ const api = axios.create({
 
 // 1. Request Interceptor: Token automatically add karega
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  // 🔥 FIX: Pata karo ki ye request Admin ki hai ya Normal User ki
+  const isAdminRoute = config.url && config.url.startsWith('/admin');
+
+  if (isAdminRoute) {
+    // Agar Admin route hai, toh adminToken bhejo
+    const adminToken = localStorage.getItem('adminToken');
+    if (adminToken) {
+      config.headers.Authorization = `Bearer ${adminToken}`;
+    }
+  } else {
+    // Warna normal user ka token bhejo
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
+  
   return config;
 }, (error) => Promise.reject(error));
 
@@ -21,19 +34,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Check karein ki ye error kaha se aaya hai
     const originalRequest = error.config;
 
-    // Agar error 401 hai...
     if (error.response && error.response.status === 401) {
-      
-      // 🔥 FIX: Agar ye request '/login' endpoint ki thi (yani user login try kar raha tha),
-      // to hum redirect NAHI karenge. Hum error ko Component tak jane denge.
       if (originalRequest.url.includes('/login') || window.location.pathname === '/login') {
         return Promise.reject(error);
       }
 
       // Agar user Dashboard par tha aur session expire hua, tabhi logout karo
+      // Note: Hum yahan adminToken delete nahi kar rahe taaki normal user session expire hone pe admin out na ho.
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import api from "api/axios"; // Path check karlena
+import React, { useState, useEffect, useCallback } from "react";
+import api from "../../api/axios"; 
 import SuccessModal from "./SuccessModal";
 import MessageModal from "./MessageModal";
 import { useAuth } from "../../context/AuthContext";
@@ -7,409 +7,458 @@ import { useAuth } from "../../context/AuthContext";
 const WithdrawalModal = ({ userId, onClose }) => {
   // --- STATE ---
   const [loading, setLoading] = useState(false);
-  const [balances, setBalances] = useState({ walletBalance: 0, planIncomes: {} });
-  const [withdrawals, setWithdrawals] = useState({});
+  const [selectedLevel, setSelectedLevel] = useState(null);
+  const [balances, setBalances] = useState({
+    walletBalance: 0,
+    planIncomes: {},
+    rewardIncome: 0 // Direct and Level removed
+  });
+  
+  const [userROI, setUserROI] = useState([]);
+  const [levelWithdrawals, setLevelWithdrawals] = useState({}); 
+  const [otherWithdrawals, setOtherWithdrawals] = useState({});
+  
   const [transactionPassword, setTransactionPassword] = useState("");
-  const [walletAddress, setWalletAddress] = useState("");
+  const [walletAddress, setWalletAddress] = useState(""); // State for BEP20 Address
   const [isAddressMissing, setIsAddressMissing] = useState(false);
+  
   const [successOpen, setSuccessOpen] = useState(false);
   const [successData, setSuccessData] = useState({ userId: "", amount: 0, source: "" });
   const [messageModal, setMessageModal] = useState({ open: false, title: "", message: "", type: "info" });
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
-  const { user: loggedInUser } = useAuth();
-  const isPromoUser = loggedInUser?.role === "promo";
-  const authToken = localStorage.getItem("token");
+  const { user: loggedInUser, token } = useAuth();
 
   const showMessage = (title, message, type = "error") =>
     setMessageModal({ open: true, title, message, type });
 
   // --- CONFIG ---
-  const planToPackageAmount = {
-    plan1: 10,
-    plan2: 25,
-    plan3: 50,
-    plan4: 100,
-    plan5: 200,
-    plan6: 500,
-    plan7: 1000,
+  const planToPackageAmount = { plan1: 30, plan2: 60, plan3: 120, plan4: 240, plan5: 480, plan6: 960 };
+  const planNames = {
+    plan1: "$30 Package", plan2: "$60 Package", plan3: "$120 Package",
+    plan4: "$240 Package", plan5: "$480 Package", plan6: "$960 Package"
+  };
+  
+  const packageEarnings = {
+    30: [5, 10, 15, 15, 15],
+    60: [10, 20, 30, 30, 30],
+    120: [20, 40, 60, 60, 60],
+    240: [40, 80, 120, 120, 120],
+    480: [80, 160, 240, 240, 240], 
+    960: [160, 320, 480, 480, 480]
   };
 
-  const planNames = {
-    plan1: "Bronze",
-    plan2: "Silver",
-    plan3: "Gold",
-    plan4: "Platinum",
-    plan5: "Diamond",
-    plan6: "Elite",
-    plan7: "Infinity",
-  };
+  const unlockDays = [3, 13, 43, 73, 103];
 
   // --- LOGIC: Fetch Data ---
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const res = await api.get(`/wallet/withdrawable/${userId}`);
+      const profileRes = await api.get(`/user/${userId}`);
+
       if (res.data) {
         setBalances({
           walletBalance: res.data.walletBalance || 0,
-          planIncomes: res.data.planIncomes || {}
+          planIncomes: res.data.planIncomes || {},
+          rewardIncome: res.data.reward || 0, // Only Reward kept
         });
-
-        const initialWithdrawals = {};
-        Object.keys(res.data.planIncomes || {}).forEach(plan => {
-          initialWithdrawals[plan] = "";
-        });
-        setWithdrawals(initialWithdrawals);
       }
 
-      const profileRes = await api.get(`/user/${userId}`);
-      const userData = profileRes.data?.user || {};
-      const finalAddress = (userData.walletAddress || "").trim();
-      
-      setWalletAddress(finalAddress);
-      setIsAddressMissing(!finalAddress);
-
+      if (profileRes.data?.user) {
+setUserROI(profileRes.data.user.packages || []);
+        const addr = (profileRes.data.user.walletAddress || "").trim();
+        setWalletAddress(addr);
+        setIsAddressMissing(!addr);
+      }
     } catch (err) {
       console.error(err);
-      showMessage("Error", "Failed to fetch balances.", "error");
     }
+  }, [userId]);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  // --- TIMER LOGIC ---
+  const getLevelData = (pkg, planKey, idx) => {
+    const startDate = new Date(pkg.startDate).getTime();
+    const unlockTime = startDate + (unlockDays[idx] * 24 * 60 * 60 * 1000);
+    const timeLeft = Math.max(0, Math.floor((unlockTime - currentTime) / 1000));
+    const isUnlocked = timeLeft === 0;
+
+    const fullEarning = packageEarnings[pkg.amount][idx];
+    
+    let withdrawnInPlan = (loggedInUser?.pendingWithdrawals?.[planKey] || 0);
+    for(let i = 0; i < idx; i++) {
+        withdrawnInPlan -= packageEarnings[pkg.amount][i];
+    }
+    
+    const levelWithdrawn = Math.max(0, withdrawnInPlan);
+    const availableInLevel = isUnlocked ? Math.max(0, fullEarning - levelWithdrawn) : 0;
+
+    return { isUnlocked, timeLeft, earning: fullEarning, availableInLevel };
   };
 
-  useEffect(() => { fetchData(); }, [userId]);
+  // Modern Timer Formatting (Premium Box Style)
+  const getFormattedTime = (seconds) => {
+    const d = Math.floor(seconds / (3600 * 24));
+    const h = Math.floor((seconds % (3600 * 24)) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return { d, h, m, s };
+  };
 
-  const handleInputChange = (e, plan) => {
+  // --- HANDLERS ---
+  const handleLevelInputChange = (e, planKey, levelIdx) => {
     const value = e.target.value;
     if (/^\d*\.?\d{0,2}$/.test(value)) {
-       setWithdrawals({ ...withdrawals, [plan]: value });
+      setOtherWithdrawals({}); 
+      setLevelWithdrawals({ [`${planKey}_${levelIdx}`]: value });
+      setSelectedLevel({ type: "plan", planKey, levelIdx });
     }
   };
 
-  // --- LOGIC: Handle Withdraw ---
+  const handleOtherInputChange = (e, sourceName) => {
+    const value = e.target.value;
+    if (/^\d*\.?\d{0,2}$/.test(value)) {
+      setLevelWithdrawals({}); 
+      setOtherWithdrawals({ [sourceName]: value });
+      setSelectedLevel({ type: "other", sourceName });
+    }
+  };
+
   const handleWithdraw = async () => {
     try {
-      const entries = Object.entries(withdrawals).filter(
-        ([_, amt]) => amt && Number(amt) > 0
-      );
+      const planEntries = Object.entries(levelWithdrawals).filter(([_, val]) => Number(val) > 0);
+      const otherEntries = Object.entries(otherWithdrawals).filter(([_, val]) => Number(val) > 0);
 
-      if (!entries.length) return showMessage("Warning", "Enter amount to withdraw.", "warning");
-      if (!transactionPassword.trim()) return showMessage("Warning", "Enter transaction password.", "warning");
-      if (!isPromoUser && (!walletAddress || walletAddress.length < 10)) return showMessage("Error", "Invalid USDT address.", "error");
+      if (planEntries.length === 0 && otherEntries.length === 0) {
+        return showMessage("Warning", "Enter amount to withdraw.");
+      }
+      if (!selectedLevel) {
+        return showMessage("Warning", "Select a balance to withdraw.");
+      }
 
-      // Validate balances
-      for (const [plan, amountStr] of entries) {
-        const amount = parseFloat(amountStr);
-        const available = balances.planIncomes[plan] || 0;
-        const packageValue = planToPackageAmount[plan];
-
-        if (!isPromoUser && amount > available)
-          return showMessage("Error", `Insufficient balance in ${plan}`, "error");
-
-        if(packageValue && amount < (packageValue * 0.10)) {
-           return showMessage("Error", `Minimum withdrawal for ${planNames[plan]} is $${packageValue * 0.10}`, "error");
+      // ✅ Strict validation before attempting withdrawal
+      if (selectedLevel.type === "plan") {
+        const { planKey, levelIdx } = selectedLevel;
+        const requestedAmount = Number(planEntries[0][1]);
+        
+        const pkg = userROI.find(r => r.plan === planKey);
+        if (pkg) {
+           const levelData = getLevelData(pkg, planKey, levelIdx);
+           
+           if (!levelData.isUnlocked) {
+             return showMessage("Locked", `This level is locked. Please wait for the timer to complete before withdrawing.`);
+           }
+           if (requestedAmount > levelData.availableInLevel) {
+             return showMessage("Insufficient Funds", `You only have $${levelData.availableInLevel} available in this level.`);
+           }
         }
       }
 
-      setLoading(true);
-      let totalWithdraw = 0;
-
-      for (const [plan, amountStr] of entries) {
-        const amount = parseFloat(amountStr);
-        await api.post(
-          "/wallet/withdraw",
-          {
-            userId,
-            amount,
-            source: plan,
-            transactionPassword,
-            package: planToPackageAmount[plan] // ✅ Sending Package Value
-          },
-          { headers: { Authorization: `Bearer ${authToken}` } }
-        );
-        totalWithdraw += amount;
+      if (!walletAddress.trim()) {
+        return showMessage("Warning", "Please enter your USDT BEP20 Wallet Address.");
+      }
+      if (!transactionPassword.trim()) {
+        return showMessage("Warning", "Enter transaction password.");
       }
 
-      const planSource = entries.map(([plan]) => planNames[plan] || plan).join(" + "); 
+      setLoading(true);
 
-      setSuccessData({ userId, amount: totalWithdraw, source: planSource });
+      // Save Wallet Address if it was missing/updated
+      if (isAddressMissing) {
+        try {
+          await api.put(`/user/${userId}`, { walletAddress });
+        } catch (e) {
+          console.log("Failed to update wallet address initially, continuing anyway...", e);
+        }
+      }
+
+      let payload = { userId, transactionPassword };
+      let successSourceTitle = "";
+
+      if (selectedLevel.type === "plan") {
+        const [key, val] = planEntries[0];
+        const planKeyToUse = key.split("_")[0];
+        payload = {
+          ...payload,
+          amount: Number(val),
+          source: planKeyToUse,
+          level: selectedLevel.levelIdx,
+          package: planToPackageAmount[planKeyToUse],
+        };
+        successSourceTitle = planNames[planKeyToUse];
+      } else if (selectedLevel.type === "other") {
+        const [sourceKey, val] = otherEntries[0];
+        payload = {
+          ...payload,
+          amount: Number(val),
+          source: sourceKey, 
+        };
+        successSourceTitle = "USDT Reward Income";
+      }
+
+      await api.post("/wallet/withdraw", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setSuccessData({
+        userId,
+        amount: payload.amount,
+        source: successSourceTitle,
+      });
+
       setSuccessOpen(true);
-      
-      setWithdrawals({});
+      setLevelWithdrawals({});
+      setOtherWithdrawals({});
+      setSelectedLevel(null);
       setTransactionPassword("");
       await fetchData();
 
     } catch (err) {
-      console.error(err);
-      showMessage("Error", err.response?.data?.message || "Withdrawal failed", "error");
+      console.log(err);
+      const msg = err.response?.status === 403
+        ? "Invalid Transaction Password"
+        : err.response?.data?.message || "Withdrawal failed";
+      showMessage("Error", msg);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ CALCULATE TOTALS
-  const totalPlanEarnings = Object.values(balances.planIncomes || {}).reduce(
-    (acc, val) => acc + (Number(val) || 0), 
-    0
-  );
-  const grandTotal =   + totalPlanEarnings;
+  const totalPlanEarnings = Object.values(balances.planIncomes || {}).reduce((acc, val) => acc + (Number(val) || 0), 0);
+  const isAnySelected = Object.values(levelWithdrawals).some(v => Number(v) > 0) || Object.values(otherWithdrawals).some(v => Number(v) > 0);
 
   // --- STYLES ---
   const styles = {
-    overlay: {
-      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: "rgba(0, 0, 0, 0.9)", zIndex: 1000,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      padding: "16px", backdropFilter: "blur(5px)",
-    },
-    modal: {
-      backgroundColor: "#0f172a", width: "100%", maxWidth: "550px",
-      borderRadius: "16px", border: "1px solid #334155",
-      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-      display: "flex", flexDirection: "column", maxHeight: "90vh",
-      position: "relative",
-    },
-    header: {
-      padding: "20px 24px", borderBottom: "1px solid #1e293b",
-      backgroundColor: "#0f172a", borderTopLeftRadius: "16px",
-      borderTopRightRadius: "16px", display: "flex", justifyContent: "space-between",
-      alignItems: "center", flexShrink: 0,
-    },
-    title: { fontSize: "20px", fontWeight: "700", color: "#ffffff", margin: 0 },
-    subtitle: { fontSize: "12px", color: "#94a3b8", marginTop: "2px", margin: 0 },
-    closeBtn: {
-      background: "transparent", border: "none", color: "#94a3b8",
-      fontSize: "28px", cursor: "pointer", lineHeight: 1, padding: "0 8px",
-    },
-    body: {
-      padding: "24px", overflowY: "auto", flex: 1, display: "flex",
-      flexDirection: "column", gap: "20px", backgroundColor: "#0f172a",
-    },
-    balanceCard: {
-      backgroundColor: "#1e293b", padding: "16px", borderRadius: "12px",
-      border: "1px solid #334155", display: "flex", justifyContent: "space-between",
-      alignItems: "center",
-    },
-    labelSmall: {
-      fontSize: "11px", color: "#94a3b8", textTransform: "uppercase",
-      fontWeight: "bold", letterSpacing: "0.5px",
-    },
-    balanceValue: {
-      fontSize: "22px", fontWeight: "bold", color: "#34d399", fontFamily: "monospace",
-    },
-    sectionTitle: {
-       fontSize: "12px", color: "#cbd5e1", fontWeight: "bold",
-       marginBottom: "8px", display: "block", borderBottom: "1px solid #334155",
-       paddingBottom: "8px"
-    },
-    plansList: { display: "flex", flexDirection: "column", gap: "10px" },
-    planRow: {
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "12px", backgroundColor: "#1e293b", borderRadius: "10px",
-      border: "1px solid #334155",
-    },
-    planName: { color: "white", fontWeight: "600", fontSize: "14px" },
-    planSub: { color: "#34d399", fontSize: "11px", fontFamily: "monospace" },
-    input: {
-      backgroundColor: "#0f172a", border: "1px solid #475569", color: "white",
-      padding: "8px 12px", borderRadius: "8px", width: "100px", fontSize: "14px",
-      textAlign: "right", outline: "none",
-    },
-    infoBox: {
-      padding: "12px", borderRadius: "8px", fontSize: "13px",
-      display: "flex", gap: "10px", alignItems: "flex-start",
-    },
-    addressBox: {
-      backgroundColor: "#1e293b", border: "1px solid #334155", color: "#e2e8f0",
-    },
-    errorBox: {
-      backgroundColor: "rgba(239, 68, 68, 0.1)",
-      border: "1px solid rgba(239, 68, 68, 0.3)", color: "#fca5a5",
-    },
-    mainInput: {
-      width: "100%", backgroundColor: "#1e293b", border: "1px solid #475569",
-      color: "white", padding: "14px", borderRadius: "10px", fontSize: "14px",
-      outline: "none", marginTop: "6px",
-    },
-    footer: {
-      padding: "20px", borderTop: "1px solid #334155", backgroundColor: "#0f172a",
-      borderBottomLeftRadius: "16px", borderBottomRightRadius: "16px",
-      display: "flex", gap: "12px", flexShrink: 0,
-    },
-    cancelBtn: {
-      flex: 1, padding: "14px", backgroundColor: "#1e293b", color: "#cbd5e1",
-      border: "1px solid #334155", borderRadius: "10px", fontWeight: "600",
-      cursor: "pointer", fontSize: "14px",
-    },
-    confirmBtn: {
-      flex: 1, padding: "14px",
-      background: "linear-gradient(90deg, #eab308 0%, #ca8a04 100%)",
-      color: "#000000", border: "none", borderRadius: "10px", fontWeight: "bold",
-      cursor: "pointer", fontSize: "14px", boxShadow: "0 4px 6px -1px rgba(234, 179, 8, 0.2)",
-    },
-    disabledBtn: {
-      flex: 1, padding: "14px", backgroundColor: "#334155", color: "#64748b",
-      border: "none", borderRadius: "10px", fontWeight: "bold", cursor: "not-allowed",
-    }
+    overlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0, 0, 0, 0.95)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", backdropFilter: "blur(8px)" },
+    modal: { backgroundColor: "#0f172a", width: "100%", maxWidth: "550px", borderRadius: "20px", border: "1px solid #334155", display: "flex", flexDirection: "column", maxHeight: "95vh", position: "relative", overflow: "hidden" },
+    header: { padding: "20px", borderBottom: "1px solid #1e293b", backgroundColor: "#0f172a", display: "flex", justifyContent: "space-between", alignItems: "center" },
+    title: { fontSize: "18px", fontWeight: "700", color: "white", margin: 0 },
+    body: { padding: "20px", overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: "15px" },
+    planRow: { backgroundColor: "#1e293b", borderRadius: "12px", border: "1px solid #334155", marginBottom: "15px", overflow: "hidden" },
+    levelBox: { display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr", alignItems: "center", gap: "10px", padding: "15px", borderBottom: "1px solid #1e293b", fontSize: "12px" },
+    levelInput: { width: "100%", padding: "8px", background: "#0f172a", border: "1px solid #475569", color: "white", borderRadius: "8px", fontSize: "12px", textAlign: "center", outline: "none" },
+    mainInput: { width: "100%", backgroundColor: "#0f172a", border: "1px solid #475569", color: "white", padding: "12px", borderRadius: "10px", outline: "none" },
+    confirmBtn: { width: "100%", padding: "14px", background: "linear-gradient(90deg, #eab308 0%, #ca8a04 100%)", color: "black", border: "none", borderRadius: "10px", fontWeight: "bold", cursor: "pointer" },
+    timerBox: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #10b981', backgroundColor: 'rgba(16, 185, 129, 0.05)', borderRadius: '6px', width: '36px', height: '40px' },
+    timerValue: { fontSize: '12px', fontWeight: '900', color: '#34d399', lineHeight: '1.2' },
+    timerLabel: { fontSize: '8px', color: '#94a3b8', textTransform: 'uppercase' }
   };
 
   return (
     <>
       <style>{`
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #0f172a; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #475569; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
       `}</style>
 
       {successOpen && (
-        <SuccessModal
-          isOpen={successOpen}
-          onClose={() => { setSuccessOpen(false); onClose(); }}
-          type="withdrawal"
-          userId={successData.userId}
-          amount={successData.amount}
-          source={successData.source}
-        />
+        <SuccessModal isOpen={successOpen} onClose={() => { setSuccessOpen(false); onClose(); }} type="withdrawal" userId={successData.userId} amount={successData.amount} source={successData.source} />
+      )}
+
+      {messageModal.open && (
+         <MessageModal isOpen={messageModal.open} title={messageModal.title} message={messageModal.message} type={messageModal.type} onClose={() => setMessageModal({ ...messageModal, open: false })} />
       )}
 
       {!successOpen && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
-            
-            {/* Header */}
             <div style={styles.header}>
               <div>
                 <h2 style={styles.title}>Withdraw Funds</h2>
-                <p style={styles.subtitle}>Select plans and enter amounts.</p>
+               
               </div>
-              <button onClick={onClose} style={styles.closeBtn}>&times;</button>
+              <button onClick={onClose} style={{background: 'none', border: 'none', color: '#94a3b8', fontSize: '24px', cursor: 'pointer'}}>&times;</button>
             </div>
 
-            {/* Scrollable Body */}
             <div className="custom-scroll" style={styles.body}>
               
-              {/* ✅ NEW: Dual Balance Cards (Total & Wallet) */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {/* OTHER BALANCES: Only USDT Reward Left */}
+              <div>
+                <div style={{fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px', letterSpacing: '1px'}}>USDT REWARD BALANCE</div>
+                <div style={styles.planRow}>
+                  <div style={{...styles.levelBox, gridTemplateColumns: "1fr 1fr", borderBottom: 'none'}}>
+                    <div style={{display: 'flex', flexDirection: 'column'}}>
+                       <span style={{color: '#e2e8f0', fontWeight: 'bold', fontSize: '14px'}}>USDT Reward</span>
+                       <span style={{fontSize: '11px', color: '#a855f7'}}>Available: ${balances.rewardIncome || 0}</span>
+                    </div>
+                    <div style={{display: 'flex', alignItems: 'center'}}>
+                      <input type="number" placeholder="Enter Amount" style={styles.levelInput} 
+                        value={otherWithdrawals.reward || ""} 
+                        onChange={e => handleOtherInputChange(e, "reward")} 
+                        max={balances.rewardIncome} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ACTIVE PACKAGES */}
+              <div>
+                <div style={{fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px', marginTop:'5px', letterSpacing: '1px'}}>ACTIVE PACKAGES</div>
+                {Object.keys(planToPackageAmount).map((planKey) => {
+                  const pkg = userROI.find(r => r.plan === planKey);
+                  if (!pkg) return null;
                   
-                  {/* Card 1: Total Withdrawable */}
-                  <div style={{
-                      ...styles.balanceCard, 
-                      background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-                      border: 'none',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      gap: '4px'
-                  }}>
-                      <div style={{...styles.labelSmall, color: '#d1fae5'}}>Total Withdrawable</div>
-                      <div style={{...styles.balanceValue, color: '#ffffff', fontSize: '24px'}}>
-                          ${grandTotal.toFixed(2)}
-                      </div>
-                  </div>
+                  const allLevelsData = [0, 1, 2, 3, 4].map(idx => getLevelData(pkg, planKey, idx));
+                  const activeTimerIdx = allLevelsData.findIndex(l => !l.isUnlocked); 
+                  
+                  const availableInThisPlan = balances.planIncomes[planKey] || 0;
 
-                  {/* Card 2: Wallet Balance */}
-                  <div style={{
-                      ...styles.balanceCard,
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      gap: '4px'
-                  }}>
-                      <div style={styles.labelSmall}>Wallet Balance</div>
-                      <div style={{...styles.balanceValue, color: '#94a3b8'}}>
-                          ${balances.walletBalance.toFixed(2)}
+                  return (
+                    <div key={planKey} style={styles.planRow}>
+                      <div style={{padding: '12px', background: '#1e293b', borderBottom: '2px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                         <span style={{fontWeight: '900', color: 'white', fontSize: '13px'}}>{planNames[planKey]}</span>
+                         <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>Max Withdraw Avail: ${availableInThisPlan.toFixed(2)}</span>
                       </div>
-                  </div>
-              </div>
+                      
+                      {/* WRAPPER FOR HORIZONTAL SCROLL */}
+                      <div className="custom-scroll" style={{ overflowX: 'auto', width: '100%' }}>
+                        <div style={{ minWidth: '360px' }}> {/* Prevents squishing on small phones */}
+                          
+                          {allLevelsData.map((data, idx) => {
+                            const { isUnlocked, timeLeft, earning, availableInLevel } = data;
+                            const isLast = idx === 4;
+                            
+                            const isCurrentlyCounting = idx === activeTimerIdx;
+                            const { d, h, m, s } = getFormattedTime(timeLeft);
 
-              {/* Plans List */}
-              <div>
-                <div style={styles.sectionTitle}>AVAILABLE PLANS</div>
-                <div style={styles.plansList}>
-                    {Object.keys(balances.planIncomes).length > 0 ? (
-                      Object.keys(balances.planIncomes).map((plan) => (
-                        <div key={plan} style={styles.planRow}>
-                           <div style={{flex: 1}}>
-                              <div style={styles.planName}>{planNames[plan]}</div>
-                              <div style={styles.planSub}>
-                                  Available: ${balances.planIncomes[plan].toFixed(2)}
+                            return (
+                              <div key={idx} style={{
+                                  display: 'grid', 
+                                  // ✅ EXACT SIZES: Left (65px) | Center Timer (180px) | Right Input (80px)
+                                  gridTemplateColumns: '65px 180px 80px', 
+                                  justifyContent: 'space-between', 
+                                  alignItems: 'center', 
+                                  padding: '12px 10px', 
+                                  borderBottom: isLast ? 'none' : '1px solid #1e293b'
+                              }}>
+                                
+                                {/* Left Column: Level Info */}
+                                <div>
+                                   <span  style={{color: isUnlocked ? '#e2e8f0' : '#64748b', fontWeight: 'bold', fontSize: '11px'}}>
+                                     Level {idx+1} <br/><span className="font-bold text-yellow-500" >${earning}</span>
+                                   </span>
+                                </div>
+                                
+                                {/* Center Column: Timer (Fixed 180px space keeps alignment perfect) */}
+                                <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                                   {isUnlocked ? (
+                                      <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>✅ Unlocked</span>
+                                   ) : isCurrentlyCounting ? (
+                                      <div style={{ display: 'flex', gap: '8px' }}>
+                                          <div style={styles.timerBox}>
+                                            <span style={styles.timerValue}>{d}</span>
+                                            <span style={styles.timerLabel}>DAYS</span>
+                                          </div>
+                                          <div style={styles.timerBox}>
+                                            <span style={styles.timerValue}>{h}</span>
+                                            <span style={styles.timerLabel}>HRS</span>
+                                          </div>
+                                          <div style={styles.timerBox}>
+                                            <span style={styles.timerValue}>{m}</span>
+                                            <span style={styles.timerLabel}>MIN</span>
+                                          </div>
+                                          <div style={styles.timerBox}>
+                                            <span style={styles.timerValue}>{s}</span>
+                                            <span style={styles.timerLabel}>SEC</span>
+                                          </div>
+                                      </div>
+                                   ) : (
+                                      // Empty space that still respects the grid column
+                                      <div></div> 
+                                   )}
+                                </div>
+
+                                {/* Right Column: Input Box */}
+                                <div style={{ width: '100%' }}>
+                                     <input 
+                                       type="number" 
+                                       placeholder="0.00" 
+                                       style={{
+                                         ...styles.levelInput, 
+                                         width: '100%', 
+                                         opacity: 1 // Hamesha bright dikhega
+                                       }} 
+                                       value={levelWithdrawals[`${planKey}_${idx}`] || ""} 
+                                       onChange={e => handleLevelInputChange(e, planKey, idx)} 
+                                       max={availableInLevel}
+                                     />
+                                </div>
+
                               </div>
-                           </div>
-                           <input
-                              type="number"
-                              placeholder="0.00"
-                              style={styles.input}
-                              value={withdrawals[plan] || ""}
-                              onChange={e => handleInputChange(e, plan)}
-                              onWheel={e => e.target.blur()} 
-                              onKeyDown={e => {
-                                if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-                                  e.preventDefault();
-                                }
-                              }}
-                           />
+                            );
+                          })}
+                          
                         </div>
-                      ))
-                    ) : (
-                      <div style={{padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px', fontStyle: 'italic', backgroundColor: '#1e293b', borderRadius: '10px'}}>
-                          No active plans found.
                       </div>
-                    )}
-                </div>
+
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Wallet Address Status */}
-              {isAddressMissing ? (
-                <div style={{...styles.infoBox, ...styles.errorBox}}>
-                   <span style={{fontSize: '18px'}}>⚠️</span>
-                   <div>
-                      <strong style={{display:'block', marginBottom:'2px'}}>Missing Wallet Address</strong>
-                      Please add your USDT BEP20 address in your <a href="/profile" style={{color: 'inherit', textDecoration: 'underline'}}>Profile</a>.
-                   </div>
-                </div>
-              ) : (
-                <div style={{...styles.infoBox, ...styles.addressBox, flexDirection: 'column', gap: '5px'}}>
-                   <div style={{display:'flex', justifyContent:'space-between', width:'100%'}}>
-                      <span style={styles.labelSmall}>Withdrawal Address</span>
-                      <span style={{fontSize: '10px', backgroundColor: '#334155', padding: '2px 6px', borderRadius: '4px', color: '#cbd5e1'}}>USDT</span>
-                   </div>
-                   <div style={{fontFamily: 'monospace', wordBreak: 'break-all', color: 'white'}}>{walletAddress}</div>
-                </div>
-              )}
+              {/* WALLET ADDRESS & SECURITY */}
+              <div style={{padding: '15px', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155'}}>
+                
+             {/* USDT (BEP20) WALLET ADDRESS SECTION */}
+<div style={{marginBottom: '12px'}}>
+  <label style={{fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '5px', fontWeight: 'bold'}}>
+    USDT (BEP20) WALLET ADDRESS
+    {/* 🔥 Info Badge */}
+    {walletAddress && <span style={{color: '#eab308', marginLeft: '10px'}}>(cannot change address after withdrawal)</span>}
+  </label>
+  
+  <input 
+    type="text" 
+    placeholder="Enter your BEP20 Wallet Address" 
+    style={{
+        ...styles.mainInput,
+        // 🔥 Visual feedback: agar lock hai toh grey dikhega
+        backgroundColor: balances.isLocked ? '#1e293b' : '#0f172a',
+        cursor: balances.isLocked ? 'not-allowed' : 'text'
+    }} 
+    value={walletAddress} 
+    onChange={e => setWalletAddress(e.target.value)} 
+    // 🔥 Disable input if address is already set AND user is withdrawing
+disabled={!!loggedInUser?.walletAddress && isAnySelected}
+  />
+</div>
 
-              {/* Transaction Password */}
-              <div>
-                <label style={{...styles.labelSmall, display:'block'}}>Transaction Password</label>
-                <input
-                  type="password"
-                  placeholder="Enter secure password"
-                  style={styles.mainInput}
-                  value={transactionPassword}
-                  onChange={e => setTransactionPassword(e.target.value)}
-                />
+                <div>
+                  <label style={{fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '5px', fontWeight: 'bold'}}>SECURITY PASSWORD</label>
+                  <input 
+                    type="password" 
+                    placeholder="Enter Transaction Password" 
+                    style={styles.mainInput} 
+                    value={transactionPassword} 
+                    onChange={e => setTransactionPassword(e.target.value)} 
+                  />
+                </div>
               </div>
 
             </div>
 
-            {/* Footer */}
-            <div style={styles.footer}>
-              <button onClick={onClose} style={styles.cancelBtn}>Cancel</button>
+            {/* ACTION BUTTON */}
+            <div style={{padding: '20px', borderTop: '1px solid #334155', background: '#0f172a'}}>
               <button 
                 onClick={handleWithdraw} 
-                disabled={loading || isAddressMissing}
-                style={loading || isAddressMissing ? styles.disabledBtn : styles.confirmBtn}
+                disabled={!isAnySelected || loading || !walletAddress.trim()} 
+                style={!isAnySelected || loading || !walletAddress.trim() 
+                  ? {...styles.confirmBtn, opacity: 0.5, cursor: 'not-allowed'} 
+                  : styles.confirmBtn}
               >
-                {loading ? "Processing..." : "Withdraw Now"}
+                {loading ? "Processing..." : "Withdraw Selected Amount"}
               </button>
             </div>
 
           </div>
         </div>
       )}
-
-      <MessageModal
-        isOpen={messageModal.open}
-        onClose={() => setMessageModal({ ...messageModal, open: false })}
-        title={messageModal.title}
-        message={messageModal.message}
-        type={messageModal.type}
-      />
     </>
   );
 };

@@ -1,15 +1,20 @@
 import React, { useState } from "react";
-import api from "api/axios";
-import { Search, Ban, CheckCircle, Save, LogIn } from "lucide-react";
+import api from "../../api/axios"; // Path apne hisaab se theek kar lena
+import { Search, Ban, CheckCircle, Save, LogIn, Eye, EyeOff } from "lucide-react";
 
-const API_BASE = "https://eliteinfinity.live"; // ✅ Fixed: IP ki jagah domain aur https
+// Tweak this if your API base is different in axios config
+const API_BASE = "http://localhost:5000"; 
+
 function UserSearch() {
   const [searchId, setSearchId] = useState("");
   const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({});
   const [message, setMessage] = useState("");
+  
+  // States to toggle password visibility in the UI
+  const [showPassword, setShowPassword] = useState(false);
+  const [showTxnPassword, setShowTxnPassword] = useState(false);
 
-  // ✅ CORRECT token key (MATCHES AdminLogin.jsx)
   const getAdminToken = () => localStorage.getItem("adminToken");
 
   // ================= SEARCH USER =================
@@ -18,27 +23,30 @@ function UserSearch() {
     if (!token) return setMessage("Admin not authenticated");
 
     try {
+      setMessage("Searching...");
+      // ✅ FIX: API URL CHANGED TO AVOID ANY CONFLICT WITH NORMAL USER ROUTES
       const res = await api.get(
-        `${API_BASE}/api/user/${searchId}`,
+        `${API_BASE}/api/admin/search-user/${searchId}`, 
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
 
+      console.log("Data received from backend:", res.data.user); // Check console to verify password is coming
+
       setUser(res.data.user);
       setFormData(res.data.user);
       setMessage("");
     } catch (err) {
-      console.error(err);
+      console.error("Search Error:", err);
       setUser(null);
-      setMessage("User not found");
+      setMessage(err.response?.data?.message || "User not found");
     }
   };
 
   // ================= BLOCK / UNBLOCK =================
   const handleBlockToggle = async () => {
     if (!user) return;
-
     const token = getAdminToken();
     if (!token) return setMessage("Admin not authenticated");
 
@@ -47,16 +55,10 @@ function UserSearch() {
         ? `${API_BASE}/api/admin/unblock-user/${user.userId}`
         : `${API_BASE}/api/admin/block-user/${user.userId}`;
 
-      await api.put(
-        url,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(url, {}, { headers: { Authorization: `Bearer ${token}` } });
 
       setUser((prev) => ({ ...prev, isBlocked: !prev.isBlocked }));
-      setMessage(
-        `User ${user.isBlocked ? "unblocked" : "blocked"} successfully`
-      );
+      setMessage(`User ${user.isBlocked ? "unblocked" : "blocked"} successfully`);
     } catch (err) {
       console.error(err);
       setMessage("Action failed");
@@ -76,9 +78,9 @@ function UserSearch() {
     try {
       const payload = { ...formData };
 
-      // ❌ same passwords mat bhejo
+      // ❌ Avoid sending unchanged passwords
       if (payload.password === user.password) delete payload.password;
-      if (payload.txnPassword === user.txnPassword) delete payload.txnPassword;
+      if (payload.transactionPassword === user.transactionPassword) delete payload.transactionPassword;
 
       const res = await api.put(
         `${API_BASE}/api/admin/${user.userId}`,
@@ -98,40 +100,33 @@ function UserSearch() {
   };
 
   // ================= IMPERSONATE USER =================
- const handleImpersonate = async () => {
-  const token = getAdminToken();
-  if (!token) return setMessage("Admin not authenticated");
+  const handleImpersonate = async () => {
+    const token = getAdminToken();
+    if (!token) return setMessage("Admin not authenticated");
 
-  try {
-    const res = await api.get(
-      `${API_BASE}/api/admin/impersonate/${user.userId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    try {
+      const res = await api.post(
+        `${API_BASE}/api/admin/impersonate`,
+        { userId: user.userId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    const { token: userToken, user: impersonatedUser } = res.data;
+      const { token: userToken, user: impersonatedUser } = res.data;
 
-    // 🔐 Store separately
-   localStorage.setItem("token", userToken);
-localStorage.setItem("user", JSON.stringify(impersonatedUser));
-localStorage.setItem("isImpersonating", "true");
+      localStorage.setItem("token", userToken);
+      localStorage.setItem("user", JSON.stringify(impersonatedUser));
+      localStorage.setItem("isImpersonating", "true");
 
-
-    // 🚀 Open user dashboard in new tab
-    window.open("/dashboard", "_blank", "noopener,noreferrer");
-  } catch (err) {
-    console.error(err);
-    setMessage("Failed to impersonate user");
-  }
-};
-
+      window.open("/dashboard", "_blank", "noopener,noreferrer");
+    } catch (err) {
+      console.error(err);
+      setMessage(err.response?.data?.message || "Failed to impersonate user");
+    }
+  };
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-md">
-      <h2 className="text-xl font-semibold mb-4 text-indigo-600">
-        🔍 Search User
-      </h2>
+      <h2 className="text-xl font-semibold mb-4 text-indigo-600">🔍 Search User</h2>
 
       <div className="flex gap-3 mb-4">
         <input
@@ -143,7 +138,7 @@ localStorage.setItem("isImpersonating", "true");
         />
         <button
           onClick={handleSearch}
-          className="bg-indigo-600 text-white px-4 py-2 rounded"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition-colors"
         >
           <Search size={18} />
         </button>
@@ -151,67 +146,98 @@ localStorage.setItem("isImpersonating", "true");
 
       {user && (
         <div className="bg-gray-50 p-4 rounded border space-y-3">
-          {["name", "email", "mobile", "country", "password", "txnPassword"].map(
-            (field) => (
-              <div key={field}>
-                <label className="font-semibold capitalize">{field}</label>
-                <input
-                  type="text"
-                  value={formData[field] || ""}
-                  onChange={(e) =>
-                    handleInputChange(field, e.target.value)
-                  }
-                  className="block border rounded px-3 py-1 mt-1 w-full"
-                />
-              </div>
-            )
-          )}
+          
+          {/* Normal Text Fields */}
+          {["name", "email", "mobile", "country"].map((field) => (
+            <div key={field}>
+              <label className="font-semibold capitalize">{field}</label>
+              <input
+                type="text"
+                value={formData[field] || ""}
+                onChange={(e) => handleInputChange(field, e.target.value)}
+                className="block border rounded px-3 py-1 mt-1 w-full"
+              />
+            </div>
+          ))}
 
+          {/* Password Fields with Toggle Visibility */}
+          <div>
+            <label className="font-semibold">Password</label>
+            <div className="relative flex items-center">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={formData.password || ""}
+                onChange={(e) => handleInputChange("password", e.target.value)}
+                className="block border rounded px-3 py-1 mt-1 w-full pr-10"
+              />
+              <button 
+                onClick={() => setShowPassword(!showPassword)} 
+                className="absolute right-2 top-2 text-gray-500"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="font-semibold">Transaction Password</label>
+            <div className="relative flex items-center">
+              <input
+                type={showTxnPassword ? "text" : "password"}
+                value={formData.transactionPassword || ""}
+                onChange={(e) => handleInputChange("transactionPassword", e.target.value)}
+                className="block border rounded px-3 py-1 mt-1 w-full pr-10"
+              />
+              <button 
+                onClick={() => setShowTxnPassword(!showTxnPassword)} 
+                className="absolute right-2 top-2 text-gray-500"
+              >
+                {showTxnPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Balances & Address */}
           <div>
             <label className="font-semibold">Wallet Balance</label>
             <input
               type="number"
               value={formData.walletBalance || 0}
-              onChange={(e) =>
-                handleInputChange("walletBalance", e.target.value)
-              }
+              onChange={(e) => handleInputChange("walletBalance", e.target.value)}
               className="block border rounded px-3 py-1 mt-1 w-full"
             />
           </div>
 
           <div>
-            <label className="font-semibold">USDT Address</label>
+            <label className="font-semibold">USDT Address (BEP20)</label>
             <input
               type="text"
               value={formData.walletAddress || ""}
-              onChange={(e) =>
-                handleInputChange("walletAddress", e.target.value)
-              }
+              onChange={(e) => handleInputChange("walletAddress", e.target.value)}
               className="block border rounded px-3 py-1 mt-1 w-full"
             />
           </div>
 
-          <p>
+          <p className="pt-2">
             <strong>Status:</strong>{" "}
-            {user.isBlocked ? "❌ Blocked" : "✅ Active"}
+            {user.isBlocked ? <span className="text-red-600 font-bold">❌ Blocked</span> : <span className="text-green-600 font-bold">✅ Active</span>}
           </p>
 
-          <div className="flex gap-2 flex-wrap mt-3">
+          {/* Action Buttons */}
+          <div className="flex gap-2 flex-wrap mt-3 pt-3 border-t">
             <button
               onClick={handleBlockToggle}
-              className={`px-4 py-2 rounded text-white ${
-                user.isBlocked ? "bg-green-600" : "bg-red-600"
+              className={`px-4 py-2 rounded text-white flex items-center font-medium shadow-sm transition-colors ${
+                user.isBlocked ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
               }`}
             >
               {user.isBlocked ? <CheckCircle size={16} /> : <Ban size={16} />}
-              <span className="ml-1">
-                {user.isBlocked ? "Unblock" : "Block"}
-              </span>
+              <span className="ml-1">{user.isBlocked ? "Unblock User" : "Block User"}</span>
             </button>
 
             <button
               onClick={handleSave}
-              className="bg-blue-600 text-white px-4 py-2 rounded"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center font-medium shadow-sm transition-colors"
             >
               <Save size={16} className="inline mr-1" />
               Save Changes
@@ -219,7 +245,7 @@ localStorage.setItem("isImpersonating", "true");
 
             <button
               onClick={handleImpersonate}
-              className="bg-purple-600 text-white px-4 py-2 rounded"
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded flex items-center font-medium shadow-sm transition-colors"
             >
               <LogIn size={16} className="inline mr-1" />
               Login as User
@@ -229,7 +255,9 @@ localStorage.setItem("isImpersonating", "true");
       )}
 
       {message && (
-        <p className="text-sm text-gray-600 mt-3 italic">{message}</p>
+        <p className={`text-sm mt-3 p-2 rounded ${message.includes("✅") || message.includes("successfully") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+          {message}
+        </p>
       )}
     </div>
   );

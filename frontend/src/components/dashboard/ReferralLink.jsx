@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { QRCodeCanvas } from "qrcode.react";
-import { ClipboardCopy, Check } from "lucide-react";
+ import { ClipboardCopy, Check } from "lucide-react";
 
 const ReferralLinkBox = ({ link, userId }) => {
   const [copied, setCopied] = useState(false);
@@ -47,9 +46,7 @@ const ReferralLinkBox = ({ link, userId }) => {
 {/* QR Code on the left, Share buttons on the right */}
 <div className="flex items-center justify-center mt-3 gap-4">
   {/* QR Code */}
-  <div className="flex-shrink-0">
-    <QRCodeCanvas value={link} size={80} />
-  </div>
+ 
 
   {/* Share buttons stacked vertically on the right */}
   <div className="flex flex-col gap-2">

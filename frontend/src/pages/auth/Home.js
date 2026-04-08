@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Shield, Zap, Globe, Mail, ArrowRight, X, User, MessageSquare } from 'lucide-react';
 import HeroImage from '../../assets/hero.png';
-import Logo from '../../assets/eliteinfinitylogo.png';
+import Logo from '../../assets/usdtboomer.png';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -150,7 +150,7 @@ const Home = () => {
               </span>
             </h1>
             <p style={{ fontSize: '18px', color: '#94a3b8', marginBottom: '40px', maxWidth: '550px', margin: isMobile ? '0 auto 40px' : '0 0 40px' }}>
-              EliteInfinity connects you with global opportunities. Thrive in a vibrant digital ecosystem designed for sustainable growth.
+              USDT BOOMERS connects you with global opportunities. Thrive in a vibrant digital ecosystem designed for sustainable growth.
             </p>
             <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start' }}>
               <button onClick={() => navigate('/register')} style={{ ...styles.btnLink, ...styles.btnPrimary, padding: '16px 36px', fontSize: '17px' }}>
@@ -230,7 +230,7 @@ const Home = () => {
             color: '#fff',
             letterSpacing: '0.5px'
         }}>
-            Elite<span style={{ color: '#fbbf24' }}>Infinity</span>
+        USDT<span style={{ color: '#fbbf24' }}>BOOMERS</span>
         </span>
     </div>
 
@@ -241,7 +241,7 @@ const Home = () => {
         margin: 0,
         textAlign: 'center'
     }}>
-        &copy; {new Date().getFullYear()} EliteInfinity. All rights reserved.
+        &copy; {new Date().getFullYear()} USDT BOOMERS. All rights reserved.
     </p>
 </footer>
       </main>

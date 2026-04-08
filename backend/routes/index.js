@@ -3,30 +3,35 @@ const router = express.Router();
 
 // 🔐 Auth routes
 router.use('/auth', require('./auth'));
-router.use('/admin', require('./adminAuth')); // Ye login check hai, isko rehne do
 
-// 🔥 IMPORTANT: Is line ko yahan UPAR lagao (Generic '/admin' se pehle)
-router.use('/admin', require('./adminManualTransaction')); 
-
-// 👤 Functional routes
+ 
+// 👤 User routes
 router.use('/user', require('./user'));
 
-// 👇 Ye generic admin file baad mein aani chahiye
-router.use('/admin', require('./admin')); 
+// 🔐 Admin Auth (login check etc.)
+router.use('/admin', require('./adminAuth'));
 
-router.use('/referral', require('./referral'));
+// 🔥 IMPORTANT: Manual Transaction (ADMIN SPECIAL)
+// 👉 YE LINE ADD KARNI HAI (admin se pehle)
+router.use('/admin', require('./adminManualTransaction'));
+
+// 👇 Generic admin routes (hamesha LAST me)
+router.use('/admin', require('./admin'));
+
+// 📢 Notifications
 router.use('/admin/notifications', require('./adminNotification'));
 
+// 🔗 Other modules
+router.use('/referral', require('./referral'));
 router.use('/transaction', require('./transaction'));
 router.use('/setting', require('./setting'));
 router.use('/wallet', require('./wallet'));
 router.use('/income', require('./incomeRoutes'));
 router.use('/packages', require('./packages'));
-router.use('/roi', require('./roiRoutes'));
-router.use('/spin', require('./spin'));
-router.use('/support', require('./support'));
+ router.use('/support', require('./support'));
 router.use('/dashboard', require('./dashboard'));
 
+router.use('/transactions', require('./systemtransactions')); // 👈 YE LINE ADD KAREIN (Notice the 's')
 // 🌐 Root test
 router.get('/', (req, res) => {
   res.send('API is running');

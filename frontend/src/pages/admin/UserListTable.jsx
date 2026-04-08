@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from 'api/axios';
+import api from '../../api/axios'; // Path apne folder structure ke hisaab se check kar lena
 import { saveAs } from 'file-saver';
 import Papa from 'papaparse';
 
@@ -10,10 +10,13 @@ const UserListTable = () => {
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  
+  // ✅ NEW: TopUp Filter State
+  const [topUpFilter, setTopUpFilter] = useState('all'); 
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10); // Default 10
+  const [itemsPerPage, setItemsPerPage] = useState(10); 
 
   // Fetch users from API
   const fetchUsers = async () => {
@@ -41,7 +44,7 @@ const UserListTable = () => {
     fetchUsers();
   }, []);
 
-  // Filter users by search and date
+  // ✅ UPDATED: Filter users by search, date, AND TopUp Status
   useEffect(() => {
     const filtered = users.filter(user => {
       const nameMatch = user.name?.toLowerCase().includes(search.toLowerCase());
@@ -55,12 +58,25 @@ const UserListTable = () => {
         (!fromDate || createdAt >= fromDate) &&
         (!toDate || createdAt <= toDate);
 
-      return (nameMatch || idMatch) && inDateRange;
+      // TopUp Filter Logic
+      let topUpMatch = true;
+      const amount = user.topUpAmount || 0;
+
+      if (topUpFilter === 'unpaid') {
+        topUpMatch = amount === 0;
+      } else if (topUpFilter === 'paid') {
+        topUpMatch = amount > 0;
+      } else if (topUpFilter !== 'all') {
+        // Specific amount (30, 60, 120, etc.)
+        topUpMatch = amount === Number(topUpFilter);
+      }
+
+      return (nameMatch || idMatch) && inDateRange && topUpMatch;
     });
 
     setFilteredUsers(filtered);
-    setCurrentPage(1); // Reset to page 1 when search/filter changes
-  }, [search, users, dateFrom, dateTo]);
+    setCurrentPage(1); 
+  }, [search, users, dateFrom, dateTo, topUpFilter]);
 
   // Pagination Logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -81,13 +97,13 @@ const UserListTable = () => {
     setCurrentPage(1);
   };
 
-  // Export filtered users to CSV
+  // ✅ Export filtered users to CSV (Mobile number is included)
   const exportToCSV = () => {
     const csvData = filteredUsers.map(user => ({
       UserID: user.userId,
       Name: user.name,
       Email: user.email,
-      Mobile: user.mobile,
+      Mobile: user.mobile, // 👈 Mobile number is here
       WalletBalance: user.walletBalance?.toFixed(2) || 0,
       TopUpAmount: user.topUpAmount || 0,
       Joined: new Date(user.createdAt).toLocaleDateString(),
@@ -95,7 +111,31 @@ const UserListTable = () => {
 
     const csv = Papa.unparse(csvData);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    saveAs(blob, 'user-list.csv');
+    saveAs(blob, 'filtered-user-list.csv');
+  };
+
+  // ✅ NEW: Handle Login As User (Impersonation)
+  const handleLoginAsUser = async (targetUserId) => {
+    try {
+      const adminToken = localStorage.getItem('adminToken');
+      if (!adminToken) return alert("Admin not authorized");
+
+      // Request token for the target user from Admin API
+      const res = await api.post('/admin/impersonate', { userId: targetUserId }, {
+        headers: { Authorization: `Bearer ${adminToken}` }
+      });
+
+      // Save normal user token & details (This won't overwrite adminToken)
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+
+      // Open dashboard in a new tab
+      window.open('/dashboard', '_blank');
+      
+    } catch (err) {
+      console.error("Impersonation failed:", err);
+      alert(err.response?.data?.message || "Failed to login as this user.");
+    }
   };
 
   if (loading) {
@@ -111,11 +151,11 @@ const UserListTable = () => {
       {/* Top Controls */}
       <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6">
         
-        {/* Search, Dates & Entries Select */}
-        <div className="flex flex-col md:flex-row gap-2 w-full xl:w-auto">
+        {/* Search, Dates, Filter & Entries Select */}
+        <div className="flex flex-col md:flex-row gap-2 w-full xl:w-auto flex-wrap">
           <input
             type="text"
-            className="border border-gray-300 rounded px-3 py-2 w-full md:w-60"
+            className="border border-gray-300 rounded px-3 py-2 w-full md:w-48"
             placeholder="Search Name / ID"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -132,8 +172,24 @@ const UserListTable = () => {
             value={dateTo}
             onChange={e => setDateTo(e.target.value)}
           />
+
+          {/* ✅ NEW: Top-Up Filter Dropdown */}
+          <select 
+            className="border border-gray-300 rounded px-3 py-2 bg-white font-medium text-gray-700"
+            value={topUpFilter}
+            onChange={(e) => setTopUpFilter(e.target.value)}
+          >
+            <option value="all">All Users</option>
+            <option value="unpaid">Registered (No Top-Up)</option>
+            <option value="paid">All Paid Users</option>
+            <option value="30">$30 Package</option>
+            <option value="60">$60 Package</option>
+            <option value="120">$120 Package</option>
+            <option value="240">$240 Package</option>
+            <option value="480">$480 Package</option>
+            <option value="960">$960 Package</option>
+          </select>
           
-          {/* Show Entries Dropdown */}
           <select 
             className="border border-gray-300 rounded px-3 py-2 bg-white"
             value={itemsPerPage}
@@ -184,17 +240,36 @@ const UserListTable = () => {
             ) : (
               currentItems.map((user, idx) => (
                 <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 border">{user.userId}</td>
-                  <td className="px-4 py-2 border">{user.name}</td>
-                  <td className="px-4 py-2 border">{user.email}</td>
-                  <td className="px-4 py-2 border">{user.mobile}</td>
+                  
+                  {/* ✅ CLICKABLE USER ID */}
                   <td className="px-4 py-2 border">
+                    <button 
+                      onClick={() => handleLoginAsUser(user.userId)}
+                      className="text-blue-600 hover:text-blue-800 hover:underline font-bold flex items-center gap-1"
+                      title={`Login as ${user.name}`}
+                    >
+                      {user.userId} 🔗
+                    </button>
+                  </td>
+
+                  <td className="px-4 py-2 border font-medium text-gray-800">{user.name}</td>
+                  <td className="px-4 py-2 border text-gray-600">{user.email}</td>
+                  <td className="px-4 py-2 border text-gray-600">{user.mobile}</td>
+                  <td className="px-4 py-2 border font-bold text-green-600">
                     ${user.walletBalance?.toFixed(2) || 0}
                   </td>
                   <td className="px-4 py-2 border">
-                    ${user.topUpAmount || 0}
+                    {user.topUpAmount > 0 ? (
+                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold">
+                        ${user.topUpAmount}
+                      </span>
+                    ) : (
+                      <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold">
+                        Unpaid
+                      </span>
+                    )}
                   </td>
-                  <td className="px-4 py-2 border">
+                  <td className="px-4 py-2 border text-gray-500 whitespace-nowrap">
                     {new Date(user.createdAt).toLocaleDateString()}
                   </td>
                 </tr>

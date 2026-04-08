@@ -1,33 +1,21 @@
 import React, { useState, useEffect, useMemo } from "react";
-import api from "../../api/axios"; // Path check kar lena agar alag ho to
+import api from "../../api/axios"; 
 import SuccessModal from "./SuccessModal";
 import MessageModal from "./MessageModal";
 import { useAuth } from "../../context/AuthContext";
-import { Lock, CheckCircle, ShieldCheck } from "lucide-react"; 
+import { CheckCircle, ShieldCheck } from "lucide-react"; 
 
-// --- CONFIGURATION ---
-const packages = [10, 25, 50, 100, 200, 500, 1000];
-const packageNames = {
-  10: "Bronze", 25: "Silver", 50: "Gold", 100: "Platinum",
-  200: "Diamond", 500: "Elite", 1000: "Infinity",
-};
-
-const packageDetails = {
-  10: { title: "Plan 1", subtitle: "Bronze", features: ["4% Daily ROI", "200% Total Return", "24/7 Support"] },
-  25: { title: "Plan 2", subtitle: "Silver", features: ["4% Daily ROI", "200% Total Return", "Silver Badge"] },
-  50: { title: "Plan 3", subtitle: "Gold", features: ["4% Daily ROI", "200% Total Return", "Gold Badge"] },
-  100: { title: "Plan 4", subtitle: "Platinum", isPopular: true, features: ["5% Daily ROI", "200% Total Return", "Platinum Badge"] },
-  200: { title: "Plan 5", subtitle: "Diamond", features: ["5% Daily ROI", "200% Total Return", "Diamond Badge"] },
-  500: { title: "Plan 6", subtitle: "Elite", features: ["5% Daily ROI", "200% Total Return", "Elite Badge"] },
-  1000: { title: "Plan 7 (VIP)", subtitle: "Infinity", isVip: true, features: ["6% Daily ROI", "200% Total Return", "Infinity Badge", "All Bonuses Unlocked"] },
-};
+// --- SIMPLE CONFIGURATION (Bas normal amounts) ---
+const packages = [30, 60, 120, 240, 480, 960];
 
 const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   // --- STATE & AUTH ---
   const { user: loggedInUser, token, login } = useAuth();
   const [userId, setUserId] = useState("");
   const [userInfo, setUserInfo] = useState(null);
-  const [selectedAmount, setSelectedAmount] = useState(10);
+  
+  // Default selected amount
+  const [selectedAmount, setSelectedAmount] = useState(30);
   const [walletBalance, setWalletBalance] = useState(null);
   const [transactionPassword, setTransactionPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -57,14 +45,14 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
     fetchBalance();
   }, [loggedInUser?.userId, token]);
 
-  // --- 2. Calculate User's Package Status (Logic Setup) ---
+  // --- 2. Calculate User's Package Status ---
   const userPackageStatus = useMemo(() => {
-    if (!userInfo) return { boughtSet: new Set(), nextAvailable: 10 };
+    if (!userInfo) return { boughtSet: new Set(), nextAvailable: 30 };
 
     const bought = new Set(userInfo.dailyROI?.map(p => Number(p.amount)) || []);
     
-    // Auto-select logic logic (optional)
-    let next = 10; 
+    // Auto-select logic
+    let next = 30; 
     for (let i = 0; i < packages.length; i++) {
         if (!bought.has(packages[i])) {
             next = packages[i];
@@ -82,7 +70,6 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
     }
   }, [userInfo, userPackageStatus.nextAvailable]);
 
-
   // --- LOGIC: Fetch User ---
   const fetchUser = async () => {
     try {
@@ -97,35 +84,20 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   };
 
   // --- LOGIC: Handle Top Up ---
- // --- LOGIC: Handle Top Up ---
   const handleTopUp = async () => {
-    // 1. Basic Checks
     if (!userInfo) return showMessage("Error", "❌ Please fetch user first.", "error");
+    if (!transactionPassword) return showMessage("Error", "❌ Enter transaction password.", "error");
 
-    if (!transactionPassword)
-      return showMessage("Error", "❌ Enter transaction password.", "error");
+    if (!isPromoUser && walletBalance < selectedAmount) {
+      return showMessage("Error", `❌ Insufficient balance. You have $${walletBalance}`, "error");
+    }
 
-    // Wallet Balance Check (Skip for Promo Users)
-    if (!isPromoUser && walletBalance < selectedAmount)
-      return showMessage(
-        "Error",
-        `❌ Insufficient balance. You have $${walletBalance}`,
-        "error"
-      );
-
-    // 🔹 2. PACKAGE RESTRICTIONS (UPDATED: NO LOCK)
     if (!isPromoUser) {
-        
-        // ❌ REMOVED: Rule A (Lock Check for > 100)
-        // Ab koi bhi direct bada package le sakta hai.
-
-        // Rule B: Already Active Check (Duplicate purchase rokne ke liye ye zaroori hai)
         if (userPackageStatus.boughtSet.has(selectedAmount)) {
              return showMessage("Active", `✅ You already have Plan $${selectedAmount}.`, "warning");
         }
     }
 
-    // 3. API Call & Processing
     setLoading(true);
     try {
       await api.put(
@@ -134,11 +106,9 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Success Handling
       setSuccessData({ userId: userInfo.userId, name: userInfo.name, amount: selectedAmount });
       setSuccessModalOpen(true);
 
-      // Refresh User Data
       const refreshedRes = await api.get(`/user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -165,7 +135,6 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-0 mt-1 overflow-hidden">
       
-      {/* CSS Injection for Styles */}
       <style>{`
         .glass-card {
             background: rgba(255, 255, 255, 0.03);
@@ -173,7 +142,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
             border: 1px solid rgba(255, 255, 255, 0.08);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .glass-card:not(.locked):hover {
+        .glass-card:not(.bought):hover {
             transform: translateY(-4px);
             border-color: #fbbf24;
             box-shadow: 0 10px 40px -10px rgba(251, 191, 36, 0.2);
@@ -184,15 +153,11 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
             box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.4), 0 0 20px rgba(251, 191, 36, 0.2);
             transform: scale(1.02);
         }
-        .glass-card.locked {
-            opacity: 0.5;
-            cursor: not-allowed;
-            background: rgba(0, 0, 0, 0.4);
-            border-color: rgba(255, 255, 255, 0.05);
-        }
         .glass-card.bought {
             border-color: #10b981;
             background: rgba(16, 185, 129, 0.1);
+            opacity: 0.8;
+            cursor: default;
         }
         .gold-text {
             background: linear-gradient(to right, #fbbf24, #d97706);
@@ -212,7 +177,6 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
             background-image: radial-gradient(#334155 1px, transparent 1px);
             background-size: 24px 24px;
         }
-        /* Custom Scrollbar */
         .custom-scroll {
             scrollbar-width: thin;
             scrollbar-color: #334155 transparent;
@@ -224,12 +188,12 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
       `}</style>
 
       {/* Main Modal Container */}
-      <div className="bg-pattern w-full max-w-5xl h-full max-h-[85vh] flex flex-col rounded border border-slate-700 shadow-2xl overflow-hidden relative">
+      <div className="bg-pattern w-full max-w-4xl h-full max-h-[85vh] flex flex-col rounded border border-slate-700 shadow-2xl overflow-hidden relative">
         
         {/* Header */}
         <div className="bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800 p-4 flex justify-between items-center z-20 shrink-0">
           <div>
-             <h2 className="text-blue-400 font-bold tracking-widest uppercase text-[10px] md:text-xs">Premium Plans</h2>
+             <h2 className="text-blue-400 font-bold tracking-widest uppercase text-[10px] md:text-xs">Select Plan</h2>
              <h1 className="text-xl md:text-2xl font-bold text-white">Topup <span className="gold-text">Zone</span></h1>
           </div>
           <button onClick={onClose} className="group bg-slate-800 hover:bg-red-500/20 p-2 rounded-full transition-all border border-slate-700 hover:border-red-500/50">
@@ -246,9 +210,9 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
           <div className="glass-card p-4 md:p-6 rounded-2xl">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                {/* Wallet */}
-               <div className="md:col-span-3 bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
-                  <span className="text-gray-400 text-xs block uppercase tracking-wider">Your Balance</span>
-                  <div className="text-2xl font-bold text-white text-emerald-400 font-mono">
+               <div className="md:col-span-3 bg-slate-800/50 rounded-xl p-3 border border-slate-700/50 text-center md:text-left">
+                  <span className="text-gray-400 text-[10px] block uppercase tracking-wider">Your Balance</span>
+                  <div className="text-xl text-yellow-500 font-bold text-emerald-400 font-mono">
                     {walletBalance !== null ? `$${walletBalance}` : "Loading..."}
                   </div>
                </div>
@@ -261,10 +225,10 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                       placeholder="User ID (e.g. 123)"
                       value={userId}
                       onChange={(e) => setUserId(e.target.value)}
-                      className="w-full bg-slate-900/80 border border-slate-600 text-black rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-600 font-mono"
+                      className="w-full bg-slate-900 border border-slate-600 text-black rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-500 font-mono"
                     />
                   </div>
-                  <button onClick={fetchUser} className="bg-blue-600 hover:bg-blue-500 text-white px-6 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20">
+                  <button onClick={fetchUser} className="bg-blue-600 hover:bg-blue-500 text-white px-5 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20">
                     Fetch
                   </button>
                </div>
@@ -272,7 +236,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                {/* User Info Display */}
                <div className="md:col-span-4">
                   {userInfo ? (
-                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 border border-green-500/30 rounded-xl p-3 flex items-center justify-between">
+                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 border border-green-500/30 rounded-xl p-2.5 flex items-center justify-between">
                       <div>
                         <div className="text-white font-bold text-sm">{userInfo.name}</div>
                         <div className="text-xs text-gray-400">ID: {userInfo.userId}</div>
@@ -280,113 +244,55 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                       <div className="text-right">
                         <div className="text-[10px] text-gray-400 uppercase">Current</div>
                         <div className="text-green-400 font-bold text-sm">
-                           {userInfo.topUpAmount ? `${packageNames[userInfo.topUpAmount] || ''} ($${userInfo.topUpAmount})` : "None"}
+                           {/* Removed Name formatting, only showing amount */}
+                           {userInfo.topUpAmount ? `$${userInfo.topUpAmount}` : "None"}
                         </div>
                       </div>
                     </div>
                   ) : (
                     <div className="border border-dashed border-slate-700 rounded-xl p-3 text-center text-gray-500 text-sm">
-                      Target user details will appear here
+                      Enter ID to fetch details
                     </div>
                   )}
                </div>
             </div>
           </div>
 
-          {/* 2. Packages Grid */}
-        {/* 2. Packages Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {packages.map((pkgAmount, index) => {
-                const details = packageDetails[pkgAmount];
-                
+          {/* 2. Normal Packages Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {packages.map((pkgAmount) => {
                 const isBought = userPackageStatus.boughtSet.has(pkgAmount);
                 const isSelected = selectedAmount === pkgAmount;
-                const isVip = details.isVip;
-                const isPopular = details.isPopular;
-                
-                // ❌ REMOVED: Lock Logic
-                // let isLocked = false;
-                // if (pkgAmount > 100) { ... } 
-                
-                // Ab hamesha False rahega
-                const isLocked = false; 
 
                 return (
                   <div 
                     key={pkgAmount}
                     onClick={() => {
-                      // Click logic update: Locked check hata diya
                       if (!isBought) setSelectedAmount(pkgAmount);
                     }}
                     className={`
-                      glass-card relative rounded-2xl p-5 cursor-pointer group select-none
+                      glass-card relative rounded-2xl p-6 cursor-pointer select-none text-center flex flex-col items-center justify-center
                       ${isBought ? 'bought' : ''}
                       ${isSelected ? 'selected' : ''}
-                      ${isVip ? 'md:col-span-2 lg:col-span-2 bg-gradient-to-br from-blue-900/20 to-purple-900/20' : ''}
-                      ${isPopular ? 'bg-yellow-900/10 border-yellow-500/30' : ''}
                     `}
                   >
                     {/* Status Badge */}
-                    <div className="absolute top-0 right-0">
-                        {isBought ? (
-                            <div className="bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-lg flex items-center gap-1">
-                                <CheckCircle size={10} /> ACTIVE
-                            </div>
-                        ) : (
-                            // Removed Locked Badge Condition
-                            details.isPopular && <div className="bg-yellow-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-lg">POPULAR</div>
-                        )}
-                        
-                        {/* 10 wala starter badge */}
-                        {pkgAmount === 10 && !isPopular && !isBought && (
-                           <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-lg">STARTER</div>
-                        )}
-                    </div>
-
-                    {isVip ? (
-                      <div className="flex flex-col sm:flex-row items-center justify-between h-full gap-4">
-                        <div className="text-left">
-                           <h3 className="text-white text-xl font-bold">{details.title}</h3>
-                           <div className={`text-4xl font-extrabold my-1 gold-text`}>${pkgAmount}</div>
-                           <p className="text-gray-400 text-xs">{details.subtitle}</p>
+                    {isBought && (
+                        <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-lg flex items-center gap-1">
+                            <CheckCircle size={10} /> ACTIVE
                         </div>
-                        <div className="w-full sm:w-auto">
-                            <ul className="text-gray-300 text-xs space-y-1.5 mb-3">
-                              {details.features.map((feat, i) => (
-                                <li key={i} className="flex items-center"><span className="text-purple-400 mr-2">★</span> {feat}</li>
-                              ))}
-                            </ul>
-                            <div className={`text-center py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors 
-                                ${isBought ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 
-                                  isSelected ? 'bg-green-500 text-white' : 'bg-slate-800 text-gray-400 group-hover:bg-slate-700'}
-                            `}>
-                               {isBought ? 'Purchased' : isSelected ? 'Selected' : 'Click to Select'}
-                            </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <h3 className={`text-lg font-medium mb-1 ${isPopular ? 'gold-text' : 'text-gray-300'}`}>{details.title}</h3>
-                        <div className={`text-3xl font-bold mb-1 text-white`}>${pkgAmount}</div>
-                        <p className={`text-xs mb-4 ${isPopular ? 'text-yellow-500/70' : 'text-gray-500'}`}>{details.subtitle}</p>
-                        
-                        <ul className={`text-xs space-y-2 mb-5 text-left pl-2 ${isPopular ? 'text-gray-300' : 'text-gray-400'}`}>
-                           {details.features.map((feat, i) => (
-                             <li key={i} className="flex items-center">
-                               <span className={`${isPopular ? 'text-yellow-400' : 'text-green-400'} mr-2`}>✓</span> {feat}
-                             </li>
-                           ))}
-                        </ul>
-                        
-                        <div className={`w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors 
-                            ${isBought ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 
-                              isSelected ? 'bg-green-500 text-white shadow-lg' : 'border border-slate-600 text-gray-400 group-hover:border-blue-500 group-hover:text-blue-400'}
-                        `}>
-                           {isBought ? <span className="flex items-center justify-center gap-1"><ShieldCheck size={14}/> Active</span> : 
-                            isSelected ? 'Selected' : 'Select'}
-                        </div>
-                      </div>
                     )}
+
+                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-1">Package</h3>
+                    <div className="text-4xl font-black text-white mb-4">${pkgAmount}</div>
+                    
+                    <div className={`w-full py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors 
+                        ${isBought ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 
+                          isSelected ? 'bg-yellow-500 text-slate-900 shadow-lg' : 'border border-slate-600 text-gray-400'}
+                    `}>
+                        {isBought ? <span className="flex items-center text-white justify-center gap-1"><ShieldCheck size={14}/> Active</span> : 
+                        isSelected ? 'Selected' : 'Select'}
+                    </div>
                   </div>
                 );
               })}
@@ -394,35 +300,32 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
         </div>
 
         {/* Footer (Payment Action) */}
-        <div className="bg-[#0f172a] border-t border-slate-800 p-4 md:p-6 shrink-0 z-20">
-          <div className="flex flex-col md:flex-row items-stretch gap-4">
-             <div className="flex-1  text-black relative">
+        <div className="bg-[#0f172a] border-t border-slate-800 p-4 shrink-0 z-20">
+          <div className="flex flex-col md:flex-row items-stretch gap-4 max-w-2xl mx-auto">
+             <div className="flex-1 relative">
                 <input
                   type="password"
-                  placeholder="Enter Transaction Password"
+                  placeholder="Transaction Password"
                   value={transactionPassword}
                   onChange={(e) => setTransactionPassword(e.target.value)}
-                  className="w-full h-full bg-slate-900 border border-slate-700  rounded-xl px-4 py-3 md:py-0 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none transition-all placeholder-gray-600"
+                  className="w-full h-full bg-slate-900 border border-slate-700 text-black rounded-xl px-4 py-3 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none transition-all placeholder-gray-500"
                 />
              </div>
              <button 
                onClick={handleTopUp} 
                disabled={loading || !selectedAmount || (userPackageStatus.boughtSet.has(selectedAmount))}
                className={`
-                 md:w-64 py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-all
-                 ${loading || !selectedAmount || userPackageStatus.boughtSet.has(selectedAmount) ? 'bg-slate-700 text-gray-400 cursor-not-allowed' : 'gold-btn text-white hover:scale-[1.02]'}
+                 md:w-48 py-3 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-all
+                 ${loading || !selectedAmount || userPackageStatus.boughtSet.has(selectedAmount) ? 'bg-slate-800 text-gray-500 cursor-not-allowed border border-slate-700' : 'gold-btn text-white hover:scale-[1.02]'}
                `}
              >
                {loading ? "Processing..." : (
                  <>
                    <span>Pay Now</span>
-                   {selectedAmount && <span className="bg-black/10 px-2 py-0.5 rounded text-sm">${selectedAmount}</span>}
+                   {selectedAmount && <span className="bg-black/20 px-2 py-0.5 rounded text-sm">${selectedAmount}</span>}
                  </>
                )}
              </button>
-          </div>
-          <div className="text-center mt-3 text-xs text-gray-600">
-             Secure SSL Payment.  
           </div>
         </div>
 

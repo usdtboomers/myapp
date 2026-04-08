@@ -144,12 +144,15 @@ const ReverseTransaction = () => {
       const token = localStorage.getItem("adminToken");
       if (!token) throw new Error("Admin token missing. Please login.");
 
-      const res = await api.put(
-        "/api/admin/transactions/reverse",
-        { txIds, reason: reason.trim() },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
+    const res = await api.put(
+  "/admin/transactions/reverse",
+  { txIds, reason: reason.trim() },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
       const reversedTxIds = res.data?.reversedTxs || [];
 
       setTransactions(prev =>
@@ -159,7 +162,7 @@ const ReverseTransaction = () => {
         prev.map(tx => reversedTxIds.includes(tx._id) ? { ...tx, reversed: true } : tx)
       );
 
-      alert(res.data?.message || "Transactions reversed successfully");
+alert(`✅ ${reversedTxIds.length} Transaction(s) Reversed Successfully`);
     } catch (err) {
       console.error("Reverse error:", err);
       alert(err.response?.data?.message || err.message || "Failed to reverse transactions");
@@ -248,82 +251,102 @@ const ReverseTransaction = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan="13" className="text-center p-4">
-                  No transactions found.
-                </td>
-              </tr>
-            ) : (
-              filtered.map((tx, index) => {
-                const isSelected =
-                  selectedTxs.includes(tx._id) || selectedTxForSingle?._id === tx._id;
+  {filtered.length === 0 ? (
+    <tr>
+      <td colSpan="13" className="text-center p-4">
+        No transactions found.
+      </td>
+    </tr>
+  ) : (
+    filtered.map((tx, index) => {
+      const isSelected =
+        selectedTxs.includes(tx._id) || selectedTxForSingle?._id === tx._id;
 
-                return (
-                  <tr
-                    key={tx._id}
-                    className={`text-center transition-colors ${
-                      tx.reversed
-                        ? "bg-green-100 text-green-800 font-semibold"
-                        : isRelatedTransaction(tx)
-                        ? "bg-yellow-50 text-yellow-800"
-                        : isSelected
-                        ? "bg-red-50 text-red-800"
-                        : ""
-                    }`}
-                  >
-                    <td className="border p-2">
-                      {!tx.reversed && (
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelect(tx)}
-                        />
-                      )}
-                    </td>
-                    <td className="border p-2">{index + 1}</td>
-                    <td className="border p-2">{tx.userId}</td>
-                    <td className="border p-2">{tx.name || "-"}</td>
-                    <td className="border p-2 capitalize">
-                      {tx.type.replace("_", " ")}
-                    </td>
-                    <td
-                      className={`border p-2 font-bold ${
-                        tx.reversed ? "text-green-700" : "text-white"
-                      }`}
-                    >
-                      ${formatAmount(tx.amount)}
-                    </td>
-                    <td className="border p-2">{tx.fromUserId || "-"}</td>
-                    <td className="border p-2">{tx.toUserId || "-"}</td>
-                    <td className="border p-2">
-                      {tx.date
-                        ? new Date(tx.date).toLocaleString("en-IN")
-                        : tx.createdAt
-                        ? new Date(tx.createdAt).toLocaleString("en-IN")
-                        : "N/A"}
-                    </td>
-                    <td className="border p-2">{tx.source || "-"}</td>
-                    <td className="border p-2">{tx.description || "-"}</td>
-                    <td className="border p-2">{tx.reversed ? "✅" : "❌"}</td>
-                    <td className="border p-2">
-                      {!tx.reversed && (
-                        <button
-                          onClick={() => {
-                            setSelectedTxForSingle(tx);
-                            setModalOpen(true);
-                          }}
-                          className="flex items-center px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
-                        >
-                          <FaUndo className="mr-1" /> Reverse
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
+      return (
+        <tr
+          key={tx._id}
+          className={`text-center transition-all duration-200 ${
+            tx.reversed
+              ? "bg-green-100 text-green-800 font-semibold"
+              : isRelatedTransaction(tx)
+              ? "bg-yellow-50 text-yellow-800"
+              : isSelected
+              ? "bg-red-50 text-red-800"
+              : ""
+          }`}
+        >
+          <td className="border p-2">
+            {!tx.reversed && (
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => toggleSelect(tx)}
+              />
             )}
-          </tbody>
+          </td>
+
+          <td className="border p-2">{index + 1}</td>
+          <td className="border p-2">{tx.userId}</td>
+          <td className="border p-2">{tx.name || "-"}</td>
+
+          <td className="border p-2 capitalize">
+            {tx.type.replace("_", " ")}
+          </td>
+
+          <td className="border p-2 font-bold">
+            ₹ {formatAmount(tx.amount)}
+          </td>
+
+          <td className="border p-2">{tx.fromUserId || "-"}</td>
+          <td className="border p-2">{tx.toUserId || "-"}</td>
+
+          <td className="border p-2">
+            {tx.date
+              ? new Date(tx.date).toLocaleString("en-IN")
+              : tx.createdAt
+              ? new Date(tx.createdAt).toLocaleString("en-IN")
+              : "N/A"}
+          </td>
+
+          <td className="border p-2">{tx.source || "-"}</td>
+          <td className="border p-2">{tx.description || "-"}</td>
+
+          {/* ✅ STATUS COLUMN */}
+          <td className="border p-2">
+            {tx.reversed ? (
+              <span className="px-2 py-1 bg-green-500 text-white rounded text-xs">
+                ✔ Reversed
+              </span>
+            ) : (
+              <span className="px-2 py-1 bg-gray-300 rounded text-xs">
+                Active
+              </span>
+            )}
+          </td>
+
+          {/* ✅ ACTION */}
+          <td className="border p-2">
+            {tx.reversed ? (
+              <span className="text-green-600 font-semibold">
+                Done
+              </span>
+            ) : (
+              <button
+                onClick={() => {
+                  setSelectedTxForSingle(tx);
+                  setModalOpen(true);
+                }}
+                className="flex items-center px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+              >
+                <FaUndo className="mr-1" /> Reverse
+              </button>
+            )}
+          </td>
+        </tr>
+      );
+    })
+  )}
+</tbody>
         </table>
       </div>
 

@@ -9,8 +9,7 @@ const Withdrawal = require('../models/Withdrawal');
 const Transaction = require('../models/Transaction');
 const Deposit = require('../models/Deposit');
 const verifyAdmin = require('../middleware/adminAuth');
- const Spin = require("../models/Spin");
- 
+  
 const { ethers } = require('ethers');
 require('dotenv').config();
 
@@ -28,25 +27,47 @@ const tokenABI = [
 
  
 // Admin impersonate user
-router.get('/impersonate/:userId', adminAuth, async (req, res) => {
+// 🔹 IMPERSONATE USER (Login as User from Admin Panel)
+router.post('/impersonate', adminAuth, async (req, res) => {
   try {
-    const user = await User.findOne({ userId: req.params.userId }).lean();
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    const { userId } = req.body; // Frontend se userId body me aayega
 
+    // 1. Find the target user
+    const user = await User.findOne({ userId: Number(userId) }).lean();
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // 🔥 NOTE: Hum yahan "user.isBlocked" check NAHI kar rahe hain.
+    // Iska matlab Admin ek blocked user ke account me bhi easily login kar sakta hai.
+
+    // 2. Generate Token (Same format as normal login)
     const userToken = jwt.sign(
-      { userId: user.userId, role: 'user' },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
+      { id: user._id }, // Normal login me _id use hoti hai token me
+      process.env.JWT_SECRET || 'yoursecretkey',
+      { expiresIn: '1d' } // Admin login 1 din tak chalega
     );
 
-    res.json({ token: userToken, user });
+    // 3. Sensitive data hide karein frontend pe bhejte time
+    delete user.password;
+    delete user.transactionPassword;
+
+    // 4. Send token and user data back to frontend
+    res.json({ 
+      message: "Impersonation successful",
+      token: userToken, 
+      user 
+    });
+
   } catch (err) {
-    console.error(err);
+    console.error("Impersonation Error:", err);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 // Dashboard summary
+// Dashboard summary (UPDATED FOR ALL CARDS)
+// Dashboard summary (UPDATED FOR ALL CARDS - WITH FIX FOR STRINGS & GROSSAMOUNT)
 router.get('/dashboard', verifyAdmin, async (req, res) => {
   try {
     const today = new Date();
@@ -55,36 +76,85 @@ router.get('/dashboard', verifyAdmin, async (req, res) => {
     const [
       totalUsers,
       todayUsers,
-      todayUserDocs,
-      totalDepositSum,
-      todayDepositSum,
-      totalWithdrawalSum,
-      todayWithdrawalSum
+      paidUsers,
+      depositStats,
+      withdrawalStats
     ] = await Promise.all([
+      // 1. Total Users
       User.countDocuments(),
+      
+      // 2. Today's New Users
       User.countDocuments({ createdAt: { $gte: today } }),
-      User.find({ createdAt: { $gte: today } }, { userId: 1 }),
-      Deposit.aggregate([{ $group: { _id: null, total: { $sum: "$amount" } } }]),
-      Deposit.aggregate([{ $match: { createdAt: { $gte: today } } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
-      Withdrawal.aggregate([{ $group: { _id: null, total: { $sum: "$amount" } } }]),
-      Withdrawal.aggregate([{ $match: { createdAt: { $gte: today } } }, { $group: { _id: null, total: { $sum: "$amount" } } }])
+      
+      // 3. Total Paid Users
+      User.countDocuments({ topUpAmount: { $gt: 0 } }),
+      
+      // 4. DEPOSIT STATS (String to Double conversion added)
+      Deposit.aggregate([
+        {
+          $facet: {
+            total: [{ $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }],
+            today: [
+              { $match: { createdAt: { $gte: today } } },
+              { $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }
+            ],
+            pendingToday: [
+              { $match: { createdAt: { $gte: today }, status: "pending" } },
+              { $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }
+            ]
+          }
+        }
+      ]),
+
+      // 5. WITHDRAWAL STATS (Using grossAmount and String to Double conversion)
+      Withdrawal.aggregate([
+        {
+          $facet: {
+            totalAll: [{ $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }],
+            approvedTotal: [
+              { $match: { status: "approved" } },
+              { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }
+            ],
+            approvedToday: [
+              { $match: { createdAt: { $gte: today }, status: "approved" } },
+              { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }
+            ],
+            pendingTotal: [
+              { $match: { status: "pending" } },
+              { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }
+            ],
+            pendingToday: [
+              { $match: { createdAt: { $gte: today }, status: "pending" } },
+              { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }
+            ]
+          }
+        }
+      ])
     ]);
+
+    const dep = depositStats[0];
+    const withD = withdrawalStats[0];
 
     res.json({
       totalUsers,
       todayUsers,
-      todayUserIds: todayUserDocs.map(user => user.userId),
-      totalDeposit: totalDepositSum[0]?.total || 0,
-      todayDeposit: todayDepositSum[0]?.total || 0,
-      totalWithdrawal: totalWithdrawalSum[0]?.total || 0,
-      todayWithdrawal: todayWithdrawalSum[0]?.total || 0
+      paidUsers,
+      
+      totalDeposit: dep.total[0]?.sum || 0,
+      todayDeposit: dep.today[0]?.sum || 0,
+      pendingDepositToday: dep.pendingToday[0]?.sum || 0,
+      
+      totalWithdrawal: withD.totalAll[0]?.sum || 0,
+      approvedWithdrawalTotal: withD.approvedTotal[0]?.sum || 0,
+      approvedWithdrawalToday: withD.approvedToday[0]?.sum || 0,
+      pendingWithdrawalTotal: withD.pendingTotal[0]?.sum || 0,
+      pendingWithdrawalToday: withD.pendingToday[0]?.sum || 0,
     });
   } catch (error) {
     console.error('Dashboard error:', error);
     res.status(500).json({ message: 'Dashboard data fetch failed' });
   }
 });
-
 // GET /api/admin/stats
 router.get("/stats", verifyAdmin, async (req, res) => {
   const totalUsers = await User.countDocuments();
@@ -145,6 +215,8 @@ router.get('/users', verifyAdmin, async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch users' });
   }
 });
+
+
 // Get all users as global team with count and real userIds
 router.get('/global-team', verifyAdmin, async (req, res) => {
   try {
@@ -1006,17 +1078,53 @@ router.put('/admin/update-password/:userId', verifyAdmin, async (req, res) => {
   }
 });
 
+
+
+// ✅ Corrected Route for Admin User Search (Added here)
+// Isse admin kisi bhi ek user ko search karega toh usko plain text password dikhega
+router.get('/user/:userId', verifyAdmin, async (req, res) => {
+  try {
+    const user = await User.findOne({ userId: Number(req.params.userId) }).lean();
+    
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Yahan hum password aur transactionPassword hide NAHI kar rahe hain
+    res.json({ user: user });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
+// routes/admin.js ke andar
+router.get('/search-user/:userId', verifyAdmin, async (req, res) => {
+  try {
+    const user = await User.findOne({ userId: Number(req.params.userId) }).lean();
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Ensure we are sending EVERYTHING, including passwords
+    res.json({ user: user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 // Admin update user data safely
 // ✅ Admin update user + update ONLY pending withdrawals wallet address
 // 🔐 Admin update user (FINAL)
+// 🔐 Admin update user (FINAL - Updated to Plain Text Password)
 router.put('/:userId', verifyAdmin, async (req, res) => {
   try {
-    const { password, txnPassword, walletAddress, ...otherFields } = req.body;
+    const { password, transactionPassword, walletAddress, ...otherFields } = req.body;
     const updateData = { ...otherFields };
 
     if (walletAddress) updateData.walletAddress = walletAddress;
-    if (password) updateData.password = await bcrypt.hash(password, 10);
-    if (txnPassword) updateData.transactionPassword = await bcrypt.hash(txnPassword, 10);
+    
+    // ✅ Yahan se bcrypt hata diya hai. Seedha save hoga.
+    if (password) updateData.password = password;
+    if (transactionPassword) updateData.transactionPassword = transactionPassword;
 
     const updatedUser = await User.findOneAndUpdate(
       { userId: Number(req.params.userId) },
@@ -1030,13 +1138,10 @@ router.put('/:userId', verifyAdmin, async (req, res) => {
 
     // 🔥 ONLY PENDING WITHDRAWALS UPDATE
     if (walletAddress) {
-      // parent pending
       await Withdrawal.updateMany(
         { userId: Number(req.params.userId), status: "pending" },
         { $set: { walletAddress } }
       );
-
-      // schedule pending days
       await Withdrawal.updateMany(
         {
           userId: Number(req.params.userId),
@@ -1061,7 +1166,6 @@ router.put('/:userId', verifyAdmin, async (req, res) => {
     res.status(500).json({ message: "Update failed" });
   }
 });
-
 
 
 

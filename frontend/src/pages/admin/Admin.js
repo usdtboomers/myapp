@@ -6,14 +6,19 @@ import ReferralTree from '../../components/ReferralTree';
 import AdminWithdrawalTable from './AdminWithdrawalTable';
 
 const AdminDashboard = () => {
+  // Expanded state to handle all new metrics
   const [stats, setStats] = useState({
     totalUsers: 0,
     todayUsers: 0,
-    todayUserIds: [],
+    paidUsers: 0,
     totalDeposit: 0,
     todayDeposit: 0,
+    pendingDepositToday: 0,
     totalWithdrawal: 0,
-    todayWithdrawal: 0,
+    approvedWithdrawalTotal: 0,
+    approvedWithdrawalToday: 0,
+    pendingWithdrawalTotal: 0,
+    pendingWithdrawalToday: 0,
   });
 
   const [withdrawals, setWithdrawals] = useState([]);
@@ -30,14 +35,21 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      // Mapping all new fields from the backend response
       setStats({
         totalUsers: statsRes.data.totalUsers || 0,
         todayUsers: statsRes.data.todayUsers || 0,
-        todayUserIds: statsRes.data.todayUserIds || [],
+        paidUsers: statsRes.data.paidUsers || 0,
+        
         totalDeposit: statsRes.data.totalDeposit || 0,
         todayDeposit: statsRes.data.todayDeposit || 0,
+        pendingDepositToday: statsRes.data.pendingDepositToday || 0,
+        
         totalWithdrawal: statsRes.data.totalWithdrawal || 0,
-        todayWithdrawal: statsRes.data.todayWithdrawal || 0,
+        approvedWithdrawalTotal: statsRes.data.approvedWithdrawalTotal || 0,
+        approvedWithdrawalToday: statsRes.data.approvedWithdrawalToday || 0,
+        pendingWithdrawalTotal: statsRes.data.pendingWithdrawalTotal || 0,
+        pendingWithdrawalToday: statsRes.data.pendingWithdrawalToday || 0,
       });
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -58,34 +70,46 @@ const AdminDashboard = () => {
   return (
     <div className="w-full min-h-screen bg-gray-50 p-4 md:p-6 pt-20">
       
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Admin Overview</h1>
+        <p className="text-sm text-gray-500">Real-time statistics and system management</p>
+      </div>
+
       {/* Stats Cards */}
       <DashboardCards stats={stats} />
 
       {/* Grid Layout for Search & Tree */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-        <div className="bg-white p-4 rounded-lg shadow">
-            <UserSearch />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+          <h3 className="text-lg font-bold text-gray-700 mb-4">User Management</h3>
+          <UserSearch />
         </div>
-        <div className="bg-white p-4 rounded-lg shadow overflow-hidden">
-            <ReferralTree />
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <h3 className="text-lg font-bold text-gray-700 mb-4">Network Tree</h3>
+          <ReferralTree />
         </div>
       </div>
 
       {/* Withdrawal Table Section */}
-      <div className="mt-8 bg-white rounded-lg shadow p-4">
-         <h3 className="text-lg font-bold text-gray-700 mb-4">Recent Withdrawals</h3>
+      <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-700">Recent Withdrawals</h3>
+          <button 
+            onClick={fetchWithdrawals}
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            Refresh Data
+          </button>
+        </div>
          
-         {/* 🔥 SCROLL FIX START */}
-         {/* overflow-x-auto: Scrollbar laane ke liye */}
-         <div className="w-full overflow-x-auto pb-2">
-            
-            {/* min-w-[1000px]: Table ko zabardasti chauda (wide) rakhega taaki scroll kaam kare */}
+        {/* SCROLL FIX START */}
+        <div className="w-full overflow-x-auto pb-2">
             <div className="min-w-[1000px]"> 
                 <AdminWithdrawalTable withdrawals={withdrawals} refreshWithdrawals={fetchWithdrawals} />
             </div>
-
-         </div>
-         {/* 🔥 SCROLL FIX END */}
+        </div>
+        {/* SCROLL FIX END */}
          
       </div>
 
