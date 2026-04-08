@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 
+
+router.use('/setting', require('./setting')); // 👈 TOP pe le aao
+
 // 🔐 Auth routes
 router.use('/auth', require('./auth'));
 
@@ -24,8 +27,7 @@ router.use('/admin/notifications', require('./adminNotification'));
 // 🔗 Other modules
 router.use('/referral', require('./referral'));
 router.use('/transaction', require('./transaction'));
-router.use('/setting', require('./setting'));
-router.use('/wallet', require('./wallet'));
+ router.use('/wallet', require('./wallet'));
 router.use('/income', require('./incomeRoutes'));
 router.use('/packages', require('./packages'));
  router.use('/support', require('./support'));
