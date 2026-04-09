@@ -465,15 +465,13 @@ const WithdrawalModal = ({ userId, onClose }) => {
 
             {/* ACTION BUTTON */}
             <div style={{padding: '20px', borderTop: '1px solid #334155', background: '#0f172a'}}>
-              <button 
-                onClick={handleWithdraw} 
-                disabled={!isAnySelected || loading || !walletAddress.trim()} 
-                style={!isAnySelected || loading || !walletAddress.trim() 
-                  ? {...styles.confirmBtn, opacity: 0.5, cursor: 'not-allowed'} 
-                  : styles.confirmBtn}
-              >
-                {loading ? "Processing..." : "Withdraw Selected Amount"}
-              </button>
+           <button 
+  onClick={handleWithdraw} 
+  disabled={loading} // Sirf loading ke time disable hoga taaki double click na ho
+  style={styles.confirmBtn} // Hamesha bright aur active dikhega
+>
+  {loading ? "Processing..." : "Withdraw Selected Amount"}
+</button>
             </div>
 
           </div>
