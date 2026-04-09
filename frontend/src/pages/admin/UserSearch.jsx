@@ -3,7 +3,8 @@ import api from "../../api/axios"; // Path apne hisaab se theek kar lena
 import { Search, Ban, CheckCircle, Save, LogIn, Eye, EyeOff } from "lucide-react";
 
 // Tweak this if your API base is different in axios config
-const API_BASE = "http://localhost:5000"; 
+ 
+ 
 
 function UserSearch() {
   const [searchId, setSearchId] = useState("");
@@ -25,12 +26,7 @@ function UserSearch() {
     try {
       setMessage("Searching...");
       // ✅ FIX: API URL CHANGED TO AVOID ANY CONFLICT WITH NORMAL USER ROUTES
-      const res = await api.get(
-        `${API_BASE}/api/admin/search-user/${searchId}`, 
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+     const res = await api.get(`/admin/search-user/${searchId}`);
 
       console.log("Data received from backend:", res.data.user); // Check console to verify password is coming
 
@@ -51,11 +47,11 @@ function UserSearch() {
     if (!token) return setMessage("Admin not authenticated");
 
     try {
-      const url = user.isBlocked
-        ? `${API_BASE}/api/admin/unblock-user/${user.userId}`
-        : `${API_BASE}/api/admin/block-user/${user.userId}`;
+  const url = user.isBlocked
+  ? `/admin/unblock-user/${user.userId}`
+  : `/admin/block-user/${user.userId}`;
 
-      await api.put(url, {}, { headers: { Authorization: `Bearer ${token}` } });
+await api.put(url);
 
       setUser((prev) => ({ ...prev, isBlocked: !prev.isBlocked }));
       setMessage(`User ${user.isBlocked ? "unblocked" : "blocked"} successfully`);
@@ -82,13 +78,7 @@ function UserSearch() {
       if (payload.password === user.password) delete payload.password;
       if (payload.transactionPassword === user.transactionPassword) delete payload.transactionPassword;
 
-      const res = await api.put(
-        `${API_BASE}/api/admin/${user.userId}`,
-        payload,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+     const res = await api.put(`/admin/${user.userId}`, payload);
 
       setUser(res.data.user);
       setFormData(res.data.user);
@@ -105,11 +95,9 @@ function UserSearch() {
     if (!token) return setMessage("Admin not authenticated");
 
     try {
-      const res = await api.post(
-        `${API_BASE}/api/admin/impersonate`,
-        { userId: user.userId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+    const res = await api.post(`/admin/impersonate`, {
+  userId: user.userId,
+});
 
       const { token: userToken, user: impersonatedUser } = res.data;
 

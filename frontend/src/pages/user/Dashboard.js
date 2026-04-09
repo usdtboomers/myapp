@@ -14,8 +14,7 @@ import SuccessModal from "../../components/modals/SuccessModal";
 import TopUpModalWithInput from "../../components/modals/TopUpModalWithInput";
 import CreditToWalletModal from "../../components/modals/CreditToWalletModal";
  import TopNav from "../../components/navbar/TopNav";
- import WalletReminderModal from "../../components/modals/WalletReminderModal";
-
+ 
 const Dashboard = () => {
   const { user, token, setUser, logout } = useAuth();
   const navigate = useNavigate(); 
@@ -365,11 +364,7 @@ const Dashboard = () => {
            
           
 
-          {/* Wallet Reminder Modal */}
-          <WalletReminderModal
-            isOpen={showWalletReminder}
-            onClose={() => setShowWalletReminder(false)}
-          />
+         
 
         </main>
       </div>

@@ -19,8 +19,9 @@ const customStyles = `
   }
 `;
 
-// ✅ All Packages Data Configuration
+// ✅ All Packages Data Configuration (Added $10 Package)
 const packagesConfig = [
+  { amount: 10, levels: [ { level: 1, team: 10, earning: 2 }, { level: 2, team: 20, earning: 3 }, { level: 3, team: 30, earning: 5 }, { level: 4, team: 50, earning: 5 }, { level: 5, team: 100, earning: 5 } ] },
   { amount: 30, levels: [ { level: 1, team: 10, earning: 5 }, { level: 2, team: 20, earning: 10 }, { level: 3, team: 50, earning: 15 }, { level: 4, team: 100, earning: 15 }, { level: 5, team: 200, earning: 15 } ] },
   { amount: 60, levels: [ { level: 1, team: 10, earning: 10 }, { level: 2, team: 20, earning: 20 }, { level: 3, team: 50, earning: 30 }, { level: 4, team: 100, earning: 30 }, { level: 5, team: 200, earning: 30 } ] },
   { amount: 120, levels: [ { level: 1, team: 10, earning: 20 }, { level: 2, team: 20, earning: 40 }, { level: 3, team: 50, earning: 60 }, { level: 4, team: 100, earning: 60 }, { level: 5, team: 200, earning: 60 } ] },
@@ -30,53 +31,65 @@ const packagesConfig = [
 ];
 
 // Sequential Days Offset for Free Users
-// $30 starts at Day 0, $60 starts at Day 5, $120 starts at Day 10, etc.
-const packageOffsets = { 30: 0, 60: 5, 120: 10, 240: 15, 480: 20, 960: 25 };
+// Added offset for $10 package
+const packageOffsets = { 10: 0, 30: 0, 60: 5, 120: 10, 240: 15, 480: 20, 960: 25 };
 
 export default function Plan() {
   const { user } = useAuth();
   const [activeData, setActiveData] = useState([]);
 
-  // ---------------- PROCESS DATA (1 LEVEL PER DAY LOGIC) ----------------
-// ---------------- PROCESS DATA (UPDATED FOR YOUR SCHEMA) ----------------
-useEffect(() => {
-  // Aapke data mein 'packages' field hai, 'dailyROI' nahi.
-  const userPackages = user?.packages || []; 
-  
-  // User ki joining date (Free logic ke liye)
-  const joinDate = user?.createdAt ? new Date(user.createdAt).getTime() : Date.now();
-  const daysSinceJoined = Math.max(0, Math.floor((Date.now() - joinDate) / (1000 * 60 * 60 * 24)));
-
-  const processedData = packagesConfig.map((pkg) => {
-    let totalEarn = 0;
+  // ---------------- PROCESS DATA (UPDATED FOR 4-HOUR LOGIC ON $10 PKG) ----------------
+  useEffect(() => {
+    const userPackages = user?.packages || []; 
     
-    // Yahan check kar rahe hain ki kya ye package user ne buy kiya hai
-    const activePackage = userPackages.find(p => p.amount === pkg.amount);
-    const pkgOffset = packageOffsets[pkg.amount];
+    // User Joining Date
+    const joinDate = user?.createdAt ? new Date(user.createdAt).getTime() : Date.now();
+    const daysSinceJoined = Math.max(0, Math.floor((Date.now() - joinDate) / (1000 * 60 * 60 * 24)));
+    const hoursSinceJoined = Math.max(0, Math.floor((Date.now() - joinDate) / (1000 * 60 * 60)));
 
-    const processedLevels = pkg.levels.map((staticLvl, idx) => {
-      totalEarn += staticLvl.earning;
-      let isAchieved = false;
+    const processedData = packagesConfig.map((pkg) => {
+      let totalEarn = 0;
+      
+      const activePackage = userPackages.find(p => p.amount === pkg.amount);
+      const pkgOffset = packageOffsets[pkg.amount];
 
-      if (activePackage) {
-        // RULE 1: Agar topup kiya hai, toh us package ki specific startDate se timer chalega
-        const startDate = activePackage.startDate || activePackage.date; // Dono check kar rahe hain safety ke liye
-        const activeDays = Math.max(0, Math.floor((Date.now() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)));
-        isAchieved = activeDays >= idx;
-      } else {
-        // RULE 2: Agar buy nahi kiya, toh Global Joining Date + Offset
-        const requiredGlobalDays = pkgOffset + idx;
-        isAchieved = daysSinceJoined >= requiredGlobalDays;
-      }
+      const processedLevels = pkg.levels.map((staticLvl, idx) => {
+        totalEarn += staticLvl.earning;
+        let isAchieved = false;
 
-      return { ...staticLvl, status: isAchieved ? "achieved" : "pending" };
+        if (activePackage) {
+          // RULE 1: If user has topped up this package
+          const startDate = activePackage.startDate || activePackage.date; 
+          
+          if (pkg.amount === 10) {
+            // Unlocks 1 level every 4 hours for the $10 package
+            const activeHours = Math.max(0, Math.floor((Date.now() - new Date(startDate).getTime()) / (1000 * 60 * 60)));
+            isAchieved = activeHours >= (idx * 4);
+          } else {
+            // Unlocks 1 level every 1 day for all other packages
+            const activeDays = Math.max(0, Math.floor((Date.now() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)));
+            isAchieved = activeDays >= idx;
+          }
+        } else {
+          // RULE 2: If user has NOT bought the package (Free logic)
+          if (pkg.amount === 10) {
+            // Unlocks 1 level every 4 hours from joining date for the $10 package
+            isAchieved = hoursSinceJoined >= (idx * 4);
+          } else {
+            // Normal global days offset logic for other packages
+            const requiredGlobalDays = pkgOffset + idx;
+            isAchieved = daysSinceJoined >= requiredGlobalDays;
+          }
+        }
+
+        return { ...staticLvl, status: isAchieved ? "achieved" : "pending" };
+      });
+
+      return { ...pkg, levels: processedLevels, totalEarn };
     });
 
-    return { ...pkg, levels: processedLevels, totalEarn };
-  });
-
-  setActiveData(processedData);
-}, [user]);
+    setActiveData(processedData);
+  }, [user]);
 
   // ---------------- UI ----------------
   return (

@@ -70,7 +70,7 @@ const transactionSchema = new mongoose.Schema(
 
     plan: {
       type: String,
-      enum: ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6", "plan7", null],
+      enum: ["plan0","plan1", "plan2", "plan3", "plan4", "plan5", "plan6", "plan7", null],
       default: null,
     },
 

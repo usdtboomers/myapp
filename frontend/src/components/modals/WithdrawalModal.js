@@ -11,7 +11,8 @@ const WithdrawalModal = ({ userId, onClose }) => {
   const [balances, setBalances] = useState({
     walletBalance: 0,
     planIncomes: {},
-    rewardIncome: 0 // Direct and Level removed
+    rewardIncome: 0, 
+    directIncome: 0 // ✅ ADDED: Direct Income State
   });
   
   const [userROI, setUserROI] = useState([]);
@@ -32,14 +33,15 @@ const WithdrawalModal = ({ userId, onClose }) => {
   const showMessage = (title, message, type = "error") =>
     setMessageModal({ open: true, title, message, type });
 
-  // --- CONFIG ---
-  const planToPackageAmount = { plan1: 30, plan2: 60, plan3: 120, plan4: 240, plan5: 480, plan6: 960 };
+  // --- CONFIG (Updated for $10 Package) ---
+  const planToPackageAmount = { plan0: 10, plan1: 30, plan2: 60, plan3: 120, plan4: 240, plan5: 480, plan6: 960 };
   const planNames = {
-    plan1: "$30 Package", plan2: "$60 Package", plan3: "$120 Package",
+    plan0: "$10 Package", plan1: "$30 Package", plan2: "$60 Package", plan3: "$120 Package",
     plan4: "$240 Package", plan5: "$480 Package", plan6: "$960 Package"
   };
   
   const packageEarnings = {
+    10: [2, 3, 5, 5, 5], 
     30: [5, 10, 15, 15, 15],
     60: [10, 20, 30, 30, 30],
     120: [20, 40, 60, 60, 60],
@@ -60,12 +62,13 @@ const WithdrawalModal = ({ userId, onClose }) => {
         setBalances({
           walletBalance: res.data.walletBalance || 0,
           planIncomes: res.data.planIncomes || {},
-          rewardIncome: res.data.reward || 0, // Only Reward kept
+          rewardIncome: res.data.reward || 0, 
+          directIncome: res.data.direct || 0, // ✅ ADDED: Fetching Direct Income from backend
         });
       }
 
       if (profileRes.data?.user) {
-setUserROI(profileRes.data.user.packages || []);
+        setUserROI(profileRes.data.user.packages || []);
         const addr = (profileRes.data.user.walletAddress || "").trim();
         setWalletAddress(addr);
         setIsAddressMissing(!addr);
@@ -198,7 +201,8 @@ setUserROI(profileRes.data.user.packages || []);
           amount: Number(val),
           source: sourceKey, 
         };
-        successSourceTitle = "USDT Reward Income";
+        // ✅ ADDED: Title update for Direct
+        successSourceTitle = sourceKey === "reward" ? "USDT Reward Income" : "Direct Income";
       }
 
       await api.post("/wallet/withdraw", payload, {
@@ -229,7 +233,6 @@ setUserROI(profileRes.data.user.packages || []);
     }
   };
 
-  const totalPlanEarnings = Object.values(balances.planIncomes || {}).reduce((acc, val) => acc + (Number(val) || 0), 0);
   const isAnySelected = Object.values(levelWithdrawals).some(v => Number(v) > 0) || Object.values(otherWithdrawals).some(v => Number(v) > 0);
 
   // --- STYLES ---
@@ -270,18 +273,19 @@ setUserROI(profileRes.data.user.packages || []);
             <div style={styles.header}>
               <div>
                 <h2 style={styles.title}>Withdraw Funds</h2>
-               
               </div>
               <button onClick={onClose} style={{background: 'none', border: 'none', color: '#94a3b8', fontSize: '24px', cursor: 'pointer'}}>&times;</button>
             </div>
 
             <div className="custom-scroll" style={styles.body}>
               
-              {/* OTHER BALANCES: Only USDT Reward Left */}
+              {/* ✅ ADDED: OTHER BALANCES (Reward & Direct) */}
               <div>
-                <div style={{fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px', letterSpacing: '1px'}}>USDT REWARD BALANCE</div>
+                <div style={{fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px', letterSpacing: '1px'}}>OTHER BALANCES</div>
                 <div style={styles.planRow}>
-                  <div style={{...styles.levelBox, gridTemplateColumns: "1fr 1fr", borderBottom: 'none'}}>
+                  
+                  {/* USDT REWARD ROW */}
+                  <div style={{...styles.levelBox, gridTemplateColumns: "1fr 1fr", borderBottom: '1px solid #334155'}}>
                     <div style={{display: 'flex', flexDirection: 'column'}}>
                        <span style={{color: '#e2e8f0', fontWeight: 'bold', fontSize: '14px'}}>USDT Reward</span>
                        <span style={{fontSize: '11px', color: '#a855f7'}}>Available: ${balances.rewardIncome || 0}</span>
@@ -294,6 +298,22 @@ setUserROI(profileRes.data.user.packages || []);
                       />
                     </div>
                   </div>
+
+                  {/* DIRECT INCOME ROW */}
+                  <div style={{...styles.levelBox, gridTemplateColumns: "1fr 1fr", borderBottom: 'none'}}>
+                    <div style={{display: 'flex', flexDirection: 'column'}}>
+                       <span style={{color: '#e2e8f0', fontWeight: 'bold', fontSize: '14px'}}>Direct Income</span>
+                       <span style={{fontSize: '11px', color: '#f59e0b'}}>Available: ${balances.directIncome || 0}</span>
+                    </div>
+                    <div style={{display: 'flex', alignItems: 'center'}}>
+                      <input type="number" placeholder="Enter Amount" style={styles.levelInput} 
+                        value={otherWithdrawals.direct || ""} 
+                        onChange={e => handleOtherInputChange(e, "direct")} 
+                        max={balances.directIncome} 
+                      />
+                    </div>
+                  </div>
+
                 </div>
               </div>
 
@@ -341,7 +361,7 @@ setUserROI(profileRes.data.user.packages || []);
                                 {/* Left Column: Level Info */}
                                 <div>
                                    <span  style={{color: isUnlocked ? '#e2e8f0' : '#64748b', fontWeight: 'bold', fontSize: '11px'}}>
-                                     Level {idx+1} <br/><span className="font-bold text-yellow-500" >${earning}</span>
+                                      Level {idx+1} <br/><span className="font-bold text-yellow-500" >${earning}</span>
                                    </span>
                                 </div>
                                 
@@ -406,28 +426,28 @@ setUserROI(profileRes.data.user.packages || []);
               <div style={{padding: '15px', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155'}}>
                 
              {/* USDT (BEP20) WALLET ADDRESS SECTION */}
-<div style={{marginBottom: '12px'}}>
-  <label style={{fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '5px', fontWeight: 'bold'}}>
-    USDT (BEP20) WALLET ADDRESS
-    {/* 🔥 Info Badge */}
-    {walletAddress && <span style={{color: '#eab308', marginLeft: '10px'}}>(cannot change address after withdrawal)</span>}
-  </label>
-  
-  <input 
-    type="text" 
-    placeholder="Enter your BEP20 Wallet Address" 
-    style={{
-        ...styles.mainInput,
-        // 🔥 Visual feedback: agar lock hai toh grey dikhega
-        backgroundColor: balances.isLocked ? '#1e293b' : '#0f172a',
-        cursor: balances.isLocked ? 'not-allowed' : 'text'
-    }} 
-    value={walletAddress} 
-    onChange={e => setWalletAddress(e.target.value)} 
-    // 🔥 Disable input if address is already set AND user is withdrawing
-disabled={!!loggedInUser?.walletAddress && isAnySelected}
-  />
-</div>
+              <div style={{marginBottom: '12px'}}>
+                <label style={{fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '5px', fontWeight: 'bold'}}>
+                  USDT (BEP20) WALLET ADDRESS
+                  {/* 🔥 Info Badge */}
+                  {walletAddress && <span style={{color: '#eab308', marginLeft: '10px'}}>(cannot change address after withdrawal)</span>}
+                </label>
+                
+                <input 
+                  type="text" 
+                  placeholder="Enter your BEP20 Wallet Address" 
+                  style={{
+                      ...styles.mainInput,
+                      // 🔥 Visual feedback: agar lock hai toh grey dikhega
+                      backgroundColor: balances.isLocked ? '#1e293b' : '#0f172a',
+                      cursor: balances.isLocked ? 'not-allowed' : 'text'
+                  }} 
+                  value={walletAddress} 
+                  onChange={e => setWalletAddress(e.target.value)} 
+                  // 🔥 Disable input if address is already set AND user is withdrawing
+                  disabled={!!loggedInUser?.walletAddress && isAnySelected}
+                />
+              </div>
 
                 <div>
                   <label style={{fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '5px', fontWeight: 'bold'}}>SECURITY PASSWORD</label>

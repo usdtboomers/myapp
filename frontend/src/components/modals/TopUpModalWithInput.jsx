@@ -5,8 +5,8 @@ import MessageModal from "./MessageModal";
 import { useAuth } from "../../context/AuthContext";
 import { CheckCircle, ShieldCheck } from "lucide-react"; 
 
-// --- SIMPLE CONFIGURATION (Bas normal amounts) ---
-const packages = [30, 60, 120, 240, 480, 960];
+// --- SIMPLE CONFIGURATION (10 package added) ---
+const packages = [10, 30, 60, 120, 240, 480, 960];
 
 const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   // --- STATE & AUTH ---
@@ -14,8 +14,8 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   const [userId, setUserId] = useState("");
   const [userInfo, setUserInfo] = useState(null);
   
-  // Default selected amount
-  const [selectedAmount, setSelectedAmount] = useState(30);
+  // Default selected amount changed to 10
+  const [selectedAmount, setSelectedAmount] = useState(10);
   const [walletBalance, setWalletBalance] = useState(null);
   const [transactionPassword, setTransactionPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,12 +47,12 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
 
   // --- 2. Calculate User's Package Status ---
   const userPackageStatus = useMemo(() => {
-    if (!userInfo) return { boughtSet: new Set(), nextAvailable: 30 };
+    if (!userInfo) return { boughtSet: new Set(), nextAvailable: 10 };
 
     const bought = new Set(userInfo.dailyROI?.map(p => Number(p.amount)) || []);
     
     // Auto-select logic
-    let next = 30; 
+    let next = 10; 
     for (let i = 0; i < packages.length; i++) {
         if (!bought.has(packages[i])) {
             next = packages[i];
@@ -70,18 +70,38 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
     }
   }, [userInfo, userPackageStatus.nextAvailable]);
 
-  // --- LOGIC: Fetch User ---
-  const fetchUser = async () => {
+  // --- LOGIC: Fetch User (Updated for Auto-fetch) ---
+  const fetchUser = async (idToFetch, showManualError = false) => {
+    if (!idToFetch) {
+        setUserInfo(null);
+        return;
+    }
     try {
-      const res = await api.get(`/user/${userId}`, {
+      const res = await api.get(`/user/${idToFetch}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUserInfo(res.data.user);
     } catch {
-       showMessage("Error", "❌ User not found", "error");
        setUserInfo(null);
+       if (showManualError) {
+           showMessage("Error", "❌ User not found", "error");
+       }
     }
   };
+
+  // --- AUTO-FETCH EFFECT ---
+  useEffect(() => {
+    // 500ms debounce to prevent API spam while typing
+    const delayDebounceFn = setTimeout(() => {
+      if (userId && userId.trim() !== "") {
+        fetchUser(userId, false); // Don't show error popup automatically while typing
+      } else {
+        setUserInfo(null);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [userId, token]);
 
   // --- LOGIC: Handle Top Up ---
   const handleTopUp = async () => {
@@ -217,20 +237,36 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                   </div>
                </div>
 
-               {/* User Input */}
+               {/* User Input (Updated for Green Indicator) */}
                <div className="md:col-span-5 flex gap-2">
                   <div className="relative flex-1">
                     <input 
                       type="number" 
-                      placeholder="User ID (e.g. 123)"
+                      placeholder="Enter UserId"
                       value={userId}
                       onChange={(e) => setUserId(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-600 text-black rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-500 font-mono"
+                      className={`w-full bg-slate-900 border text-black rounded-xl px-4 py-2.5 outline-none transition-all placeholder-gray-500 font-mono ${
+                          userInfo 
+                            ? 'border-emerald-500 ring-2 ring-emerald-500/20' 
+                            : 'border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
                     />
+                    {userInfo && (
+                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2 font-medium text-green-500">
+                           <CheckCircle size={20} />
+                       </div>
+                    )}
                   </div>
-                  <button onClick={fetchUser} className="bg-blue-600 hover:bg-blue-500 text-white px-5 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20">
-                    Fetch
-                  </button>
+                  
+                  {userInfo ? (
+                     <div className="bg-emerald-500/20 text-green-400 border border-emerald-500/50 px-5 rounded-xl font-bold transition-all flex items-center justify-center">
+                       Verified
+                     </div>
+                  ) : (
+                     <button onClick={() => fetchUser(userId, true)} className="bg-blue-600 hover:bg-blue-500 text-white px-5 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20">
+                       Fetch
+                     </button>
+                  )}
                </div>
 
                {/* User Info Display */}
@@ -244,7 +280,6 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                       <div className="text-right">
                         <div className="text-[10px] text-gray-400 uppercase">Current</div>
                         <div className="text-green-400 font-bold text-sm">
-                           {/* Removed Name formatting, only showing amount */}
                            {userInfo.topUpAmount ? `$${userInfo.topUpAmount}` : "None"}
                         </div>
                       </div>

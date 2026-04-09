@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { 
-  Wallet, ArrowUpCircle, TrendingUp, Dices 
+  Wallet, ArrowUpCircle, TrendingUp, Dices, Users 
 } from "lucide-react";
 
 // ✅ Packages Data (Achieved amount calculate karne ke liye)
 const packagesConfig = [
+  { amount: 10, levels: [ { earning: 2 }, { earning: 3 }, { earning: 5 }, { earning: 5 }, { earning: 5 } ] },
   { amount: 30, levels: [ { earning: 5 }, { earning: 10 }, { earning: 15 }, { earning: 15 }, { earning: 15 } ] },
   { amount: 60, levels: [ { earning: 10 }, { earning: 20 }, { earning: 30 }, { earning: 30 }, { earning: 30 } ] },
   { amount: 120, levels: [ { earning: 20 }, { earning: 40 }, { earning: 60 }, { earning: 60 }, { earning: 60 } ] },
@@ -13,7 +14,7 @@ const packagesConfig = [
   { amount: 960, levels: [ { earning: 160 }, { earning: 320 }, { earning: 480 }, { earning: 480 }, { earning: 480 } ] }
 ];
 
-const packageOffsets = { 30: 0, 60: 5, 120: 10, 240: 15, 480: 20, 960: 25 };
+const packageOffsets = { 10: 0, 30: 5, 60: 10, 120: 15, 240: 20, 480: 25, 960: 30 };
 
 const IncomeSummary = ({ income = {}, user = {} }) => {
   const [globalGrowth, setGlobalGrowth] = useState(0); 
@@ -28,7 +29,7 @@ const IncomeSummary = ({ income = {}, user = {} }) => {
   
   const topUpAmount = Number(user.topUpAmount) || 0;
 
-  // ✅ 3. GLOBAL GROWTH (Frontend par calculate hoga - Jo pehle logic tha wahi hai)
+  // ✅ 3. GLOBAL GROWTH (Frontend par calculate hoga)
   useEffect(() => {
     if (!user) return;
 
@@ -45,10 +46,8 @@ const IncomeSummary = ({ income = {}, user = {} }) => {
         let isAchieved = false;
 
         if (currentTopUpAmount >= pkg.amount) {
-          // Top-up ho gaya hai to wait nahi karna
           isAchieved = daysSinceJoined >= idx; 
         } else {
-          // Agar top-up nahi hai (ya chhota package hai), to din ke hisaab se count hoga
           const requiredGlobalDays = pkgOffset + idx;
           isAchieved = daysSinceJoined >= requiredGlobalDays;
         }
@@ -97,11 +96,20 @@ const IncomeSummary = ({ income = {}, user = {} }) => {
       color: "text-pink-400",
       bg: "bg-pink-500/10",
       border: "border-pink-500/20"
+    },
+    // 🔥 UPDATED BOX: Sirf Direct Income
+    { 
+        label: "Direct Income", 
+        value: `$${directIncome.toFixed(2)}`, 
+        icon: Users, 
+        color: "text-orange-400",
+        bg: "bg-orange-500/10",
+        border: "border-orange-500/20"
     }
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 text-white lg:grid-cols-4 gap-4 mt-6">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 text-white gap-4 mt-6">
       {cardData.map((item, index) => (
         <div
           key={index}

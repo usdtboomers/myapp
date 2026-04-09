@@ -74,6 +74,7 @@ const getLifetimeIncomes = async (userId) => {
 
 
 const packageEarnings = {
+    10: [2, 3, 5, 5, 5],
   30: [5, 10, 15, 15, 15],
   60: [10, 20, 30, 30, 30],
   120: [20, 40, 60, 60, 60],
@@ -451,13 +452,16 @@ router.post('/transfer', async (req, res) => {
 // ==========================================
 // 1. UPDATED WITHDRAWABLE API 
 // ==========================================
+// 1. GET WITHDRAWABLE BALANCE API
+// ==========================================
 router.get("/withdrawable/:userId", async (req, res) => {
   try {
     const user = await User.findOne({ userId: Number(req.params.userId) });
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const planBalances = {};
-    const planKeys = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6"];
+    // ✅ UPDATE: "plan0" (for $10 package) is added here
+    const planKeys = ["plan0", "plan1", "plan2", "plan3", "plan4", "plan5", "plan6"];
 
     planKeys.forEach(planKey => {
       const activePkg = user.packages && user.packages.find(p => p.plan === planKey);
@@ -477,7 +481,7 @@ router.get("/withdrawable/:userId", async (req, res) => {
       planIncomes: planBalances,
       direct: user.directIncome || 0, 
       level: user.levelIncome || 0,   
-      reward: user.rewardIncome || 0, // ✅ Ensure Reward Income is passed
+      reward: user.rewardIncome || 0, 
       spin: user.spinIncome || 0,
       isUserToppedUp: user.isToppedUp
     });
@@ -488,9 +492,7 @@ router.get("/withdrawable/:userId", async (req, res) => {
   }
 });
 
-// ==========================================
-// 2. UPDATED WITHDRAW POST API (Directs removed)
-// ==========================================
+
 // ==========================================
 // 2. UPDATED WITHDRAW POST API 
 // ==========================================
@@ -510,7 +512,9 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
 
     if (amt <= 0) return res.status(400).json({ message: "Invalid amount." });
 
-    // ✅ "reward" ko allow kar diya hai
+    // ✅ UPDATE: Minimum withdrawal limit set to $5
+    if (amt < 5) return res.status(400).json({ message: "Minimum withdrawal amount is $5." });
+
     const isOtherIncome = ["direct", "level", "reward", "spin", "pool"].includes(source);
     let finalSourceForDB = source;
 
@@ -534,9 +538,10 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
       if (level === undefined) return res.status(400).json({ message: "Invalid Request: Level missing." });
 
       const pkgAmt = parseFloat(packageAmount);
+      
+      // Note: Ensure your 'packageEarnings' object has an array defined for the '10' key.
       const earningsArray = packageEarnings[pkgAmt];
       
-      // ✅ Assume getLevelUnlockData is defined elsewhere in your file
       const { isUnlocked, timeLeft } = getLevelUnlockData(pkg, level);
       if (!isUnlocked) {
         return res.status(400).json({ message: `Level is locked. Wait for the timer to complete.` });
@@ -656,135 +661,144 @@ router.post(
   async (req, res) => {
     try {
       let { 
-        userId, 
+        userId,
         transactionPassword,
         deductReward = 0,
+        deductDirect = 0, // ✅ added
         deductPool = 0
       } = req.body;
 
-      // Numbers me convert karo
+      // ✅ Convert to numbers
       const dReward = parseFloat(deductReward) || 0;
       const dPool = parseFloat(deductPool) || 0;
+      const dDirect = parseFloat(deductDirect) || 0; // ✅ FIX (missing tha)
 
-      // 1. Total Amount Calculate
-      const totalAmount = dReward + dPool;
+      // ✅ Total
+      const totalAmount = dReward + dPool + dDirect;
 
-      // 🛑 Rule: Minimum $10 & No Decimals
-      if (totalAmount < 10) {
-        return res.status(400).json({ message: `Minimum credit amount is $10. You entered $${totalAmount}.` });
+      // 🛑 Validation
+      if (totalAmount < 5) {
+        return res.status(400).json({ message: `Minimum credit amount is $5. You entered $${totalAmount}.` });
       }
+
       if (totalAmount % 1 !== 0) {
         return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
       }
 
-      // 🔥 SMART SOURCE LOGIC 🔥
+      // 🔥 Source detect
       let activeSources = [];
       if (dReward > 0) activeSources.push("reward");
       if (dPool > 0) activeSources.push("pool");
+      if (dDirect > 0) activeSources.push("direct"); // ✅ added
 
       if (activeSources.length === 0) {
         return res.status(400).json({ message: "Please enter an amount to credit." });
       }
-      
+
       const finalSource = activeSources.length === 1 ? activeSources[0] : "mixed";
 
       const user = await User.findOne({ userId: Number(userId) });
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      // Transaction Password Check
-const isPasswordValid = (transactionPassword === user.transactionPassword);
-      if (!isPasswordValid) {
+      // 🔐 Password check
+      if (transactionPassword !== user.transactionPassword) {
         return res.status(400).json({ message: "Invalid transaction password" });
       }
 
       const settings = await Setting.findOne({});
-      if (!settings.allowTopUps) { // Using allowTopUps as generic toggle per your old code
+      if (!settings?.allowTopUps) {
         return res.status(403).json({ message: "Credit to wallet disabled by admin" });
       }
 
-      // 🛑 1. Check USDT Reward Balance
+      // 🛑 Reward check
       if ((user.rewardIncome || 0) < dReward) {
-        return res.status(400).json({ message: `Insufficient USDT Reward Income.` });
+        return res.status(400).json({ message: "Insufficient Reward Income" });
       }
 
-      // 🛑 2. Check Pool Income (Achieved levels only)
+      // 🛑 Direct check ✅
+      if ((user.directIncome || 0) < dDirect) {
+        return res.status(400).json({ message: "Insufficient Direct Income" });
+      }
+
+      // 🛑 Pool check
       let totalPoolAvailable = 0;
       const availablePerPlan = {};
       const planKeys = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6"];
-      
-      // We must use the same package config and unlock days used in Withdrawal
-       
 
       if (dPool > 0) {
-        const now = Date.now();
         planKeys.forEach(planKey => {
-const pkg = user.packages.find(p => p.plan === planKey);
+          const pkg = user.packages.find(p => p.plan === planKey);
           if (!pkg) return;
-          
-          const earningsArray = packageEarnings[pkg.amount];
-          if(!earningsArray) return;
 
-         const earnedInPlan = calculatePackageEarnings(user.packages, planKey);
+          const earned = calculatePackageEarnings(user.packages, planKey);
+          const withdrawn = user.pendingWithdrawals?.[planKey] || 0;
+          const available = Math.max(0, earned - withdrawn);
 
-          const withdrawnFromPlan = user.pendingWithdrawals?.[planKey] || 0;
-          const available = Math.max(0, earnedInPlan - withdrawnFromPlan);
-          
           totalPoolAvailable += available;
           availablePerPlan[planKey] = available;
         });
 
         if (dPool > totalPoolAvailable) {
-          return res.status(400).json({ message: `Insufficient Achieved Pool Income. You only have $${totalPoolAvailable} available.` });
+          return res.status(400).json({
+            message: `Insufficient Pool Income. Available: $${totalPoolAvailable}`
+          });
         }
       }
 
-      // 🔥 EXECUTE ATOMIC UPDATE 🔥
-      // 1. Deduct Reward
+      // =========================
+      // 🔥 EXECUTION
+      // =========================
+
+      // Reward deduct
       if (dReward > 0) {
         user.rewardIncome -= dReward;
       }
 
-      // 2. Deduct Pool (Distribute deduction across available plans)
+      // Direct deduct ✅
+      if (dDirect > 0) {
+        user.directIncome -= dDirect;
+      }
+
+      // Pool deduct
       if (dPool > 0) {
-        let poolRemainingToDeduct = dPool;
+        let remaining = dPool;
         user.pendingWithdrawals = user.pendingWithdrawals || {};
-        
+
         for (let key of planKeys) {
-          if (poolRemainingToDeduct <= 0) break;
+          if (remaining <= 0) break;
+
           if (availablePerPlan[key] > 0) {
-            const deductFromThis = Math.min(availablePerPlan[key], poolRemainingToDeduct);
-            user.pendingWithdrawals[key] = (user.pendingWithdrawals[key] || 0) + deductFromThis;
-            poolRemainingToDeduct -= deductFromThis;
+            const deduct = Math.min(availablePerPlan[key], remaining);
+            user.pendingWithdrawals[key] = (user.pendingWithdrawals[key] || 0) + deduct;
+            remaining -= deduct;
           }
         }
       }
 
-      // 3. Add to Wallet Balance
+      // Wallet add
       user.walletBalance += totalAmount;
-      
-      // Save changes to Database
+
       await user.save();
 
-      // Create Transaction Record
+      // Transaction log
       const txn = await Transaction.create({
         userId: user.userId,
         type: "credit_to_wallet",
-        source: finalSource, 
+        source: finalSource,
         amount: totalAmount,
         grossAmount: totalAmount,
         netAmount: totalAmount,
         fee: 0,
-        description: `Credited $${totalAmount} to Wallet (${activeSources.join(' + ').toUpperCase()})`,
+        description: `Credited $${totalAmount} (${activeSources.join(" + ")})`,
         status: "completed",
         date: new Date(),
-        createdAt: new Date(),
       });
 
       res.json({
         success: true,
-        message: `Successfully credited $${totalAmount} to wallet`,
-        transaction: txn,
+        message: `Successfully credited $${totalAmount}`,
         walletBalance: user.walletBalance,
+        transaction: txn,
       });
 
     } catch (err) {

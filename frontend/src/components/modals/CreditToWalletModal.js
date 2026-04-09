@@ -6,8 +6,8 @@ import { useAuth } from "../../context/AuthContext";
 
 const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
   // --- STATE ---
-  // ✅ Pura state update kar diya (Sirf Reward aur Pool bacha hai)
-  const [credits, setCredits] = useState({ reward: "", pool: "" });
+  // ✅ Added 'direct' to credits state
+  const [credits, setCredits] = useState({ reward: "", pool: "", direct: "" });
   const [transactionPassword, setTransactionPassword] = useState("");
   const [available, setAvailable] = useState({});
   const [loading, setLoading] = useState(false);
@@ -38,22 +38,24 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
   }, [userId]);
 
   // ✅ CALCULATE AVAILABLE BALANCES
-  // Backend gives { reward: 10, planIncomes: { plan1: 5, plan2: 10 } }
   const availableReward = available.reward || 0;
   const availablePool = Object.values(available.planIncomes || {}).reduce((acc, val) => acc + (Number(val) || 0), 0);
-  const totalAvailable = availableReward + availablePool;
+  const availableDirect = available.direct || 0; // ✅ Added Direct Income
+  
+  const totalAvailable = availableReward + availablePool + availableDirect;
 
   // --- 🔥 UPDATED LOGIC: Handle Credit (Single Call) ---
   const handleCredit = async () => {
     // 1. Prepare Values
     const dReward = parseFloat(credits.reward) || 0;
     const dPool = parseFloat(credits.pool) || 0;
+    const dDirect = parseFloat(credits.direct) || 0; // ✅ Added Direct
 
-    const totalAmount = dReward + dPool;
+    const totalAmount = dReward + dPool + dDirect;
 
     // 2. Validate
-    if (totalAmount < 10) {
-      return showMessage("Warning", `⚠️ Minimum credit amount is $10. Total: $${totalAmount}`, "warning");
+    if (totalAmount < 5) {
+      return showMessage("Warning", `⚠️ Minimum credit amount is $5. Total: $${totalAmount}`, "warning");
     }
 
     if (!transactionPassword.trim())
@@ -61,12 +63,13 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
 
     setLoading(true);
     try {
-      // 3. Single API Request (Naye Backend Format Ke Hisaab Se)
+      // 3. Single API Request
       const payload = {
         userId,
         transactionPassword,
         deductReward: dReward,
-        deductPool: dPool
+        deductPool: dPool,
+        deductDirect: dDirect // ✅ Sending Direct to backend
       };
 
       const res = await api.post(
@@ -82,7 +85,7 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
       if (res.data.success) {
         setSuccessData({ userId, amount: totalAmount });
         setSuccessModalOpen(true);
-        setCredits({ reward: "", pool: "" }); // Reset inputs
+        setCredits({ reward: "", pool: "", direct: "" }); // Reset inputs
         setTransactionPassword("");
         await fetchAvailable(); // Refresh balances
         
@@ -105,7 +108,11 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
     if (value < 0) value = 0;
     
     // Prevent exceeding specific balance
-    const maxVal = source === "reward" ? availableReward : availablePool;
+    let maxVal = 0;
+    if (source === "reward") maxVal = availableReward;
+    else if (source === "pool") maxVal = availablePool;
+    else if (source === "direct") maxVal = availableDirect; // ✅ Added limit check for direct
+    
     if (parseFloat(value) > maxVal) {
       value = maxVal;
     }
@@ -113,7 +120,7 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
     setCredits({ ...credits, [source]: value });
   };
 
-  // --- STYLES (No Change) ---
+  // --- STYLES ---
   const styles = {
     overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0, 0, 0, 0.9)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "16px", backdropFilter: "blur(5px)" },
     modal: { backgroundColor: "#0f172a", width: "100%", maxWidth: "480px", borderRadius: "16px", border: "1px solid #334155", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)", display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden" },
@@ -168,7 +175,7 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
               </div>
            </div>
 
-           {/* Input Table (Only 2 Options Now) */}
+           {/* Input Table (Now with 3 Options) */}
            <div style={styles.tableContainer}>
               <div style={{padding: '10px 16px', backgroundColor: '#0f172a', borderBottom: '1px solid #334155'}}>
                  <span style={{fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', textTransform:'uppercase'}}>Select Amount to Credit</span>
@@ -176,40 +183,59 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
               
               {/* Row 1: USDT Reward */}
               <div style={{ ...styles.tableRow, borderBottom: '1px solid #334155' }}>
-                  <div>
-                      <div style={styles.sourceName}>USDT Reward</div>
-                      <div style={styles.sourceBal}>Avl: ${availableReward.toFixed(2)}</div>
-                  </div>
-                  <div>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        style={styles.input}
-                        value={credits.reward}
-                        onChange={(e) => handleInputChange(e, "reward")}
-                      />
-                  </div>
+                 <div>
+                     <div style={styles.sourceName}>USDT Reward</div>
+                     <div style={styles.sourceBal}>Avl: ${availableReward.toFixed(2)}</div>
+                 </div>
+                 <div>
+                     <input
+                       type="number"
+                       step="0.01"
+                       min="0"
+                       placeholder="0.00"
+                       style={styles.input}
+                       value={credits.reward}
+                       onChange={(e) => handleInputChange(e, "reward")}
+                     />
+                 </div>
               </div>
 
               {/* Row 2: Pool Income */}
+              <div style={{ ...styles.tableRow, borderBottom: '1px solid #334155' }}>
+                 <div>
+                     <div style={styles.sourceName}>Global Growth Earning</div>
+                     <div style={styles.sourceBal}>Avl: ${availablePool.toFixed(2)}</div>
+                 </div>
+                 <div>
+                     <input
+                       type="number"
+                       step="0.01"
+                       min="0"
+                       placeholder="0.00"
+                       style={styles.input}
+                       value={credits.pool}
+                       onChange={(e) => handleInputChange(e, "pool")}
+                     />
+                 </div>
+              </div>
+
+              {/* Row 3: Direct Income (✅ NEW) */}
               <div style={{ ...styles.tableRow, borderBottom: 'none' }}>
-                  <div>
-                      <div style={styles.sourceName}>Pool Income</div>
-                      <div style={styles.sourceBal}>Avl: ${availablePool.toFixed(2)}</div>
-                  </div>
-                  <div>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        style={styles.input}
-                        value={credits.pool}
-                        onChange={(e) => handleInputChange(e, "pool")}
-                      />
-                  </div>
+                 <div>
+                     <div style={styles.sourceName}>Direct Income</div>
+                     <div style={styles.sourceBal}>Avl: ${availableDirect.toFixed(2)}</div>
+                 </div>
+                 <div>
+                     <input
+                       type="number"
+                       step="0.01"
+                       min="0"
+                       placeholder="0.00"
+                       style={styles.input}
+                       value={credits.direct}
+                       onChange={(e) => handleInputChange(e, "direct")}
+                     />
+                 </div>
               </div>
 
            </div>

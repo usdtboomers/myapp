@@ -40,7 +40,7 @@ depositAddress: {
     {
       plan: {
         type: String,
-        enum: ['plan1','plan2','plan3','plan4','plan5','plan6'],
+        enum: ['plan0','plan1','plan2','plan3','plan4','plan5','plan6'],
         required: true
       },
       amount: { type: Number, required: true },
@@ -53,7 +53,7 @@ depositAddress: {
     {
       plan: {
         type: String,
-        enum: ['plan1','plan2','plan3','plan4','plan5','plan6'],
+        enum: ['plan0','plan1','plan2','plan3','plan4','plan5','plan6'],
         required: true
       },
       amount: { type: Number, required: true },
@@ -74,7 +74,11 @@ depositAddress: {
   levelIncome: { type: Number, default: 0 },
   
   // 🏆 Reward System (Manager Ranks)
-  managerRank: { type: Number, default: 0 }, // 0 se 9 tak
+ 
+  managerRank: { type: Number, default: 0 },
+  seniorManagerRank: { type: Number, default: 0 },
+  executiveManagerRank: { type: Number, default: 0 },
+
   claimedRewards: { type: [Number], default: [] }, // Jo reward le liya usko track karega (e.g., [1, 2])
   rewardIncome: { type: Number, default: 0 }, // Isme paisa aayega
 

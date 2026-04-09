@@ -183,6 +183,7 @@ router.get('/', getAllUsers);
 // 📌 Top-up API
 // 🛑 Top par ye import zaroor karna (agar rewardLogic.js utils folder me banaya hai)
 // 🛑 Top par ye import zaroor check kar lena
+ 
 const { checkAndAwardManagerReward } = require('../utils/rewardLogic'); 
 
 router.put(
@@ -228,7 +229,8 @@ router.put(
       }
 
       // 🔹 3. Package Validation & STEP-BY-STEP CHECK
-      const allPackages = [30, 60, 120, 240, 480, 960];
+      // 🔥 UPDATE: Added 10 to the packages array
+      const allPackages = [10, 30, 60, 120, 240, 480, 960];
       
       if (!allPackages.includes(amount)) {
         return res.status(400).json({ message: "Invalid package amount." });
@@ -260,7 +262,7 @@ router.put(
       }
 
       // Step-by-Step Condition Check (Using the safe boughtSet)
-      if (amount > 30) {
+      if (amount > 10) {
         const currentIndex = allPackages.indexOf(amount);
         const previousPackageAmount = allPackages[currentIndex - 1];
         
@@ -280,10 +282,10 @@ router.put(
 
       // 🔹 5. Plan Calculation
       const packageToPlan = {
-        30: "plan1", 60: "plan2", 120: "plan3",
+        10: "plan0", 30: "plan1", 60: "plan2", 120: "plan3",
         240: "plan4", 480: "plan5", 960: "plan6"
       };
-      const assignedPlan = packageToPlan[amount] || "plan1";
+      const assignedPlan = packageToPlan[amount] || "plan0";
 
       const createTransaction = async (data) => Transaction.create({ ...data, date: new Date() });
 
@@ -355,6 +357,38 @@ router.put(
       targetUser.purchasedPackages.push(amount);
 
       await targetUser.save();
+
+      // ==========================================
+      // 🔹 7.5 🔥 DIRECT INCOME LOGIC (10%) 🔥
+      // ==========================================
+      if (targetUser.sponsorId) {
+        const sponsor = await User.findOne({ userId: targetUser.sponsorId });
+        if (sponsor) {
+          const directIncomeAmount = amount * 0.10; // 10% calculate kiya
+          
+          // ✅ UPDATE: Main wallet me add nahi kar rahe hain.
+          // sponsor.walletBalance += directIncomeAmount; <-- HATA DIYA
+          
+          // ✅ UPDATE: Seedha Direct Income ke khate me daal rahe hain
+          sponsor.directIncome = (sponsor.directIncome || 0) + directIncomeAmount; 
+          
+          // Lifetime records ke liye total me bhi jod diya (taaki dashboard summary se kam na ho withdrawal ke baad)
+          sponsor.totalDirectIncome = (sponsor.totalDirectIncome || 0) + directIncomeAmount;
+          sponsor.totalIncome = (sponsor.totalIncome || 0) + directIncomeAmount; 
+          
+          await sponsor.save();
+
+          await createTransaction({
+            userId: sponsor.userId,
+            type: "direct_income", // Transaction type
+            source: "topup",
+            amount: directIncomeAmount,
+            fromUserId: targetUser.userId,
+            toUserId: sponsor.userId,
+            description: `10% Direct Income from ${targetUser.userId}'s $${amount} package top-up`,
+          });
+        }
+      }
 
       // 🔹 8. 🔥 MANAGER USDT REWARD LOGIC 🔥
       if (amount >= 60 && targetUser.sponsorId) {

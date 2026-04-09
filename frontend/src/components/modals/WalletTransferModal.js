@@ -193,16 +193,17 @@ const WalletTransferModal = ({ onClose }) => {
       fontSize: "14px",
       outline: "none",
     },
-    readOnlyInput: {
-      width: "100%",
-      backgroundColor: "#1e293b", // Slightly different bg for readonly
-      border: "1px solid #334155",
-      color: "#cbd5e1",
-      padding: "12px 16px",
-      borderRadius: "10px",
-      fontSize: "14px",
-      outline: "none",
-    },
+   readOnlyInput: {
+  width: "100%",
+  backgroundColor: "#1e293b",
+  border: "1px solid #334155",
+  color: "#22c55e", // ✅ GREEN COLOR
+  padding: "12px 16px",
+  borderRadius: "10px",
+  fontSize: "14px",
+  outline: "none",
+  fontWeight: "bold" // optional
+},
     footer: {
       padding: "20px",
       borderTop: "1px solid #334155",
@@ -257,8 +258,7 @@ const WalletTransferModal = ({ onClose }) => {
                   <h2 style={styles.title}>Wallet Transfer</h2>
                   <p style={styles.subtitle}>Send funds securely to another user.</p>
                </div>
-               <button onClick={onClose} style={styles.closeBtn}>&times;</button>
-            </div>
+             </div>
 
             {/* Scrollable Body */}
             <div className="custom-scroll" style={styles.body}>
@@ -278,8 +278,8 @@ const WalletTransferModal = ({ onClose }) => {
                <div style={styles.inputGroup}>
                  <label style={styles.label}>Recipient User ID</label>
                  <input 
-                   type="text" 
-                   placeholder="Enter ID (e.g. 123)" 
+                   type="number" 
+                   placeholder="Enter UserID" 
                    value={userId} 
                    onChange={e => setUserId(e.target.value)} 
                    onBlur={fetchUserName}
@@ -287,9 +287,9 @@ const WalletTransferModal = ({ onClose }) => {
                  />
                </div>
 
-               <div style={styles.inputGroup}>
+               <div className="text-green-400" style={styles.inputGroup}>
                  <label style={styles.label}>Recipient Name</label>
-                 <input 
+                 <input className="text-green-500" 
                    type="text" 
                    placeholder="User Name" 
                    value={userName} 
