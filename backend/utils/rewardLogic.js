@@ -4,7 +4,7 @@ const Transaction = require('../models/Transaction');
 // ✅ COMMON TEAM RULES FOR ALL CATEGORIES
 // Level | Direct Rank Req | Directs Needed | Downline Team Size (Excluding Directs)
 const RANK_RULES = {
-  1: { reqDirectRank: 0, reqDirectCount: 2, reqTeamSize: 1 },
+  1: { reqDirectRank: 0, reqDirectCount: 5, reqTeamSize: 10 },
   2: { reqDirectRank: 1, reqDirectCount: 2, reqTeamSize: 30 },
   3: { reqDirectRank: 1, reqDirectCount: 5, reqTeamSize: 150 },
   4: { reqDirectRank: 2, reqDirectCount: 2, reqTeamSize: 250 },
