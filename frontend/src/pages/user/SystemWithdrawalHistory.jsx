@@ -96,45 +96,56 @@ const WithdrawalHistory = () => {
                   <table className="w-full text-left min-w-[700px] whitespace-nowrap">
                     <thead>
                       <tr className="border-b border-slate-700 text-red-400">
-                        {/* Sr. No. Header Add kiya, User ID Hata diya */}
                         <th className="py-3 px-2">Sr. No.</th>
-                        <th className="py-3 px-2">Time</th>
+                        {/* ✅ FIX: Yahan header "Date & Time" kar diya hai */}
+                        <th className="py-3 px-2">Date & Time</th>
                         <th className="py-3 px-2">Txn Hash</th>
                         <th className="py-3 px-2">Amount</th>
                         <th className="py-3 px-2">Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {currentItems.map((withd, idx) => (
-                        <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
-                          
-                          {/* Serial Number Cell */}
-                          <td className="py-3 px-2 text-slate-400 font-medium">
-                            {indexOfFirstItem + idx + 1}
-                          </td>
+                      {currentItems.map((withd, idx) => {
+                        const dateObj = new Date(withd.createdAt);
+                        const formattedDate = dateObj.toLocaleDateString('en-GB'); // Ex: 25/12/2026
+                        const formattedTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-                          <td className="py-3 px-2 text-white">
-                             {new Date(withd.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                          </td>
-                          <td className="py-3 px-2 font-mono">
-                            <a 
-                              href={`https://bscscan.com/tx/${withd.hash}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 underline transition-colors"
-                            >
-                              {formatString(withd.hash)}
-                            </a>
-                          </td>
-                          
-                          <td className="py-3 px-2 text-red-400 font-bold">- ${withd.amount}</td>
-                          <td className="py-3 px-2">
-                            <span className="bg-green-500/10 text-green-500 px-2 py-1 rounded text-xs border border-green-500/20 font-semibold">
-                              Success
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                        return (
+                          <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+                            
+                            {/* Serial Number Cell */}
+                            <td className="py-3 px-2 text-slate-400 font-medium">
+                              {indexOfFirstItem + idx + 1}
+                            </td>
+
+                            {/* ✅ FIX: Yahan Date aur Time dono print ho rahe hain */}
+                            <td className="py-3 px-2 text-white">
+                               <div className="flex flex-col">
+                                  <span>{formattedDate}</span>
+                                  <span className="text-xs text-slate-400">{formattedTime}</span>
+                               </div>
+                            </td>
+                            
+                            <td className="py-3 px-2 font-mono">
+                              <a 
+                                href={`https://bscscan.com/tx/${withd.hash}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:text-blue-300 underline transition-colors"
+                              >
+                                {formatString(withd.hash)}
+                              </a>
+                            </td>
+                            
+                            <td className="py-3 px-2 text-red-400 font-bold">- ${withd.amount}</td>
+                            <td className="py-3 px-2">
+                              <span className="bg-green-500/10 text-green-500 px-2 py-1 rounded text-xs border border-green-500/20 font-semibold">
+                                Success
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}

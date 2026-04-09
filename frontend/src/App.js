@@ -38,10 +38,9 @@ import Support from "./pages/user/Support";
 import DownlineBusiness from './pages/user/DownlineBusiness';
 import CreditToWallet from './pages/user/CreditToWallet';
 import Notifications from "./pages/user/Notifications";
-
+import RewardProgress from './pages/user/RewardProgress';
 import UserLayout from "./components/layout/UserLayout";
-
-import SystemDepositHistory from "./pages/user/SystemDepositHistory";
+ import SystemDepositHistory from "./pages/user/SystemDepositHistory";
 import SystemWithdrawalHistory from "./pages/user/SystemWithdrawalHistory";
 
 // Apne routes array ya JSX me add karein:
@@ -156,7 +155,17 @@ function AppContent() {
           <Route path="/wallet-history" element={<RequireUserAuth><UserLayout><WalletHistory /></UserLayout></RequireUserAuth>} />
           <Route path="/direct-team" element={<RequireUserAuth><UserLayout><DirectTeamPage /></UserLayout></RequireUserAuth>} />
           <Route path="/all-team" element={<RequireUserAuth><UserLayout><AllTeamPage /></UserLayout></RequireUserAuth>} />
-          <Route path="/team-tree" element={<RequireUserAuth><UserLayout><AllTeamTreePage /></UserLayout></RequireUserAuth>} />
+         <Route 
+  path="/reward-progress" 
+  element={
+    <RequireUserAuth>
+      <UserLayout>
+        <RewardProgress />
+      </UserLayout>
+    </RequireUserAuth>
+  } 
+/> 
+           <Route path="/team-tree" element={<RequireUserAuth><UserLayout><AllTeamTreePage /></UserLayout></RequireUserAuth>} />
           <Route path="/direct-income" element={<RequireUserAuth><UserLayout><DirectIncome /></UserLayout></RequireUserAuth>} />
           <Route path="/level-income" element={<RequireUserAuth><UserLayout><LevelIncome /></UserLayout></RequireUserAuth>} />
           <Route path="/daily-roi" element={<RequireUserAuth><UserLayout><DailyROIIncome /></UserLayout></RequireUserAuth>} />

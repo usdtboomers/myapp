@@ -97,13 +97,14 @@ const UserListTable = () => {
     setCurrentPage(1);
   };
 
-  // ✅ Export filtered users to CSV (Mobile number is included)
+  // ✅ Export filtered users to CSV
   const exportToCSV = () => {
     const csvData = filteredUsers.map(user => ({
       UserID: user.userId,
       Name: user.name,
       Email: user.email,
-      Mobile: user.mobile, // 👈 Mobile number is here
+      Mobile: user.mobile, 
+      DepositAddress: user.depositAddress || "N/A", // ✅ Added Deposit Address to CSV
       WalletBalance: user.walletBalance?.toFixed(2) || 0,
       TopUpAmount: user.topUpAmount || 0,
       Joined: new Date(user.createdAt).toLocaleDateString(),
@@ -125,7 +126,7 @@ const UserListTable = () => {
         headers: { Authorization: `Bearer ${adminToken}` }
       });
 
-      // Save normal user token & details (This won't overwrite adminToken)
+      // Save normal user token & details
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
 
@@ -136,6 +137,12 @@ const UserListTable = () => {
       console.error("Impersonation failed:", err);
       alert(err.response?.data?.message || "Failed to login as this user.");
     }
+  };
+
+  // ✅ Copy Function
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    alert(`Copied ID: ${text}`); // Small alert to confirm copy
   };
 
   if (loading) {
@@ -173,7 +180,7 @@ const UserListTable = () => {
             onChange={e => setDateTo(e.target.value)}
           />
 
-          {/* ✅ NEW: Top-Up Filter Dropdown */}
+          {/* Top-Up Filter Dropdown */}
           <select 
             className="border border-gray-300 rounded px-3 py-2 bg-white font-medium text-gray-700"
             value={topUpFilter}
@@ -225,6 +232,8 @@ const UserListTable = () => {
               <th className="px-4 py-3 border">Name</th>
               <th className="px-4 py-3 border">Email</th>
               <th className="px-4 py-3 border">Mobile</th>
+              {/* ✅ NEW COLUMN FOR DEPOSIT ADDRESS */}
+              <th className="px-4 py-3 border">Deposit Address</th>
               <th className="px-4 py-3 border">Wallet</th>
               <th className="px-4 py-3 border">Top-Up</th>
               <th className="px-4 py-3 border">Joined</th>
@@ -233,7 +242,7 @@ const UserListTable = () => {
           <tbody>
             {currentItems.length === 0 ? (
               <tr>
-                <td colSpan="7" className="text-center px-4 py-4 text-gray-500">
+                <td colSpan="8" className="text-center px-4 py-4 text-gray-500">
                   No users found.
                 </td>
               </tr>
@@ -241,20 +250,52 @@ const UserListTable = () => {
               currentItems.map((user, idx) => (
                 <tr key={idx} className="hover:bg-gray-50">
                   
-                  {/* ✅ CLICKABLE USER ID */}
+                  {/* ✅ UPDATED CLICKABLE USER ID + COPY OPTION */}
                   <td className="px-4 py-2 border">
-                    <button 
-                      onClick={() => handleLoginAsUser(user.userId)}
-                      className="text-blue-600 hover:text-blue-800 hover:underline font-bold flex items-center gap-1"
-                      title={`Login as ${user.name}`}
-                    >
-                      {user.userId} 🔗
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => handleLoginAsUser(user.userId)}
+                        className="text-blue-600 hover:text-blue-800 hover:underline font-bold"
+                        title={`Login as ${user.name}`}
+                      >
+                        {user.userId}
+                      </button>
+                      <button 
+                        onClick={() => handleCopy(user.userId.toString())}
+                        title="Copy User ID"
+                        className="text-gray-400 hover:text-gray-700 transition"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                      </button>
+                    </div>
                   </td>
 
                   <td className="px-4 py-2 border font-medium text-gray-800">{user.name}</td>
                   <td className="px-4 py-2 border text-gray-600">{user.email}</td>
                   <td className="px-4 py-2 border text-gray-600">{user.mobile}</td>
+                  
+                  {/* ✅ DEPOSIT ADDRESS DISPLAY */}
+                  <td className="px-4 py-2 border text-gray-600 text-xs font-mono break-all max-w-[150px] overflow-hidden text-ellipsis">
+                    {user.depositAddress ? (
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="truncate">{user.depositAddress}</span>
+                        <button 
+                          onClick={() => handleCopy(user.depositAddress)}
+                          title="Copy Address"
+                          className="text-gray-400 hover:text-gray-700"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      "N/A"
+                    )}
+                  </td>
+
                   <td className="px-4 py-2 border font-bold text-green-600">
                     ${user.walletBalance?.toFixed(2) || 0}
                   </td>

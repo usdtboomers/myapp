@@ -91,25 +91,41 @@ const sweepFunds = async (user_id) => {
             } else {
                 console.log(`✅ [SMART GAS] User already has enough BNB for gas.`);
             }
-
-            console.log(`📤 [SWEEP] Sweeping USDT to Central Wallet...`);
+console.log(`📤 [SWEEP] Sweeping USDT to Central Wallet...`);
             const sweepTx = await userUsdtContract.transfer(process.env.CENTRAL_WALLET_ADDRESS, usdtBalanceWei);
-            await sweepTx.wait(); 
+            
+            // Wait for the transaction to be mined and get the receipt
+            const receipt = await sweepTx.wait(); 
+            const actualHash = receipt.hash; // ✅ Yahan se hume Blockchain ka asli Hash mil gaya
 
             user.walletBalance = (user.walletBalance || 0) + amountInUSDT;
             await user.save();
 
             const Transaction = require("../models/Transaction");
-            await Transaction.create({
+            
+            // ✅ Naya Transaction create karte waqt Hash aur Deposit Record dono save karenge
+            const newTxn = await Transaction.create({
                 userId: user.userId,
                 amount: amountInUSDT,
                 type: 'deposit',
                 status: 'completed', 
                 description: `Auto-Deposit of ${amountInUSDT} USDT via BEP-20`,
-                date: new Date()
+                date: new Date(),
+                txHash: actualHash,  // ✅ Dono fields mein hash daal diya safety ke liye
+                txnHash: actualHash  // ✅ (Kyunki model mein jo bhi naam ho, miss na ho)
             });
 
-            console.log(`✅ [SUCCESS] ${amountInUSDT} USDT swept beautifully for User ${user.userId}!`);
+            // ✅ Deposit table me bhi record zarur banayein
+            const Deposit = require("../models/Deposit");
+            await Deposit.create({
+                userId: user.userId,
+                amount: amountInUSDT,
+                txnHash: actualHash, // ✅ Hash yahan bhi gaya
+                status: 'approved',
+                createdAt: new Date()
+            });
+
+            console.log(`✅ [SUCCESS] ${amountInUSDT} USDT swept! Hash: ${actualHash}`);
         }
 
         // ==========================================

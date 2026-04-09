@@ -116,8 +116,13 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     }
     // ==========================================
 
-    res.status(201).json({ message: 'User registered successfully. Details sent to email.', userId });
-  } catch (err) {
+// ✅ FIX: Frontend ko naam aur password bhi bhej rahe hain taaki Modal (Popup) mein show ho sake
+    res.status(201).json({ 
+      message: 'User registered successfully. Details sent to email.', 
+      userId: user.userId,
+      name: user.name,
+      password: user.password 
+    });  } catch (err) {
     console.error('Register error:', err);
 
     // 🛑 Duplicate Key Error Handler (Mongo E11000) fail-safe

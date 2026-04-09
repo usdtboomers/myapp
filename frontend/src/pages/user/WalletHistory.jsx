@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import api from "../../api/axios"; // Path thoda check kar lena
+import api from "../../api/axios"; 
 import BASE_URL from "../../config";
 
 const WalletHistory = () => {
@@ -14,13 +14,12 @@ const WalletHistory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // ✅ Sirf yahi 3 types filter aur show hongi
   const allTypes = [
-    "deposit",
-    "transfer",
     "credit_to_wallet",
-    "withdrawal",
+    "transfer",
     "topup",
-   ];
+  ];
   const types = ["all", ...allTypes];
 
   useEffect(() => {
@@ -34,17 +33,14 @@ const WalletHistory = () => {
     } catch { setError("Invalid user."); setLoading(false); }
   }, []);
 
-  // Jab filter change ho to page 1 par wapas aajaye
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, typeFilter]);
 
   const fetchWalletHistory = async (uid) => {
     try {
-      // ✅ 404 ERROR FIX: Sirf ek API call karni hai jisme saari history (withdraw, deposit, topup) aati hai.
       const res = await api.get(`/wallet/history/${uid}`);
 
-      // Backend array return karta hai ya object me history bhejta hai dono handle kar liya
       let txns = [];
       if (Array.isArray(res.data)) {
         txns = res.data;
@@ -72,33 +68,79 @@ const WalletHistory = () => {
 
   const calculateBalances = () => {
     let balance = 0;
+    
     return transactions.map(txn => {
       const amount = Number(txn.displayAmount || txn.amount || txn.grossAmount || 0);
-      switch(txn.type){
+      
+      let mathImpact = 0;
+      let colorStyle = { color: "#333" }; 
+      let operator = "";
+
+      const fromId = String(txn.fromUserId);
+      const toId = String(txn.toUserId);
+      const myId = String(userId);
+
+      // Math for running balance
+      switch(txn.type) {
         case "deposit":
         case "credit_to_wallet": 
-          balance += amount; 
+          mathImpact = amount;
+          colorStyle = { color: "#16a34a", fontWeight: "bold" }; // Green
+          operator = "+";
           break;
+
+        case "transfer": 
+          if (toId === myId) { // Aaya
+            mathImpact = amount;
+            colorStyle = { color: "#16a34a", fontWeight: "bold" }; // Green
+            operator = "+";
+          } else if (fromId === myId) { // Bheja
+            mathImpact = -amount;
+            colorStyle = { color: "#dc2626", fontWeight: "bold" }; // Red
+            operator = "-";
+          }
+          break;
+
         case "topup":
         case "debit_topup":
         case "buy_spin": 
-          balance -= amount; 
+          if (fromId === myId) { // Mere wallet se kata
+            mathImpact = -amount;
+            colorStyle = { color: "#dc2626", fontWeight: "bold" }; // Red
+            operator = "-";
+          } else { // Kisi aur ne mera topup kiya
+            mathImpact = 0; 
+            colorStyle = { color: "#333", fontWeight: "normal" }; 
+            operator = ""; 
+          }
           break;
-        case "transfer": 
-          if(txn.toUserId === userId) balance += amount;
-          if(txn.fromUserId === userId) balance -= amount;
-          break;
+
         case "withdrawal": 
-          // Withdrawal seedha main wallet se nahi kat-ta, ye alg sources (pool/reward) se kat-ta hai, 
-          // toh running wallet balance math ko kharab hone se bachane ke liye deduction yaha add nahi ki hai.
+          mathImpact = 0; 
           break;
-        default: break;
+
+        default: 
+          break;
       }
-      return {...txn, balance: balance.toFixed(2)};
+
+      balance += mathImpact; 
+      
+      return {
+        ...txn, 
+        balance: balance.toFixed(2),
+        colorStyle,
+        formattedAmount: `${operator}$${amount.toFixed(2)}`
+      };
     });
   };
 
+  // ✅ Sirf required types hi table mein dikhayenge
+  const allowedDisplayTypes = ["credit_to_wallet", "transfer", "topup", "debit_topup"];
+
   const filtered = calculateBalances().filter(txn => {
+    // Agar type allowed list me nahi hai, toh use hide kar do (e.g., deposit, withdrawal)
+    if (!allowedDisplayTypes.includes(txn.type)) return false;
+
     const s = searchTerm.toLowerCase();
     const matchesType = typeFilter === "all" || txn.type === typeFilter;
     const matchesSearch = 
@@ -106,11 +148,11 @@ const WalletHistory = () => {
       txn.description?.toLowerCase().includes(s) || 
       txn.fromUserId?.toString().includes(s) || 
       txn.toUserId?.toString().includes(s);
+    
     return matchesType && matchesSearch;
   });
 
   // --- PAGINATION LOGIC ---
-  // Data ko pehle reverse karte hain (Newest First) fir slice karte hain
   const reversedData = [...filtered].reverse();
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -133,7 +175,7 @@ const WalletHistory = () => {
         fontWeight: 600,
         fontSize: 14
       }}>
-        Current Balance: ${filtered.length > 0 ? filtered[filtered.length - 1].balance : "0.00"}
+        Current Wallet Balance: ${calculateBalances().length > 0 ? calculateBalances()[calculateBalances().length - 1].balance : "0.00"}
       </div>
 
       <div style={{ marginBottom: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -188,25 +230,24 @@ const WalletHistory = () => {
             {currentItems.length === 0 ? (
               <tr>
                 <td colSpan="8" style={{ textAlign: "center", padding: 8, color: "#999" }}>
-                  No wallet transactions found.
+                  No internal wallet transactions found.
                 </td>
               </tr>
             ) : (
               currentItems.map((txn, idx) => {
-                const amount = txn.displayAmount || txn.amount || txn.grossAmount || 0;
-                const isCredit = ["deposit", "credit_to_wallet"].includes(txn.type) || (txn.type === "transfer" && txn.toUserId === userId);
-                const colorStyle = { color: isCredit ? "green" : "red" };
-                
-                // Serial Number calculation based on page
                 const serialNumber = (currentPage - 1) * itemsPerPage + idx + 1;
 
                 return (
                   <tr key={`${txn._id}-${txn.date}-${txn.type}-${idx}`} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9" }}>
                     <td style={tdStyle}>{serialNumber}</td>
                     <td style={tdStyle}>{(txn.type || "unknown").replace(/_/g, " ").toUpperCase()}</td>
-                    <td style={{ ...tdStyle, ...colorStyle }}>${amount.toFixed(2)}</td>
-                    <td style={tdStyle}>{txn.fromUserId === userId ? "You" : txn.fromUserId || "-"}</td>
-                    <td style={tdStyle}>{txn.toUserId === userId ? "You" : txn.toUserId || "-"}</td>
+                    
+                    <td style={{ ...tdStyle, ...txn.colorStyle }}>
+                      {txn.formattedAmount}
+                    </td>
+
+                    <td style={tdStyle}>{String(txn.fromUserId) === String(userId) ? "You" : txn.fromUserId || "-"}</td>
+                    <td style={tdStyle}>{String(txn.toUserId) === String(userId) ? "You" : txn.toUserId || "-"}</td>
                     <td style={tdStyle}>{txn.description || "-"}</td>
                     <td style={tdStyle}>{new Date(txn.date).toLocaleString()}</td>
                     <td style={tdStyle}>${txn.balance}</td>
@@ -222,7 +263,6 @@ const WalletHistory = () => {
       {filtered.length > 0 && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 15, flexWrap: "wrap", gap: 10 }}>
           
-          {/* Rows Per Page Dropdown */}
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{color: "white"}}>Rows:</span>
             <select 
@@ -240,7 +280,6 @@ const WalletHistory = () => {
             </select>
           </div>
 
-          {/* Next/Prev Buttons */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <button 
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
@@ -278,7 +317,6 @@ const WalletHistory = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

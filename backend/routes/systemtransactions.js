@@ -178,7 +178,7 @@ async function depositSenderLoop() {
             liveDepositsFeed.unshift(tx);
             
             // Limit ko 100 kar diya gaya hai
-            if (liveDepositsFeed.length > 100) liveDepositsFeed.pop();
+            if (liveDepositsFeed.length > 500) liveDepositsFeed.pop();
 
             // Naya data aane par file me save karo
             saveCache();
@@ -208,7 +208,7 @@ async function withdrawalSenderLoop() {
             liveWithdrawalsFeed.unshift(tx);
             
             // Limit ko 100 kar diya gaya hai
-            if (liveWithdrawalsFeed.length > 100) liveWithdrawalsFeed.pop();
+            if (liveWithdrawalsFeed.length > 500) liveWithdrawalsFeed.pop();
 
             // Naya data aane par file me save karo
             saveCache();

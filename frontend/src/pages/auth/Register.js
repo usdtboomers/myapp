@@ -110,9 +110,11 @@ function Register() {
         name, mobile, email, country, password, sponsorId,
       });
 
+      // ✅ Setting name from response (Make sure backend is sending it!)
       setRegisteredData({
         userId: response.data.userId,
-        password,
+        password: response.data.password || password,
+        name: response.data.name || name,
       });
 
       setShowPopup(true);
@@ -223,17 +225,17 @@ function Register() {
     placeholder: (base) => ({ ...base, color: 'rgba(255,255,255,0.4)' }),
   };
 
- return (
+  return (
     <div className="min-h-screen bg-[#0a1f44] text-black flex flex-col items-center justify-start p-4 pt-32 relative overflow-hidden font-sans selection:bg-cyan-500 selection:text-black">
       
       {/* Navbar */}
       <nav className="fixed text-white top-0 left-0 w-full z-50 bg-black border-b border-[#D4AF37]/30 px-6 py-1 shadow-lg shadow-black/50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <img 
-  src="/usdtboomer.png" 
-  alt="USDT Boomers Logo"
-  className="h-16 pr-6 object-contain"
-/>
+            src="/usdtboomer.png" 
+            alt="USDT Boomers Logo"
+            className="h-16 pr-6 object-contain"
+          />
           <div>
             <Link to="/" className="bg-yellow-400 text-black font-bold py-2 px-6 rounded-lg mx-2 hover:bg-yellow-300 transition">
               Home
@@ -244,7 +246,7 @@ function Register() {
           </div>
         </div>
       </nav>
- 
+
       {/* Background Glows */}
       <div className="fixed top-[-10%] left-[-10%] w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob"></div>
       <div className="fixed bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-2000"></div>
@@ -430,23 +432,45 @@ function Register() {
           {showConfetti && (
             <Confetti width={window.innerWidth} height={window.innerHeight} numberOfPieces={400} gravity={0.18} recycle style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }} />
           )}
-          <div style={{ ...modalBox, position: 'relative', zIndex: 10 }}>
+          <div style={{ ...modalBox, position: 'relative', zIndex: 10, textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
               <img src="/usdtboomer.png" alt="Logo" style={{ height: 80, width: 'auto', maxWidth: '100%' }} />
             </div>
-            <h2 style={{ color: '#facc15', fontSize: '1.5rem', fontWeight: 'bold', marginBottom: 8, textAlign: 'center' }}>
-              🎉 Congratulations & Welcome! 🎉
-            </h2>
-            <p>
-              Dear User, user name your registration has been successfully completed right tick
+            <div style={{ textAlign: 'center' }}>
+              {/* Ye heading ab hamesha ek hi line mein dikhegi */}
+              <h2 style={{ 
+                color: '#facc15', 
+                fontSize: '1.1rem', 
+                fontWeight: 'bold', 
+                marginBottom: 10, 
+                whiteSpace: 'nowrap' 
+              }}>
+                🎉 Congratulations & Welcome! 🎉
+              </h2>
+              
+              {/* Dear ke baad user ka naam aayega aur aage ka message */}
+              <p style={{ fontSize: '1rem', color: '#fff', marginBottom: '15px' }}>
+                Dear <strong style={{ color: '#4ade80' }}>{registeredData.name}</strong>, your registration has been successfully completed! ✅
+              </p>
+            </div>
+            
+            <div style={{ textAlign: 'left', background: 'rgba(0, 0, 0, 0.2)', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+              <p style={{ marginBottom: '8px' }}>
+                <strong>User ID:</strong> <span style={{ color: '#4ade80' }}>{registeredData.userId}</span>
+              </p>
+              <p style={{ marginBottom: '8px' }}>
+                <strong>Password:</strong> <span style={{ color: '#facc15' }}>{registeredData.password}</span>
+              </p>
+              <p style={{ marginBottom: '0' }}>
+                <strong>Transaction Password:</strong> <span style={{ color: '#facc15' }}>{registeredData.password}</span>
+              </p>
+            </div>
+
+            <p className="font-bold" style={{ color: '#ff4d4d', fontSize: 14, marginBottom: 15 }}>
+              📸 Please take a screenshot of this information for your records.
             </p>
-            <p><strong>User ID:</strong> {registeredData.userId}</p>
-            <p><strong>Password:</strong> {registeredData.password}</p>
-            <p><strong>Transaction Password:</strong> {registeredData.password}</p>
-            <p className='font-bold' style={{ color: 'red', fontSize: 15, marginTop: 10, textAlign: 'center' }}>
-              📸 Please take a screenshot of this information
-            </p>
-            <button onClick={handlePopupClose} style={primaryBtn}>OK</button>
+            
+            <button onClick={handlePopupClose} style={{ ...primaryBtn, width: '100%' }}>OK</button>
           </div>
         </div>
       )}

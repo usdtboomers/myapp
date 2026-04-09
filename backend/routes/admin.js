@@ -9,7 +9,7 @@ const Withdrawal = require('../models/Withdrawal');
 const Transaction = require('../models/Transaction');
 const Deposit = require('../models/Deposit');
 const verifyAdmin = require('../middleware/adminAuth');
-  
+ 
 const { ethers } = require('ethers');
 require('dotenv').config();
 
@@ -181,6 +181,61 @@ router.get("/stats", verifyAdmin, async (req, res) => {
 
 // Admin reverses a transaction
  
+
+
+// GET /api/admin/deposits
+// Fetch all deposits for admin view
+// GET /api/admin/deposits
+// Fetch all deposits (System + Manual) for admin view
+router.get('/deposits', verifyAdmin, async (req, res) => {
+  try {
+    // 1. Pehle Deposit collection se system deposits laao
+    const systemDeposits = await Deposit.find().sort({ createdAt: -1 }).lean();
+    
+    // 2. Phir Transaction collection se manual deposits laao (Agar wo Deposit collection me nahi hain)
+    const manualTxns = await Transaction.find({ 
+      type: 'deposit', 
+      source: 'manual' 
+    }).sort({ createdAt: -1 }).lean();
+
+    // Dono ko mix kar do (par dhyaan rahe ID duplicate na ho)
+    const allDeposits = [...systemDeposits];
+    
+    manualTxns.forEach(tx => {
+       // Agar same txnHash wala record pehle se array me nahi hai toh hi daalo
+       const exists = allDeposits.some(d => d.txnHash === tx.txnHash);
+       if(!exists){
+           allDeposits.push({
+               _id: tx._id,
+               userId: tx.userId,
+               amount: tx.amount,
+               txnHash: tx.txnHash || `MANUAL-${tx._id.toString().substring(0,8)}`,
+               status: tx.status || 'approved',
+               createdAt: tx.createdAt || tx.date
+           });
+       }
+    });
+
+    // 3. Naye mix array ko date ke hisaab se sort karo
+    allDeposits.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // 4. Sabke naam fetch karo
+    const userIds = [...new Set(allDeposits.map(dep => dep.userId))];
+    const users = await User.find({ userId: { $in: userIds } }, 'userId name').lean();
+    const userMap = Object.fromEntries(users.map(u => [u.userId, u.name]));
+
+    // 5. Response me naam daal kar bhejo
+    const enrichedDeposits = allDeposits.map(dep => ({
+      ...dep,
+      name: userMap[dep.userId] || 'Unknown User'
+    }));
+
+    res.json(enrichedDeposits);
+  } catch (err) {
+    console.error('Failed to fetch all deposits:', err);
+    res.status(500).json({ message: 'Failed to fetch all deposits' });
+  }
+});
 
 // PUT: Reverse any transaction by ID
 // routes/admin.js
@@ -453,6 +508,10 @@ router.get("/transactions", verifyAdmin, async (req, res) => {
       date: tx.date || tx.createdAt || new Date(),
       createdAt: tx.createdAt || new Date(),
       updatedAt: tx.updatedAt || new Date(),
+      
+      // 🔥 YAHAN MAIN CHANGE HUA HAI: Hash ab frontend par jayega!
+      txnHash: tx.txnHash || tx.txHash || null, 
+      status: tx.status || "completed"
     }));
 
     res.json(formatted);

@@ -633,6 +633,71 @@ router.get('/sponsor-name/:id', async (req, res) => {
   }
 });
 
+
+
+// ==========================================
+// ✅ GET REWARD PROGRESS STATS API
+// ==========================================
+router.get('/reward-stats/:userId', async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    const user = await User.findOne({ userId });
+    
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Helper to calculate team size excluding directs
+    const calculateTeamSize = async (mainUserId, minAmount) => {
+      let totalCount = 0;
+      const directReferrals = await User.find({ sponsorId: mainUserId }, { userId: 1 });
+      let queue = directReferrals.map(d => d.userId);
+
+      while (queue.length > 0) {
+        const currentId = queue.shift();
+        const teamMembers = await User.find({ sponsorId: currentId }, { userId: 1, topUpAmount: 1 });
+        for (let member of teamMembers) {
+          if ((member.topUpAmount || 0) >= minAmount) {
+            totalCount++;
+          }
+          queue.push(member.userId);
+        }
+      }
+      return totalCount;
+    };
+
+    // Calculate Downline Team Size for each track
+    const teamSize30 = await calculateTeamSize(userId, 30);
+    const teamSize60 = await calculateTeamSize(userId, 60);
+    const teamSize120 = await calculateTeamSize(userId, 120);
+
+    // Get all directs to check their ranks
+    const directs = await User.find({ sponsorId: userId });
+
+    res.json({
+      success: true,
+      ownTopUpAmount: user.topUpAmount || 0,
+      currentRanks: {
+        managerRank: user.managerRank || 0,
+        seniorManagerRank: user.seniorManagerRank || 0,
+        executiveManagerRank: user.executiveManagerRank || 0
+      },
+      teamSizes: {
+        30: teamSize30,
+        60: teamSize60,
+        120: teamSize120
+      },
+      directs: directs.map(d => ({
+        topUpAmount: d.topUpAmount || 0,
+        managerRank: d.managerRank || 0,
+        seniorManagerRank: d.seniorManagerRank || 0,
+        executiveManagerRank: d.executiveManagerRank || 0
+      }))
+    });
+
+  } catch (err) {
+    console.error("Reward Stats Error:", err);
+    res.status(500).json({ message: "Server error fetching reward stats" });
+  }
+});
  
 // ---------------------------
  

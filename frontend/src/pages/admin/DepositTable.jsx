@@ -1,21 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import api from 'api/axios';
+import api from '../../api/axios'; // Path zaroor check kar lena
 
-// 🔹 Helper: Decimal128 / number ko normalize karo
+// 🔹 Helper: Amount ko sahi Number me convert karne ke liye
 const getNumericAmount = (amount) => {
   if (!amount) return 0;
-
+  if (typeof amount === 'number') return amount;
+  if (typeof amount === 'string') return parseFloat(amount) || 0;
   if (typeof amount === 'object' && amount.$numberDecimal) {
-    return Number(amount.$numberDecimal);
+    return parseFloat(amount.$numberDecimal) || 0;
   }
-
-  return Number(amount);
-};
-
-const formatAmount = (amount) => {
-  const num = getNumericAmount(amount);
-  if (Number.isNaN(num)) return '-';
-  return num.toFixed(2);
+  return Number(amount) || 0;
 };
 
 const DepositTable = () => {
@@ -27,6 +21,7 @@ const DepositTable = () => {
   const [searchId, setSearchId] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDeposits();
@@ -35,27 +30,54 @@ const DepositTable = () => {
   const fetchDeposits = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      if (!token) return console.error('No admin token found.');
+      if (!token) {
+          console.error('No admin token found.');
+          setLoading(false);
+          return;
+      }
 
-      const res = await api.get('/admin/deposits', {
+      // 🔥 Direct "transactions" API se data laa rahe hain
+      const res = await api.get('/admin/transactions', {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const allDeposits = res.data || [];
-      setDeposits(allDeposits);
-      setFilteredDeposits(allDeposits);
+      const allTransactions = res.data || [];
+      
+      // ✅ Sirf 'deposit' aur 'manual_credit' wale transactions nikalenge
+      const onlyDeposits = allTransactions.filter(
+        (tx) => tx.type === 'deposit' || tx.type === 'manual_credit'
+      );
+
+      setDeposits(onlyDeposits);
+      setFilteredDeposits(onlyDeposits);
     } catch (err) {
       console.error('Failed to fetch deposits:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   // Filter deposits based on search & date
   useEffect(() => {
     const filtered = deposits.filter((deposit) => {
-      const matchId = searchId ? String(deposit.userId).includes(searchId) : true;
-      const created = new Date(deposit.createdAt);
+      // ✅ FIX: Ab Search bar me User ID aur Hash dono search kar sakte hain
+      const depositUserId = deposit.userId ? String(deposit.userId) : "";
+      const hashStr = (deposit.txnHash || deposit.txHash || deposit.hash || "").toLowerCase();
+      const searchQuery = searchId.toLowerCase();
+
+      const matchId = searchId ? (depositUserId.includes(searchQuery) || hashStr.includes(searchQuery)) : true;
+      
+      const created = new Date(deposit.createdAt || deposit.date);
+      
       const matchFrom = fromDate ? created >= new Date(fromDate) : true;
-      const matchTo = toDate ? created <= new Date(toDate) : true;
+      
+      let matchTo = true;
+      if (toDate) {
+        let endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        matchTo = created <= endDate;
+      }
+      
       return matchId && matchFrom && matchTo;
     });
 
@@ -67,7 +89,7 @@ const DepositTable = () => {
   const indexOfLast = currentPage * depositsPerPage;
   const indexOfFirst = indexOfLast - depositsPerPage;
   const currentDeposits = filteredDeposits.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredDeposits.length / depositsPerPage);
+  const totalPages = Math.ceil(filteredDeposits.length / depositsPerPage) || 1;
 
   const handleNext = () => currentPage < totalPages && setCurrentPage(prev => prev + 1);
   const handlePrev = () => currentPage > 1 && setCurrentPage(prev => prev - 1);
@@ -76,9 +98,7 @@ const DepositTable = () => {
     if (!timestamp) return false;
     const date = new Date(timestamp);
     const today = new Date();
-    today.setHours(0,0,0,0);
-    date.setHours(0,0,0,0);
-    return date.getTime() === today.getTime();
+    return date.setHours(0,0,0,0) === today.setHours(0,0,0,0);
   };
 
   const totalAmount = filteredDeposits.reduce(
@@ -87,22 +107,22 @@ const DepositTable = () => {
   );
 
   const totalToday = filteredDeposits
-    .filter(d => isToday(d.createdAt))
+    .filter(d => isToday(d.createdAt || d.date))
     .reduce((sum, d) => sum + getNumericAmount(d.amount), 0);
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-md">
-      <h2 className="text-xl font-semibold mb-4 text-indigo-600">💰 All Deposits</h2>
+    <div className="bg-white p-6 rounded-2xl shadow-md max-w-7xl mx-auto">
+      <h2 className="text-2xl font-bold mb-6 text-indigo-700">💰 All User Deposits</h2>
 
       {/* Totals */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6 text-sm font-medium">
-        <div className="bg-gray-100 p-3 rounded w-full md:w-1/3">
-          Total Deposits:{' '}
-          <span className="text-green-600">${totalAmount.toFixed(2)}</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm font-semibold">
+        <div className="bg-green-50 border border-green-200 p-4 rounded-lg flex justify-between items-center">
+          <span className="text-green-800 text-lg">Total Deposits:</span>
+          <span className="text-green-600 text-2xl">${totalAmount.toFixed(2)}</span>
         </div>
-        <div className="bg-yellow-100 p-3 rounded w-full md:w-1/3">
-          Today's Total:{' '}
-          <span className="text-orange-600">${totalToday.toFixed(2)}</span>
+        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg flex justify-between items-center">
+          <span className="text-yellow-800 text-lg">Today's Total:</span>
+          <span className="text-orange-600 text-2xl">${totalToday.toFixed(2)}</span>
         </div>
       </div>
 
@@ -110,27 +130,27 @@ const DepositTable = () => {
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <input
           type="text"
-          placeholder="Search by User ID"
+          placeholder="Search by User ID or Txn Hash"
           value={searchId}
           onChange={e => setSearchId(e.target.value)}
-          className="px-4 py-2 border rounded w-full md:w-1/3"
+          className="px-4 py-2 border border-gray-300 rounded w-full md:w-1/3 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
         />
         <input
           type="date"
           value={fromDate}
           onChange={e => setFromDate(e.target.value)}
-          className="px-4 py-2 border rounded w-full md:w-1/3"
+          className="px-4 py-2 border border-gray-300 rounded w-full md:w-1/3 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
         />
         <input
           type="date"
           value={toDate}
           onChange={e => setToDate(e.target.value)}
-          className="px-4 py-2 border rounded w-full md:w-1/3"
+          className="px-4 py-2 border border-gray-300 rounded w-full md:w-1/3 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
         />
         <select
           value={depositsPerPage}
           onChange={e => setDepositsPerPage(Number(e.target.value))}
-          className="px-4 py-2 border rounded w-full md:w-1/6"
+          className="px-4 py-2 border border-gray-300 rounded w-full md:w-1/6 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
         >
           {[10, 20, 50, 100].map(num => (
             <option key={num} value={num}>
@@ -141,53 +161,80 @@ const DepositTable = () => {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-lg shadow border border-gray-200">
         <table className="w-full table-auto text-left border-collapse">
           <thead>
-            <tr className="bg-gray-100 text-sm">
-              <th className="p-2 border">User ID</th>
-              <th className="p-2 border">Name</th>
-              <th className="p-2 border">Amount</th>
-              <th className="p-2 border">Txn Hash</th>
-              <th className="p-2 border">Date</th>
-              <th className="p-2 border">Time</th>
-              <th className="p-2 border">Status</th>
+            <tr className="bg-indigo-600 text-white text-sm">
+              <th className="p-3 border-b">#</th>
+              <th className="p-3 border-b">User ID</th>
+              <th className="p-3 border-b">Name</th>
+              <th className="p-3 border-b">Amount</th>
+              <th className="p-3 border-b">Txn Hash</th>
+              <th className="p-3 border-b">Date & Time</th>
+              <th className="p-3 border-b text-center">Status</th>
             </tr>
           </thead>
           <tbody>
-            {currentDeposits.length > 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan="7" className="text-center py-8 text-gray-500 font-semibold">Loading deposits...</td>
+              </tr>
+            ) : currentDeposits.length > 0 ? (
               currentDeposits.map((deposit, index) => {
-                const createdAt = new Date(deposit.createdAt);
-                const date = createdAt.toLocaleDateString('en-GB');
-                const time = createdAt.toLocaleTimeString('en-US');
-
+                const serial = indexOfFirst + index + 1;
+                const createdAt = new Date(deposit.createdAt || deposit.date);
+                
+                // ✅ FIX: Sahi Hash nikalne ka logic
+                const actualHash = deposit.txnHash || deposit.txHash || deposit.hash;
+                
                 return (
                   <tr
-                    key={index}
-                    className={`border-t text-sm ${
-                      isToday(deposit.createdAt) ? 'bg-yellow-50 font-medium' : ''
+                    key={deposit._id || index}
+                    className={`border-b text-sm transition-colors ${
+                      isToday(deposit.createdAt || deposit.date) ? 'bg-yellow-50' : 'bg-white hover:bg-gray-50'
                     }`}
                   >
-                    <td className="p-2 border">{deposit.userId}</td>
-                    <td className="p-2 border">{deposit.name || '-'}</td>
-                    <td className="p-2 border">
-                      ${formatAmount(deposit.amount)}
+                    <td className="p-3 text-gray-500">{serial}</td>
+                    <td className="p-3 font-bold text-indigo-600">{deposit.userId || 'N/A'}</td>
+                    <td className="p-3 font-medium text-gray-800">{deposit.name || 'Unknown'}</td>
+                    <td className="p-3 text-green-600 font-bold">
+                      ${getNumericAmount(deposit.amount).toFixed(2)}
                     </td>
-                    <td className="p-2 border break-all text-blue-700">
-                      {deposit.txnHash || (
-                        <span className="italic text-gray-400">N/A</span>
+                    
+                    {/* ✅ FIX: Txn Hash Display Logic */}
+                    <td className="p-3 break-all text-xs font-mono max-w-[200px]">
+                      {actualHash ? (
+                         <span className="truncate block text-blue-600 font-medium" title={actualHash}>
+                           {actualHash}
+                         </span>
+                      ) : deposit.type === 'manual_credit' || deposit.description?.includes('Manual') ? (
+                        <span className="italic text-orange-500 font-semibold">Manual Deposit</span>
+                      ) : (
+                        <span className="italic text-gray-400">System Deposit (No Hash)</span>
                       )}
                     </td>
-                    <td className="p-2 border">{date}</td>
-                    <td className="p-2 border">{time}</td>
-                    <td className="p-2 border capitalize">{deposit.status}</td>
+
+                    <td className="p-3 text-gray-600 whitespace-nowrap font-medium">
+                      {createdAt.toLocaleString('en-GB')}
+                    </td>
+                    <td className="p-3 text-center">
+                       <span className={`px-3 py-1 text-xs rounded-full font-bold uppercase tracking-wider ${
+                         deposit.status === 'approved' || deposit.status === 'completed' || !deposit.status
+                         ? 'bg-green-100 text-green-700' 
+                         : deposit.status === 'pending'
+                         ? 'bg-yellow-100 text-yellow-700'
+                         : 'bg-red-100 text-red-700'
+                       }`}>
+                         {deposit.status || "Completed"}
+                       </span>
+                    </td>
                   </tr>
                 );
               })
             ) : (
               <tr>
-                <td colSpan="7" className="text-center py-4 text-gray-500">
-                  No deposits found.
+                <td colSpan="7" className="text-center py-10 text-gray-500 font-semibold">
+                  No deposits found in the system.
                 </td>
               </tr>
             )}
@@ -197,28 +244,28 @@ const DepositTable = () => {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-between items-center mt-4 text-sm">
+        <div className="flex justify-between items-center mt-6 text-sm font-semibold text-gray-600">
           <button
             onClick={handlePrev}
             disabled={currentPage === 1}
-            className={`px-4 py-2 rounded ${
+            className={`px-5 py-2 rounded transition-colors ${
               currentPage === 1
-                ? 'bg-gray-300 cursor-not-allowed'
-                : 'bg-blue-500 text-white hover:bg-blue-600'
+                ? 'bg-gray-200 cursor-not-allowed'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700'
             }`}
           >
             Previous
           </button>
-          <span className="text-gray-700">
+          <span className="bg-gray-100 px-4 py-2 rounded">
             Page {currentPage} of {totalPages}
           </span>
           <button
             onClick={handleNext}
             disabled={currentPage === totalPages}
-            className={`px-4 py-2 rounded ${
+            className={`px-5 py-2 rounded transition-colors ${
               currentPage === totalPages
-                ? 'bg-gray-300 cursor-not-allowed'
-                : 'bg-blue-500 text-white hover:bg-blue-600'
+                ? 'bg-gray-200 cursor-not-allowed'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700'
             }`}
           >
             Next

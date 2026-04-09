@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import api from "../../api/axios"; // Path apne hisaab se theek kar lena
-import { Search, Ban, CheckCircle, Save, LogIn, Eye, EyeOff } from "lucide-react";
+import { Search, Ban, CheckCircle, Save, LogIn, Eye, EyeOff, Copy } from "lucide-react"; // ✅ Added Copy icon
 
 // Tweak this if your API base is different in axios config
  
@@ -112,6 +112,13 @@ await api.put(url);
     }
   };
 
+  // ✅ ================= COPY FUNCTION =================
+  const handleCopy = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    alert("Deposit Address Copied!");
+  };
+
   return (
     <div className="bg-white rounded-2xl p-5 shadow-md">
       <h2 className="text-xl font-semibold mb-4 text-indigo-600">🔍 Search User</h2>
@@ -197,13 +204,35 @@ await api.put(url);
           </div>
 
           <div>
-            <label className="font-semibold">USDT Address (BEP20)</label>
+            <label className="font-semibold">USDT Address (BEP20) - Withdrawal</label>
             <input
               type="text"
               value={formData.walletAddress || ""}
               onChange={(e) => handleInputChange("walletAddress", e.target.value)}
               className="block border rounded px-3 py-1 mt-1 w-full"
             />
+          </div>
+
+          {/* ✅ UPDATED: Deposit Address Field (Read-Only with Copy Button) */}
+          <div>
+            <label className="font-semibold">Deposit Address</label>
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="text"
+                readOnly // Make it read-only so admin cannot edit
+                value={formData.depositAddress || "Not Generated Yet"}
+                className="block border rounded px-3 py-1 w-full bg-gray-100 text-gray-600 cursor-not-allowed"
+              />
+              {formData.depositAddress && (
+                <button
+                  onClick={() => handleCopy(formData.depositAddress)}
+                  className="p-2 bg-gray-200 hover:bg-gray-300 rounded border transition-colors"
+                  title="Copy Deposit Address"
+                >
+                  <Copy size={18} className="text-gray-700" />
+                </button>
+              )}
+            </div>
           </div>
 
           <p className="pt-2">

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import api from "api/axios";
-import useAuth from "../../hooks/useAuth";
+import api from "../../api/axios"; // Updated path based on your snippet
+import useAuth from "../../hooks/useAuth"; // Updated path based on your snippet
 
 const AllTeamPage = () => {
   const { user } = useAuth();
@@ -12,23 +12,27 @@ const AllTeamPage = () => {
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // ✅ ADDED: State for sorting
+  const [sortConfig, setSortConfig] = useState({ key: "createdAt", direction: "desc" });
 
   useEffect(() => {
     if (!user?.userId) return;
     const fetchAllTeam = async () => {
       try {
         const res = await api.get(`/user/all-team/${user.userId}`);
-        let teamData = res.data.team || [];
+        
+        // ✅ CHANGED: Filter out Level 1 (Direct Team)
+        let teamData = (res.data.team || []).filter(u => u.level > 1);
 
-        // ✅ YAHAN HAI SORTING LOGIC (Change here)
-        // new Date(b.createdAt) - new Date(a.createdAt) = Jo naya hai wo UPAR aayega
+        // Initial default sort (Newest first)
         teamData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         setTeam(teamData);
 
-        // Stats Calculate karna
+        // Stats Calculation (Based on filtered Indirect Team)
         setStats({
-          totalTeam: res.data.totalTeamCount || teamData.length,
+          totalTeam: teamData.length,
           activeTeam: teamData.filter(u => u.topUpAmount > 0).length
         });
 
@@ -39,16 +43,40 @@ const AllTeamPage = () => {
     fetchAllTeam();
   }, [user?.userId]);
 
+  // 1. Search Filter
   const filtered = team.filter(
     (u) =>
       u.userId?.toString().includes(search) ||
       u.name?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // ✅ ADDED: Sorting Logic
+  const sortedTeam = [...filtered].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    
+    let aValue = a[sortConfig.key] || "";
+    let bValue = b[sortConfig.key] || "";
+
+    // Handle strings for case-insensitive sorting
+    if (typeof aValue === "string") aValue = aValue.toLowerCase();
+    if (typeof bValue === "string") bValue = bValue.toLowerCase();
+
+    // Handle Dates
+    if (sortConfig.key === "createdAt") {
+      aValue = new Date(a.createdAt).getTime();
+      bValue = new Date(b.createdAt).getTime();
+    }
+
+    if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  // 3. Pagination (using sortedTeam instead of filtered)
   const indexOfLast = currentPage * entriesPerPage;
   const indexOfFirst = indexOfLast - entriesPerPage;
-  const currentItems = filtered.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filtered.length / entriesPerPage);
+  const currentItems = sortedTeam.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(sortedTeam.length / entriesPerPage) || 1;
 
   const handleNext = () => currentPage < totalPages && setCurrentPage(prev => prev + 1);
   const handlePrev = () => currentPage > 1 && setCurrentPage(prev => prev - 1);
@@ -57,14 +85,35 @@ const AllTeamPage = () => {
     setCurrentPage(1);
   };
 
+  // ✅ ADDED: Sort Click Handler
+  const handleSort = (key) => {
+    if (!key) return; // Don't sort "Sr" column
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // ✅ ADDED: Column configurations mapping labels to data keys
+  const tableColumns = [
+    { label: "Sr", key: null },
+    { label: "Lvl", key: "level" },
+    { label: "User ID", key: "userId" },
+    { label: "Top-Up ($)", key: "topUpAmount" },
+    { label: "Name", key: "name" },
+    { label: "Country", key: "country" },
+    { label: "Joined", key: "createdAt" }
+  ];
+
   return (
     <div style={styles.container}>
-      <h2 className="text-white font-bold p-1 text-xl" style={{marginBottom: 10}}>🌍 All Team (Downline)</h2>
+      <h2 className="text-white font-bold p-1 text-xl" style={{marginBottom: 10}}>🌍 Downline Team </h2>
 
       {/* Stats Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "15px" }}>
         <div style={styles.statCard}>
-          <h3 style={styles.statTitle}>Total Team</h3>
+          <h3 style={styles.statTitle}>Total Indirect Team</h3>
           <p style={styles.statValue} className="text-blue-600">{stats.totalTeam}</p>
         </div>
         <div style={styles.statCard}>
@@ -73,13 +122,13 @@ const AllTeamPage = () => {
         </div>
       </div>
 
-      {/* Search + Entries (Controls Upar) */}
+      {/* Search + Entries */}
       <div style={styles.controls}>
         <input
           type="text"
           placeholder="Search by name or ID"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
           style={styles.searchInput}
         />
         <select value={entriesPerPage} onChange={handleEntriesChange} style={styles.select}>
@@ -95,8 +144,20 @@ const AllTeamPage = () => {
         <table style={styles.table}>
           <thead>
             <tr style={styles.headerRow}>
-              {["Sr", "Lvl", "User ID", "Top-Up ($)", "Name", "Country", "Joined"].map((col) => (
-                <th key={col} style={styles.th}>{col}</th>
+              {tableColumns.map((col) => (
+                <th 
+                  key={col.label} 
+                  style={{ ...styles.th, cursor: col.key ? "pointer" : "default" }}
+                  onClick={() => handleSort(col.key)}
+                >
+                  {col.label}
+                  {/* Show sorting indicator arrows */}
+                  {sortConfig.key === col.key && (
+                    <span style={{ marginLeft: "5px", fontSize: "10px" }}>
+                      {sortConfig.direction === "asc" ? "▲" : "▼"}
+                    </span>
+                  )}
+                </th>
               ))}
             </tr>
           </thead>
@@ -139,12 +200,12 @@ const AllTeamPage = () => {
         </table>
       </div>
 
-      {/* Pagination (Buttons Niche) */}
+      {/* Pagination */}
       <div style={styles.pagination}>
-        <button  onClick={handlePrev} disabled={currentPage === 1} style={styles.pageBtn(currentPage === 1)}>
+        <button onClick={handlePrev} disabled={currentPage === 1} style={styles.pageBtn(currentPage === 1)}>
           ⬅ Prev
         </button>
-        <span className="text-white " style={styles.pageText}>
+        <span className="text-white" style={styles.pageText}>
           Page <strong>{currentPage}</strong> / <strong>{totalPages}</strong>
         </span>
         <button onClick={handleNext} disabled={currentPage === totalPages} style={styles.pageBtn(currentPage === totalPages)}>
@@ -211,11 +272,13 @@ const styles = {
     backgroundColor: "#4A90E2",
     color: "white",
     textAlign: "left",
+    userSelect: "none" // Prevents text selection when clicking headers
   },
   th: {
     padding: "8px",
     fontWeight: 600,
     borderBottom: "2px solid #ddd",
+    transition: "background 0.2s ease",
   },
   td: {
     padding: "6px 8px",
@@ -248,6 +311,9 @@ const styles = {
     cursor: disabled ? "not-allowed" : "pointer",
     fontSize: 11,
   }),
+  pageText: {
+    fontSize: "12px",
+  }
 };
 
 export default AllTeamPage;

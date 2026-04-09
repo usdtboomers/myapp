@@ -16,6 +16,7 @@ import {
   BadgeDollarSign,
   BarChart,
   Bell,
+  Trophy, // ✅ ADDED: Trophy icon for Reward Progress
 } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
@@ -32,7 +33,7 @@ const SidebarItem = ({ label, icon: Icon, active, onClick, badge }) => (
     <span>{label}</span>
 
     {badge > 0 && (
-      <span className="absolute -top- -1 -right-0 bg-red-600 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full">
+      <span className="absolute -top-1 -right-0 bg-red-600 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full">
         {badge}
       </span>
     )}
@@ -54,6 +55,7 @@ const Sidebar = ({ user }) => {
   // Fetch notification count every 15 seconds
   useEffect(() => {
     const fetchNotifCount = async () => {
+      if (!user?.userId) return;
       try {
         const res = await api.get(
           `/admin/notifications/count/${user.userId}`
@@ -67,46 +69,42 @@ const Sidebar = ({ user }) => {
     fetchNotifCount();
     const interval = setInterval(fetchNotifCount, 15000);
     return () => clearInterval(interval);
-  }, [user.userId]);
+  }, [user?.userId]);
 
   // Lock body scroll when sidebar is open
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "auto";
   }, [isOpen]);
 
-
 const downloadPDF = () => {
-  const link = document.createElement("a");
-  link.href = "/files/usdtboomers.pdf";  // path relative to public folder
-  link.download = "usdtboomers.pdf"; // filename jo user ke paas download hoga
-  link.click();
+  // Ye file ko naye tab mein open karega
+  const fileUrl = "/files/USDT_BOOMERS.pdf"; 
+  window.open(fileUrl, "_blank");
 };
-
-
+  
   const menuItems = [
-
-    { label: "Download PDF", icon: Banknote, path: "#", onClick: downloadPDF },
- 
     { label: "Dashboard", icon: Home, path: "/dashboard" },
+    { label: "Download PDF", icon: Banknote, path: "#", onClick: downloadPDF },
+    
+    // ✅ NAYA LINK: Reward Progress
+    
     { label: "Profile", icon: UserCircle2, path: "/profile" },
     { label: "Deposit History", icon: History, path: "/deposit-history" },
+    { label: "Direct Income", icon: BadgeDollarSign, path: "/direct-income" },
     { label: "Withdrawals", icon: Banknote, path: "/withdrawals" },
     { label: "Direct Team", icon: Users, path: "/direct-team" },
     { label: "All Team", icon: Users, path: "/all-team" },
     { label: "Top-Up Details", icon: BarChart, path: "/topup-details" },
+    { label: "Reward Progress", icon: Trophy, path: "/reward-progress" },
     { label: "Wallet History", icon: History, path: "/wallet-history" },
     { label: "Downline Business", icon: BarChart, path: "/downline-business" },
     { label: "Credit To Wallet", icon: BadgeDollarSign, path: "/credit-to-wallet" },
-     { label: "My Transfers", icon: History, path: "/my-transfers" },
+    { label: "My Transfers", icon: History, path: "/my-transfers" },
     { label: "Transaction Details", icon: Wallet, path: "/transaction-details" },
     { label: "Notifications", icon: Bell, path: "/notifications", badge: notifCount },
     { label: "Support", icon: HelpCircle, path: "/support" },
-
-     { label: "System Deposit History", icon: History, path: "/system-deposit-history" },
+    { label: "System Deposit History", icon: History, path: "/system-deposit-history" },
     { label: "System Withdrawal History", icon: History, path: "/system-withdrawal-history" },
-    
- 
-
   ];
 
   return (
@@ -117,8 +115,6 @@ const downloadPDF = () => {
         className="fixed top-3 left-3 z-50 bg-emerald-700 text-white p-2 rounded-md shadow-md"
       >
         <Menu size={20} />
-
-        
       </button>
 
       {/* Backdrop */}
@@ -158,23 +154,21 @@ const downloadPDF = () => {
 
           {/* Menu Items - scrollable */}
           <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-  {menuItems.map((item) => (
-    <SidebarItem
-      key={item.path}
-      label={item.label}
-      icon={item.icon}
-      badge={item.badge}
-      active={location.pathname === item.path}
-     onClick={() => {
-  if (item.onClick) item.onClick();
-  else navigate(item.path);
-  setIsOpen(false);
-}}
-
-    />
-  ))}
-</nav>
-
+            {menuItems.map((item, index) => (
+              <SidebarItem
+                key={index}
+                label={item.label}
+                icon={item.icon}
+                badge={item.badge}
+                active={location.pathname === item.path}
+                onClick={() => {
+                  if (item.onClick) item.onClick();
+                  else navigate(item.path);
+                  setIsOpen(false);
+                }}
+              />
+            ))}
+          </nav>
 
           {/* Logout - fixed at bottom */}
           <div className="p-3 border-t border-white/20">

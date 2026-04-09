@@ -66,9 +66,8 @@ const DepositHistory = () => {
         <Sidebar user={user} isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
         <main className="flex-1 w-full max-w-full overflow-y-auto pb-20 custom-scroll rounded-2xl bg-slate-900/40 p-4 md:p-6 lg:mt-2">
           
-          {/* Heading made pure white as requested */}
-          <h1 className="text-2xl font-bold pt-2 text-l  text-white mb-2">Live USDT (BEP-20) Deposits</h1>
-          <p className="text-white mb-6 pt-2 text-l font-bold text-sm italic">Real-time platform deposit activity</p>
+          <h1 className="text-2xl font-bold pt-16 text-white mb-2">Live USDT (BEP-20) Deposits</h1>
+          <p className="text-white mb-6 pt-2 font-bold text-sm italic opacity-80">Real-time platform deposit activity</p>
           
           {loading ? <SpinnerOverlay /> : (
             <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
@@ -76,7 +75,7 @@ const DepositHistory = () => {
               {/* Pagination Controls - Top */}
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-400">Show</span>
+                  <span className="text-sm text-white">Show</span>
                   <select 
                     value={itemsPerPage} 
                     onChange={handleItemsPerPageChange}
@@ -99,7 +98,8 @@ const DepositHistory = () => {
                     <thead>
                       <tr className="border-b border-slate-700 text-yellow-500 text-sm">
                         <th className="py-3 px-2">Sr. No.</th>
-                        <th className="py-3 px-2">Time</th>
+                        {/* ✅ Header Update */}
+                        <th className="py-3 px-2">Date & Time</th>
                         <th className="py-3 px-2">Txn Hash</th>
                         <th className="py-3 px-2">From Address</th>
                         <th className="py-3 px-2">Amount (USDT)</th>
@@ -107,46 +107,56 @@ const DepositHistory = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {currentItems.map((dep, idx) => (
-                        <tr key={idx} className="border-b border-slate-700/50 text-sm hover:bg-slate-800/30 transition-colors">
-                          
-                          {/* Serial Number Column */}
-                          <td className="py-4 px-2 text-slate-400 font-medium">
-                            {indexOfFirstItem + idx + 1}
-                          </td>
+                      {currentItems.map((dep, idx) => {
+                        const dateObj = new Date(dep.createdAt);
+                        const formattedDate = dateObj.toLocaleDateString('en-GB'); // Ex: 25/12/2026
+                        const formattedTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-                          <td className="py-4 px-2 text-white">
-                            {new Date(dep.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                          </td>
-                          <td className="py-4 px-2 font-mono">
-                            <a 
-                              href={`https://bscscan.com/tx/${dep.hash}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 underline transition-colors"
-                            >
-                              {formatString(dep.hash)}
-                            </a>
-                          </td>
-                          <td className="py-4 px-2 text-white font-mono">
-                            {formatString(dep.fromAddress)}
-                          </td>
-                          <td className="py-4 px-2 text-green-400 font-bold">
-                            + {dep.amount}
-                          </td>
-                          <td className="py-4 px-2">
-                            <span className="bg-green-500/10 text-green-500 px-2 py-1 rounded text-xs border border-green-500/20">
-                              Success
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                        return (
+                          <tr key={idx} className="border-b border-slate-700/50 text-sm hover:bg-slate-800/30 transition-colors">
+                            
+                            <td className="py-4 px-2 text-slate-400 font-medium">
+                              {indexOfFirstItem + idx + 1}
+                            </td>
+
+                            {/* ✅ Date & Time Cells stacked */}
+                            <td className="py-4 px-2 text-white">
+                               <div className="flex flex-col">
+                                  <span className="font-semibold">{formattedDate}</span>
+                                  <span className="text-xs text-slate-400">{formattedTime}</span>
+                               </div>
+                            </td>
+
+                            <td className="py-4 px-2 font-mono">
+                              <a 
+                                href={`https://bscscan.com/tx/${dep.hash}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:text-blue-300 underline transition-colors"
+                              >
+                                {formatString(dep.hash)}
+                              </a>
+                            </td>
+                            <td className="py-4 px-2 text-white font-mono">
+                              {formatString(dep.fromAddress)}
+                            </td>
+                            <td className="py-4 px-2 text-green-400 font-bold">
+                              + {dep.amount}
+                            </td>
+                            <td className="py-4 px-2">
+                              <span className="bg-green-500/10 text-green-500 px-2 py-1 rounded text-xs border border-green-500/20">
+                                Success
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
               </div>
 
-              {/* Pagination Controls - Bottom (Next/Prev) */}
+              {/* Pagination Controls - Bottom */}
               {deposits.length > 0 && (
                 <div className="flex justify-between items-center mt-4">
                   <div className="text-sm text-slate-400">

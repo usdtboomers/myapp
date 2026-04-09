@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import api from "api/axios";
+import api from "../../api/axios";
 import { getUserId } from "../../utils/authUtils";
 
 const TransactionDetails = () => {
@@ -11,28 +11,32 @@ const TransactionDetails = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
- useEffect(() => {
-  if (!userId) return;
-  api.get(`/transaction/transactions/${userId}`)
-    .then((res) => {
-      let sorted = (res.data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  useEffect(() => {
+    if (!userId) return;
+    api.get(`/transaction/transactions/${userId}`)
+      .then((res) => {
+        let sorted = (res.data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      // 🔹 Ignore TOPUP (PROMOTION)
-      sorted = sorted.filter(txn => !(txn.type === "topup" && txn.description?.toUpperCase().includes("PROMOTION")));
+        // 🔹 Ignore TOPUP (PROMOTION)
+        sorted = sorted.filter(txn => !(txn.type === "topup" && txn.description?.toUpperCase().includes("PROMOTION")));
 
-      setTransactions(sorted);
-      setFiltered(sorted);
-    })
-    .catch((err) => {
-      console.error("Failed to fetch transactions", err);
-      setTransactions([]);
-      setFiltered([]);
-    });
-}, [userId]);
+        setTransactions(sorted);
+        setFiltered(sorted);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch transactions", err);
+        setTransactions([]);
+        setFiltered([]);
+      });
+  }, [userId]);
 
-
-  const isCreditType = (type = "") => ["deposit","credit_to_wallet","roi_income","referral_income","topup_income",    "binary",         
-"spin_income","level_income","direct_income","plan_income","transfer"].includes(type.toLowerCase());
+  // ✅ ADDED: "reward_income" ko credit types mein daal diya hai
+  const isCreditType = (type = "") => [
+    "deposit", "credit_to_wallet", "roi_income", "referral_income", "topup_income", 
+    "binary", "spin_income", "level_income", "direct_income", "plan_income", "transfer", 
+    "reward_income" // <-- Yahan add kiya
+  ].includes(type.toLowerCase());
+  
   const isDebitType = (type = "") => ["withdrawal","buy_spin","topup","transfer"].includes(type.toLowerCase());
 
   useEffect(() => {
@@ -76,10 +80,10 @@ const TransactionDetails = () => {
 
   return (
     <div style={{ padding: 12, fontFamily: "Segoe UI, sans-serif", fontSize: 13 }}>
-      <h2  className="text-white font-bold" style={{ marginBottom: 12, fontSize: 16 }}>📑 Transaction Details</h2>
+      <h2 className="text-white font-bold" style={{ marginBottom: 12, fontSize: 16 }}>📑 Transaction Details</h2>
 
       {/* Filters */}
-      <div  style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
         <div><b className="text-white">Total Records:</b> {filtered.length}</div>
         <input
           type="text"
@@ -123,7 +127,8 @@ const TransactionDetails = () => {
                   <td style={tdStyle}>{(currentPage-1)*ITEMS_PER_PAGE+idx+1}</td>
                   <td style={tdStyle}>{date.toLocaleDateString()}</td>
                   <td style={tdStyle}>{date.toLocaleTimeString()}</td>
-                  <td style={{ ...tdStyle, fontWeight: "bold" }}>{txn.type || "-"}</td>
+                  {/* Type ko thoda saaf dikhane ke liye replace use kiya */}
+                  <td style={{ ...tdStyle, fontWeight: "bold" }}>{(txn.type || "-").replace(/_/g, " ").toUpperCase()}</td>
                   <td style={{ ...tdStyle, fontWeight: "bold", color }}>{display}</td>
                   <td style={tdStyle}>{txn.fromUserId || "-"}</td>
                   <td style={tdStyle}>{txn.toUserId || "-"}</td>
@@ -143,7 +148,8 @@ const TransactionDetails = () => {
       {totalPages > 1 && (
         <div style={{ marginTop: 12, textAlign: "center" }}>
           <button disabled={currentPage===1} onClick={()=>setCurrentPage(p=>p-1)} style={pageBtnStyle(currentPage===1)}>⏮ Prev</button>
-          <spanc className="text-white" style={{ margin: "0 6px" }}>Page {currentPage} of {totalPages}</spanc>
+          {/* ✅ FIXED: <spanc> ko <span> kar diya hai */}
+          <span className="text-white" style={{ margin: "0 6px" }}>Page {currentPage} of {totalPages}</span>
           <button disabled={currentPage===totalPages} onClick={()=>setCurrentPage(p=>p+1)} style={pageBtnStyle(currentPage===totalPages)}>Next ⏭</button>
         </div>
       )}

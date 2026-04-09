@@ -214,15 +214,11 @@ const Dashboard = () => {
 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
    <div className="bg-slate-800/40 p-1 rounded-xl h-full border border-slate-700/50">
       {/* Yahan update kiya hai: directIncome, levelIncome, rewardIncome etc. sahi se map kiye hain */}
-     <IncomeSummary 
-        income={{
-          directIncome: income.directIncome || 0,
-          levelIncome: income.levelIncome || 0,
-          spinIncome: income.spinIncome || 0,
-          rewardIncome: income.rewardIncome || 0 // ✅ Ye line add kar di
-        }} 
+   <IncomeSummary 
+        income={income} 
         user={user} 
       />
+      
    </div>
    <div className="space-y-6">
       <ReferralLink link={referralLink} />
