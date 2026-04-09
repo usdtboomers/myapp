@@ -176,7 +176,36 @@ router.put('/unblock/:id', unblockUser);
 router.get('/', getAllUsers);
 
 // ---------------------------
-  
+  // ---------------------------
+// All Users
+ 
+// 🔥 ADMIN ROUTE: Purane Missed Rewards Dilane Ke Liye (Bas Ek Baar Chalana Hai)
+router.get('/fix-missed-rewards', async (req, res) => {
+    try {
+        console.log("Fixing missed rewards started...");
+        // Un sabhi users ko nikalenge jinka topup 30 ya usse zyada hai
+        const eligibleUsers = await User.find({ topUpAmount: { $gte: 30 } });
+        let count = 0;
+
+        for (let user of eligibleUsers) {
+            // Ye function automatically check karega aur agar condition puri hogi toh reward de dega
+            await checkAndAwardManagerReward(user.userId);
+            count++;
+        }
+
+        console.log(`✅ Missed rewards distribution complete for ${count} users.`);
+        res.json({ 
+            success: true, 
+            message: `Done! Checked ${count} users and distributed all missing rewards.` 
+        });
+    } catch (err) {
+        console.error("Error fixing rewards:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+// ---------------------------
+// (Yahan se aapka aage ka code start hoga, jaise Top-up Route wagarah...)
 
 // ---------------------------
 // Top-up Route with Daily ROI
@@ -391,7 +420,7 @@ router.put(
       }
 
       // 🔹 8. 🔥 MANAGER USDT REWARD LOGIC 🔥
-      if (amount >= 60 && targetUser.sponsorId) {
+      if (amount >= 30 && targetUser.sponsorId) {
           setTimeout(async () => {
               try {
                   let sponsorId = targetUser.sponsorId;
@@ -589,6 +618,8 @@ const totalBusiness = allTeam.reduce(
 
 
 
+// 🔥 ADMIN ROUTE: Purane Missed Rewards Dilane Ke Liye (Bas Ek Baar Chalana Hai)
+ 
 
 
 // routes/user.js
@@ -604,19 +635,37 @@ router.get('/sponsor-name/:id', async (req, res) => {
 
  
 // ---------------------------
- router.get('/:userId', async (req, res) => {
+ 
+
+router.get('/:userId', async (req, res) => {
   try {
     const userId = Number(req.params.userId);
     const user = await User.findOne({ userId }).select('-password -txnPassword -__v');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    res.json({ user });
+    // 🔥 FIX: If totalRewardIncome is 0 but they have claimed rewards, sync it up
+    if (user.totalRewardIncome === 0 && user.rewardIncome > 0) {
+        user.totalRewardIncome = user.rewardIncome;
+        // Note: This only works perfectly if they haven't withdrawn yet. 
+        // If they already withdrew, you might need to calculate it from their claimedRewards array.
+    }
+
+    res.json({ 
+        success: true,
+        user: user,
+        income: {
+            totalDirectIncome: user.totalDirectIncome || user.directIncome || 0,
+            totalLevelIncome: user.levelIncome || 0,
+            // Force it to be a string temporarily to bypass React's zero-skipping issue if needed, 
+            // but returning the true total is best:
+            totalRewardIncome: user.totalRewardIncome || user.rewardIncome || 0 
+        }
+    });
   } catch (err) {
     console.error("Error fetching user:", err);
     res.status(500).json({ message: 'Server error' });
   }
 });
-
 // ---------------------------
 // Update user
 // Update user - REPLACE YOUR EXISTING router.put('/:userId' ...) WITH THIS:
@@ -689,5 +738,7 @@ const matchTxn = (oldTxnPassword === user.transactionPassword);
     res.status(500).json({ message: 'Server error' });
   }
 });
+ 
 
+// Ye aapki file ki sabse aakhiri line honi chahiye 👇
 module.exports = router;

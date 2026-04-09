@@ -4,7 +4,7 @@ const Transaction = require('../models/Transaction');
 // ✅ COMMON TEAM RULES FOR ALL CATEGORIES
 // Level | Direct Rank Req | Directs Needed | Downline Team Size (Excluding Directs)
 const RANK_RULES = {
-  1: { reqDirectRank: 0, reqDirectCount: 5, reqTeamSize: 10 },
+  1: { reqDirectRank: 0, reqDirectCount: 2, reqTeamSize: 1 },
   2: { reqDirectRank: 1, reqDirectCount: 2, reqTeamSize: 30 },
   3: { reqDirectRank: 1, reqDirectCount: 5, reqTeamSize: 150 },
   4: { reqDirectRank: 2, reqDirectCount: 2, reqTeamSize: 250 },
@@ -101,12 +101,14 @@ const checkAndAwardManagerReward = async (userId) => {
         const validDirectsCount = directs.filter(d => (d[track.rankField] || 0) >= rules.reqDirectRank).length;
 
         // ✅ If both conditions pass (Directs count + Downline Team Size)
+      // ✅ If both conditions pass (Directs count + Downline Team Size)
         if (validDirectsCount >= rules.reqDirectCount && currentTeamSize >= rules.reqTeamSize) {
           
           const rewardAmount = track.rewards[targetRank];
 
           user.rewardIncome = (user.rewardIncome || 0) + rewardAmount;
-          user[track.rankField] = targetRank; 
+          user.totalRewardIncome = (user.totalRewardIncome || 0) + rewardAmount; // ✅ ADD THIS LINE HERE
+          user[track.rankField] = targetRank;
           
           const claimString = `${track.prefix}${targetRank}`;
           if (!user.claimedRewards) user.claimedRewards = [];

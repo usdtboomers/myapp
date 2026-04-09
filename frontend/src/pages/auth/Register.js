@@ -229,9 +229,11 @@ function Register() {
       {/* Navbar */}
       <nav className="fixed text-white top-0 left-0 w-full z-50 bg-black border-b border-[#D4AF37]/30 px-6 py-1 shadow-lg shadow-black/50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <span className="text-yellow-400 pr-4 font-extrabold text-2xl tracking-wide">
-            USDT BOOMERS
-          </span>
+          <img 
+  src="/usdtboomer.png" 
+  alt="USDT Boomers Logo"
+  className="h-16 pr-6 object-contain"
+/>
           <div>
             <Link to="/" className="bg-yellow-400 text-black font-bold py-2 px-6 rounded-lg mx-2 hover:bg-yellow-300 transition">
               Home
@@ -253,7 +255,7 @@ function Register() {
            <img
               src="/usdtboomer.png"
               alt="USDT BOOMERS"
-              className="h-20 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] animate-pulse"
+              className="h-24 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] animate-pulse"
             />
           <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-cyan-200 to-blue-400">
             Create Account
@@ -433,10 +435,14 @@ function Register() {
               <img src="/usdtboomer.png" alt="Logo" style={{ height: 80, width: 'auto', maxWidth: '100%' }} />
             </div>
             <h2 style={{ color: '#facc15', fontSize: '1.5rem', fontWeight: 'bold', marginBottom: 8, textAlign: 'center' }}>
-              🎉 Registration Successful
+              🎉 Congratulations & Welcome! 🎉
             </h2>
+            <p>
+              Dear User, user name your registration has been successfully completed right tick
+            </p>
             <p><strong>User ID:</strong> {registeredData.userId}</p>
             <p><strong>Password:</strong> {registeredData.password}</p>
+            <p><strong>Transaction Password:</strong> {registeredData.password}</p>
             <p className='font-bold' style={{ color: 'red', fontSize: 15, marginTop: 10, textAlign: 'center' }}>
               📸 Please take a screenshot of this information
             </p>

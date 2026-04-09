@@ -62,13 +62,21 @@ const Dashboard = () => {
         setShowWalletReminder(!userRes.data.user.walletAddress);
 
         // 2. Wallet/Income fetch karna
+       // 2. Wallet/Income fetch karna
         const incomeRes = await api.get(`/wallet/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
         setIncome({
+          // Withdrawal aur Modals ke liye (Jo minus hota hai)
           directIncome: incomeRes.data.directIncome || 0,
           levelIncome: incomeRes.data.levelIncome || 0,
-          dailyIncome: incomeRes.data.dailyIncome || 0,
+          dailyIncome: incomeRes.data.planIncome || 0,
           spinIncome: incomeRes.data.spinIncome || 0,
-          rewardIncome: incomeRes.data.reward || userRes.data.user.rewardIncome || 0
+          rewardIncome: incomeRes.data.rewardIncome || 0,
+
+          // 🔥 NAYA: Dashboard Summary ke liye (Jo KABHI minus nahi hoga)
+          totalDirectIncome: incomeRes.data.income?.totalDirectIncome || 0,
+          totalLevelIncome: incomeRes.data.income?.totalLevelIncome || 0,
+          totalRewardIncome: incomeRes.data.income?.totalRewardIncome || 0,
+          totalSpinIncome: incomeRes.data.income?.totalSpinIncome || 0,
         });
 
         // ✅ FIX: Yahan se ${user.userId} hata diya hai kyunki backend ab global data de raha hai
@@ -206,7 +214,7 @@ const Dashboard = () => {
 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
    <div className="bg-slate-800/40 p-1 rounded-xl h-full border border-slate-700/50">
       {/* Yahan update kiya hai: directIncome, levelIncome, rewardIncome etc. sahi se map kiye hain */}
-      <IncomeSummary 
+     <IncomeSummary 
         income={{
           directIncome: income.directIncome || 0,
           levelIncome: income.levelIncome || 0,

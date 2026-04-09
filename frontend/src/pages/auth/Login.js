@@ -152,9 +152,11 @@ const UserLogin = () => {
   <div className="max-w-7xl mx-auto flex items-center justify-between">
     
     {/* Brand */}
-    <span className="text-yellow-400 pr-2 font-extrabold text-2xl tracking-wide">
-      USDT BOOMERS
-    </span>
+  <img 
+  src="/usdtboomer.png" 
+  alt="USDT Boomers Logo"
+  className="h-16 pr-6 object-contain"
+/>
 
     {/* Right Buttons */}
     <div className="flex items-center">
@@ -184,7 +186,7 @@ const UserLogin = () => {
                 <img 
                   src="/usdtboomer.png" 
                   alt="USDT BOOMERS" 
-                  className="w-full h-full object-contain"
+                  className="w-28 h-28 object-contain"
                 />
             </div>
 

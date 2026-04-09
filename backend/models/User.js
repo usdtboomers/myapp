@@ -1,8 +1,5 @@
 const mongoose = require('mongoose');
 
-// 🎰 Spin tracking (Agar aapne alag se banaya hai toh yahan rahega)
-
-// 🧱 MAIN USER SCHEMA
 const userSchema = new mongoose.Schema({
   // 🔹 Identity
   userId: { type: Number, unique: true, required: true },
@@ -22,15 +19,14 @@ const userSchema = new mongoose.Schema({
   sponsorId: { type: Number, default: null },
   packageId: { type: mongoose.Schema.Types.ObjectId, ref: "Package" },
 
-    // Add this to your User model schema
-depositAddress: {
-  type: String,
-  unique: true,
-  sparse: true // Allows nulls if the user hasn't generated one yet
-},
+  depositAddress: {
+    type: String,
+    unique: true,
+    sparse: true 
+  },
+
   // 🔹 Wallet & Top-up
   walletBalance: { type: Number, default: 0 },
-
   isToppedUp: { type: Boolean, default: false },
   topUpAmount: { type: Number, default: 0 },
   topUpDate: { type: Date },
@@ -48,7 +44,7 @@ depositAddress: {
     }
   ],
 
-  // ✅ 📦 NEW PACKAGE SYSTEM (MAIN LOGIC)
+  // ✅ NEW PACKAGE SYSTEM
   packages: [
     {
       plan: {
@@ -58,32 +54,34 @@ depositAddress: {
       },
       amount: { type: Number, required: true },
       startDate: { type: Date, default: Date.now },
-      withdrawn: { type: Number, default: 0 } // kitna withdraw ho chuka
+      withdrawn: { type: Number, default: 0 } 
     }
   ],
 
-  // 🔥 YEH DONO FIELDS MISSING THE, JINKI WAJAH SE TOPUP MEIN ERROR AAYA THA 🔥
   purchasedPackages: { 
-    type: [Number], // Jaise [30, 60] save hoga yahan
+    type: [Number], 
     default: [] 
   },
- 
 
   // 💰 Incomes
   directIncome: { type: Number, default: 0 },
   levelIncome: { type: Number, default: 0 },
   
   // 🏆 Reward System (Manager Ranks)
- 
   managerRank: { type: Number, default: 0 },
   seniorManagerRank: { type: Number, default: 0 },
   executiveManagerRank: { type: Number, default: 0 },
 
-  claimedRewards: { type: [Number], default: [] }, // Jo reward le liya usko track karega (e.g., [1, 2])
-  rewardIncome: { type: Number, default: 0 }, // Isme paisa aayega
+   
 
+  // ✅ FIX: Changed from Number to String to support "M1", "SM2" etc.
+  claimedRewards: { type: [String], default: [] }, 
+  rewardIncome: { type: Number, default: 0 }, 
+  totalRewardIncome: { type: Number, default: 0 }, // ✅ ADD THIS LINE for lifetime total
+  totalDirectIncome: { type: Number, default: 0 }, // ✅ ADD THIS TOO (you use it in your topup route!)
   // 🔹 Withdrawal tracking (plan-wise)
   pendingWithdrawals: {
+    plan0: { type: Number, default: 0 }, // ✅ Added plan0
     plan1: { type: Number, default: 0 },
     plan2: { type: Number, default: 0 },
     plan3: { type: Number, default: 0 },
@@ -93,8 +91,6 @@ depositAddress: {
   },
 
   totalWithdrawn: { type: Number, default: 0 },
-  
-  // 🎰 Spins (Agar future me add karna ho)
   
   // 🔐 Wallet Security
   walletAddress: { type: String, default: '' },
@@ -107,8 +103,6 @@ depositAddress: {
     }
   ],
 
-  // 🔷 Binary System (Agar future me add karna ho)
-  
   // 🔹 Role & Status
   role: { type: String, enum: ['user', 'admin', 'promo'], default: 'user' },
   isBlocked: { type: Boolean, default: false },

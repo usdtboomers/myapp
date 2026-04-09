@@ -24,6 +24,7 @@ const generateUserId = async () => {
 };
 
 // ====================== REGISTER ======================
+// ====================== REGISTER ======================
 router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
   try {
     const { name, mobile, email, country, password, sponsorId } = req.body;
@@ -74,7 +75,48 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     });
 
     await user.save();
-    res.status(201).json({ message: 'User registered successfully.', userId });
+
+    // ==========================================
+    // ✅ NEW: WELCOME EMAIL SENDING LOGIC
+    // ==========================================
+    try {
+        await sendEmail({
+          email: user.email,
+          subject: '🎉 Welcome! Your Account Details',
+          message: `Congratulations ${user.name}! Your account has been created. User ID: ${user.userId}, Password: ${password}`,
+          html: `
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #2E86C1, #1A5276); padding: 30px; text-align: center;">
+                 <h1 style="color: white; margin: 0; font-size: 24px;">Welcome to the Platform! 🎉</h1>
+              </div>
+              <div style="padding: 30px; background-color: #f9fbfd;">
+                <p style="font-size: 16px;">Hello <strong>${user.name}</strong>,</p>
+                <p style="font-size: 16px;">Congratulations! Your registration was successful. Below are your login credentials. Please keep them safe and do not share them with anyone.</p>
+                
+                <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #2E86C1; margin: 25px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                  <p style="margin: 5px 0; font-size: 16px;">👤 <strong>User ID:</strong> <span style="color: #2E86C1; font-weight: bold; font-size: 18px;">${user.userId}</span></p>
+                  <p style="margin: 5px 0; font-size: 16px;">🔑 <strong>Login Password:</strong> <span style="font-family: monospace; background: #eee; padding: 2px 6px; border-radius: 4px;">${password}</span></p>
+                  <p style="margin: 5px 0; font-size: 16px;">🔒 <strong>Transaction Password:</strong> <span style="font-family: monospace; background: #eee; padding: 2px 6px; border-radius: 4px;">${password}</span></p>
+                </div>
+                
+                <p style="text-align: center; margin-top: 30px;">
+                  <a href="${FRONTEND_URL}/login" style="padding: 12px 30px; background: #2E86C1; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px; display: inline-block;">Login to your Dashboard</a>
+                </p>
+              </div>
+              <div style="background: #333; color: #ccc; text-align: center; padding: 15px; font-size: 12px;">
+                 <p style="margin: 0;">If you did not request this registration, please contact our support team immediately.</p>
+              </div>
+            </div>
+          `,
+        });
+        console.log(`Welcome email sent to ${user.email}`);
+    } catch (emailErr) {
+        // Agar email fail ho jaye, toh registration fail nahi karna chahiye
+        console.error('Registration successful, but failed to send welcome email:', emailErr);
+    }
+    // ==========================================
+
+    res.status(201).json({ message: 'User registered successfully. Details sent to email.', userId });
   } catch (err) {
     console.error('Register error:', err);
 
@@ -87,6 +129,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     res.status(500).json({ message: 'Server error. Please try again.' });
   }
 });
+
 
 // ====================== LOGIN ======================
 router.post('/login', async (req, res) => {

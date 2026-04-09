@@ -93,7 +93,7 @@ const SuccessModal = ({
         const isPlan = source && source.toLowerCase().startsWith("plan");
         
         // Title Set Karo
-        const titleText = isPlan ? "Withdrawal Successful" : "Instant Withdrawal";
+        const titleText = isPlan ? "Withdrawal Successful" : "Withdrawal Successful";
         
         // Label aur Value Set Karo
         const labelText = isPlan ? "Plan" : "Source";
@@ -112,7 +112,7 @@ const SuccessModal = ({
             {source && (
             <div>
   <p className="text-lg font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white to-yellow-300">
-    {labelText}:  <span className="text-yellow-400">{valueText}</span> Income
+    {labelText}:  <span className="text-yellow-400">{valueText}</span> 
   </p>
 </div>
 

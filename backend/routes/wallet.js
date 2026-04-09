@@ -116,49 +116,7 @@ const calculatePackageEarnings = (packages, planKey) => {
 // ✅ UPDATED ROUTE: Get User Wallet & Income Stats
 // (Isko file mein sabse NEECHE rakho)
 // ==========================================
-router.get("/:userId", async (req, res) => {
-  try {
-    const userId = Number(req.params.userId);
-
-    // 1. User validation
-    const user = await User.findOne({ userId });
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    // 2. Lifetime incomes nikalna (Helper function se)
-    const life = await getLifetimeIncomes(userId);
-
-    // 3. Current Plan Income calculation (Naye 10-minute logic ke basis par)
-    // Hum saare active plans ki current earnings ko sum karenge
-    const planKeys = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6"];
-    let currentTotalPlanIncome = 0;
-
-    planKeys.forEach(key => {
-      // calculatePlanEarnings function upar file mein defined hona chahiye
-currentTotalPlanIncome += calculatePackageEarnings(user.packages, key);
-    });
-
-    // 4. Final Response
-    res.json({
-      success: true,
-      walletBalance: user.walletBalance || 0,
-
-      // Dashboard pe dikhane ke liye real-time incomes
-      directIncome: life.direct || 0,
-      levelIncome:  life.level  || 0,
-      // Plan income ko realtime timer wale logic se bhej rahe hain
-      planIncome:   currentTotalPlanIncome || 0,
-      
-      // Additional data agar dashboard pe chahiye ho
-      totalLifetimeIncome: (life.direct + life.level + currentTotalPlanIncome + life.spin)
-    });
-
-  } catch (err) {
-    console.error("Fetch Wallet Error:", err);
-    res.status(500).json({ success: false, message: "Server error while fetching wallet" });
-  }
-});
+ 
  
   
 
@@ -766,20 +724,29 @@ router.get("/topup-history/:userId", async (req, res) => {
 // ✅ UPDATED ROUTE: Get User Wallet & Income Stats
 // (Isko file mein sabse NEECHE rakho)
 // ==========================================
+// ✅ FINAL ROUTE: Get User Wallet & Income Stats
+// (Isko file mein sabse NEECHE rakho)
+// ==========================================
 router.get("/:userId", async (req, res) => {
   try {
     const userId = Number(req.params.userId);
 
     // 1. User validation
-    const user = await User.findOne({ userId });
+    const user = await User.findOne({ userId }).select('-password -txnPassword -__v');
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // 2. Lifetime incomes nikalna (Helper function se jisme ab reward bhi hai)
+    // 🔥 FIX FOR OLD DATA: Agar database me totalRewardIncome nahi hai, toh add kar do
+    if (!user.totalRewardIncome && user.rewardIncome > 0) {
+        user.totalRewardIncome = user.rewardIncome;
+        await user.save(); // Data hamesha ke liye save ho jayega
+    }
+
+    // 2. Lifetime incomes nikalna (Helper function se jisme ab reward history bhi hai)
     const life = await getLifetimeIncomes(userId);
 
-    // 3. Current Plan Income calculation (Naye 10-minute logic ke basis par)
+    // 3. Current Plan Income calculation
     const planKeys = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6"];
     let currentTotalPlanIncome = 0;
 
@@ -787,25 +754,27 @@ router.get("/:userId", async (req, res) => {
       currentTotalPlanIncome += calculatePackageEarnings(user.packages, key);
     });
 
-    // 4. Final Response
+    // 4. Final Response (Frontend ko yahi format chahiye)
     res.json({
       success: true,
+      user: user, // Frontend ko Global Growth calculate karne ke liye user chahiye
       walletBalance: user.walletBalance || 0,
-
-      // Dashboard pe dikhane ke liye real-time incomes (Total based on History)
-      totalDirectIncome: life.direct || 0,
-      totalLevelIncome:  life.level  || 0,
-      totalSpinIncome:   life.spin   || 0,
-      totalRewardIncome: life.reward || 0, // ✅ Naya param jo UI catch karega
-      planIncome:        currentTotalPlanIncome || 0,
       
-      // ✅ Original current values (For withdrawals checks inside UI)
+      // ✅ DASHBOARD LIFETIME TOTALS (Kabhi minus nahi honge)
+      income: {
+         totalDirectIncome: life.direct || user.totalDirectIncome || user.directIncome || 0,
+         totalLevelIncome:  life.level  || user.levelIncome || 0,
+         totalSpinIncome:   life.spin   || user.spinIncome || 0,
+         totalRewardIncome: life.reward || user.totalRewardIncome || user.rewardIncome || 0,
+         planIncome:        currentTotalPlanIncome || 0
+      },
+
+      // ✅ WITHDRAWAL KE LIYE CURRENT BALANCE (Jo minus hota hai)
       directIncome: user.directIncome || 0,
       levelIncome:  user.levelIncome || 0,
       spinIncome:   user.spinIncome || 0,
       rewardIncome: user.rewardIncome || 0, 
 
-      // Additional data agar dashboard pe chahiye ho
       totalLifetimeIncome: (life.direct + life.level + currentTotalPlanIncome + life.spin + life.reward)
     });
 

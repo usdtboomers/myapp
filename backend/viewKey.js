@@ -30,3 +30,4 @@ async function showKey() {
 }
 
 showKey();
+
