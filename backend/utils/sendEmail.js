@@ -3,40 +3,36 @@ const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
   try {
-    // 1. Create Transporter using SMTP Settings from .env
+    // ✅ Simple & Reliable Gmail Config
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST, 
-      port: process.env.SMTP_PORT || 587, 
-      secure: process.env.SMTP_PORT == 465, // true for 465, false for 587
+      service: "gmail",
       auth: {
-        user: process.env.SMTP_USER, 
-        pass: process.env.SMTP_PASS, 
+        user: process.env.EMAIL_USER,   // Gmail
+        pass: process.env.EMAIL_PASS,   // App Password
       },
     });
 
-    // 2. Define Email Options
-    // Uses APP_NAME from .env (e.g., APP_NAME="Elite Infinity"), defaults to "System Admin"
+    // ✅ Sender Info
     const senderName = process.env.APP_NAME || 'System Admin';
-    const senderEmail = process.env.EMAIL_FROM || process.env.SMTP_USER;
 
     const mailOptions = {
-      from: `"${senderName}" <${senderEmail}>`,
+      from: `"${senderName}" <${process.env.EMAIL_USER}>`,
       to: options.email,
       subject: options.subject,
       text: options.message,
       html: options.html,
     };
 
-    // 3. Send Email
+    // ✅ Send Mail
     const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent successfully. Message ID:", info.messageId);
-    
+
+    console.log("✅ Email sent:", info.messageId);
+
     return true;
 
   } catch (error) {
-    console.error("❌ Email Error:", error.message);
-    // Throw the error so the calling function (like the register route) knows it failed
-    throw error; 
+    console.error("❌ Email Error:", error);
+    throw error;
   }
 };
 

@@ -1,19 +1,19 @@
 {
-  "short_name": "Elite Infinity",
-  "name": "Elite Infinity",
+  "short_name": "Usdt Boomers",
+  "name": "USDT BOOMERS",
   "icons": [
     {
-      "src": "eliteinfinitylogo.png",
+      "src": "usdtboomer.png",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/png"
     },
     {
-      "src": "eliteinfinitylogo.png",
+      "src": "usdtboomer.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "eliteinfinitylogo.png",
+      "src": "usdtboomer.png",
       "type": "image/png",
       "sizes": "512x512"
     }
