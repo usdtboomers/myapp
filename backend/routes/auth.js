@@ -28,12 +28,34 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
   try {
     const { name, mobile, email, country, password, sponsorId } = req.body;
 
+    // ✅ CHECK 1: Sponsor ID is mandatory
+    if (!sponsorId) {
+      return res.status(400).json({ message: 'Sponsor ID is compulsory to register.' });
+    }
+
+    // ✅ CHECK 2: Validate Sponsor ID exists in database
+    const sponsorExists = await User.findOne({ userId: parseInt(sponsorId) });
+    if (!sponsorExists) {
+        return res.status(400).json({ message: 'Invalid Sponsor ID. Sponsor not found in the system.' });
+    }
+
     if (!name || !mobile || !email || !country || !password) {
       return res.status(400).json({ message: 'All fields are required.' });
     }
 
     if (password === '123456') {
       return res.status(400).json({ message: 'Password is too weak. Please choose a stronger password.' });
+    }
+
+    // ✅ CHECK 3: Pre-check for duplicate Email or Mobile to give clear message
+    const existingUser = await User.findOne({ $or: [{ email: email }, { mobile: mobile }] });
+    if (existingUser) {
+        if (existingUser.mobile === mobile) {
+            return res.status(400).json({ message: 'This mobile number is already registered.' });
+        }
+        if (existingUser.email === email) {
+            return res.status(400).json({ message: 'This email is already registered.' });
+        }
     }
 
     const userId = await generateUserId();
@@ -47,7 +69,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
       country,
       password: password, // Plain text
       transactionPassword: password, // Plain text
-      sponsorId: sponsorId ? parseInt(sponsorId) : undefined,
+      sponsorId: parseInt(sponsorId),
       role: 'user',
     });
 
@@ -55,6 +77,13 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     res.status(201).json({ message: 'User registered successfully.', userId });
   } catch (err) {
     console.error('Register error:', err);
+
+    // 🛑 Duplicate Key Error Handler (Mongo E11000) fail-safe
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyValue)[0]; // Ye 'mobile' ya 'email' batayega
+      return res.status(400).json({ message: `The ${field} is already registered. Please use another ${field}.` });
+    }
+
     res.status(500).json({ message: 'Server error. Please try again.' });
   }
 });

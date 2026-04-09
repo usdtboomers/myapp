@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from 'api/axios';
+import api from '../../api/axios'; // Path apne hisaab se check kar lena
 import { format } from 'date-fns';
 
 const DepositHistory = () => {
@@ -14,13 +14,20 @@ const DepositHistory = () => {
         const user = JSON.parse(localStorage.getItem('user'));
         if (!user?.userId) {
           console.error('No user found in localStorage');
+          setLoading(false);
           return;
         }
 
-        const res = await api.get(
-`/wallet/deposit-history/${user.userId}`        );
-        setDeposits(res.data);
-        setFilteredDeposits(res.data); // initially all
+        // Wallet history fetch kar rahe hain jisme sab mix hota hai
+        const res = await api.get(`/wallet/wallet-history/${user.userId}`);
+        
+        const historyData = res.data.history || res.data.data || (Array.isArray(res.data) ? res.data : []);
+
+        // ✅ FIX: Filter lagaya taaki SIRF "deposit" type wale records hi dikhein
+        const onlyDeposits = historyData.filter(item => item.type && item.type.toLowerCase() === 'deposit');
+
+        setDeposits(onlyDeposits);
+        setFilteredDeposits(onlyDeposits);
       } catch (err) {
         console.error('Failed to fetch deposit history', err);
       } finally {
@@ -34,11 +41,13 @@ const DepositHistory = () => {
   useEffect(() => {
     const query = search.toLowerCase();
     const filtered = deposits.filter((d) => {
-      const amount = d.amount?.toString().toLowerCase() || '';
-      const date = d.createdAt
-        ? format(new Date(d.createdAt), 'dd-MM-yyyy HH:mm').toLowerCase()
+      const amount = d.amount?.toString().toLowerCase() || d.grossAmount?.toString().toLowerCase() || '';
+      const recordDate = d.createdAt || d.date; 
+      const dateStr = recordDate
+        ? format(new Date(recordDate), 'dd-MM-yyyy HH:mm').toLowerCase()
         : '';
-      return amount.includes(query) || date.includes(query);
+        
+      return amount.includes(query) || dateStr.includes(query);
     });
 
     setFilteredDeposits(filtered);
@@ -54,7 +63,7 @@ const DepositHistory = () => {
           placeholder="🔍 Search by amount or date..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full md:w-80 p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full md:w-80 p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-black"
         />
       </div>
 
@@ -76,22 +85,27 @@ const DepositHistory = () => {
             ) : filteredDeposits.length === 0 ? (
               <tr>
                 <td colSpan="2" className="p-5 text-center text-gray-500">
-                  No matching deposit records found.
+                  No deposit records found.
                 </td>
               </tr>
             ) : (
-              filteredDeposits.map((deposit) => (
-                <tr key={deposit._id} className="hover:bg-gray-50 transition">
-                  <td className="p-3 border font-medium text-green-600">
-                    ${Number(deposit.amount).toFixed(2)}
-                  </td>
-                  <td className="p-3 border text-gray-600">
-                    {deposit.createdAt
-                      ? format(new Date(deposit.createdAt), 'dd-MM-yyyy HH:mm')
-                      : 'N/A'}
-                  </td>
-                </tr>
-              ))
+              filteredDeposits.map((record, index) => {
+                const recordDate = record.createdAt || record.date;
+                const displayAmount = record.amount || record.grossAmount || 0;
+                
+                return (
+                  <tr key={record._id || index} className="hover:bg-gray-50 transition">
+                    <td className="p-3 border font-medium text-green-600">
+                      ${Number(displayAmount).toFixed(2)}
+                    </td>
+                    <td className="p-3 border text-gray-600">
+                      {recordDate
+                        ? format(new Date(recordDate), 'dd-MM-yyyy HH:mm')
+                        : 'N/A'}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

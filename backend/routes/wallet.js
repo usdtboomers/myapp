@@ -162,131 +162,9 @@ currentTotalPlanIncome += calculatePackageEarnings(user.packages, key);
  
   
 
-// ✅ BSC Settings (Mainnet)
-const BSC_RPC = "https://bsc-dataseed.binance.org/";
-const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // USDT BEP-20
-const SYSTEM_WALLET = process.env.PLATFORM_WALLET; // .env check karein
-
+ 
 // Provider Setup
-const provider = new ethers.JsonRpcProvider(BSC_RPC);
-// ----------------------------------------------------------------------
-// POST /api/wallet/web3-deposit
-// Auto-Verify Transaction Hash & Credit Wallet
-// ----------------------------------------------------------------------
-router.post("/web3-deposit", async (req, res) => {
-  try {
-    const { userId, txnHash, name } = req.body;
-
-    // 1. Validation
-    if (!txnHash) return res.status(400).json({ success: false, message: "Transaction hash is required" });
-    if (!SYSTEM_WALLET) return res.status(500).json({ success: false, message: "Admin wallet not configured" });
-
-    // 2. Check Duplicate (Agar pehle process ho chuka hai)
-    // Hum Transaction aur Deposit dono me check karenge
-    const existingTxn = await Transaction.findOne({ txnHash });
-    const existingDep = await Deposit.findOne({ txnHash });
-    
-    if (existingTxn || existingDep) {
-      return res.status(400).json({ success: false, message: "Transaction already processed." });
-    }
-
-    console.log(`Verifying Hash: ${txnHash} for User: ${userId}`);
-
-    // 3. Verify on Blockchain (BSC)
-    const receipt = await provider.getTransactionReceipt(txnHash);
-
-    if (!receipt) {
-      return res.status(400).json({ success: false, message: "Transaction not found. Wait a few seconds." });
-    }
-
-    if (receipt.status !== 1) {
-      return res.status(400).json({ success: false, message: "Transaction failed on blockchain." });
-    }
-
-    // 4. Check USDT Transfer Logs
-    const iface = new ethers.utils.Interface(["event Transfer(address indexed from, address indexed to, uint256 value)"]);
-    
-    let verifiedAmount = 0;
-    
-    for (const log of receipt.logs) {
-      if (log.address.toLowerCase() === USDT_ADDRESS.toLowerCase()) {
-        try {
-          const parsed = iface.parseLog(log);
-          // Check Receiver matches Our Admin Wallet
-          if (parsed.args.to.toLowerCase() === SYSTEM_WALLET.toLowerCase()) {
-            verifiedAmount = parseFloat(ethers.utils.formatUnits(parsed.args.value, 18));
-            break; 
-          }
-        } catch (e) {
-          continue; 
-        }
-      }
-    }
-
-    if (verifiedAmount <= 0) {
-      return res.status(400).json({ success: false, message: "No USDT transfer found to Admin Wallet." });
-    }
-
-    // 🔥🔥🔥 YE DO LINES YAHA CHIPKAO 🔥🔥🔥
-    if (verifiedAmount < 10) return res.status(400).json({ success: false, message: "Minimum deposit allowed is $10." });
-    if (verifiedAmount % 1 !== 0) return res.status(400).json({ success: false, message: "Decimals not allowed. Please deposit round figures only." });
-    // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-
-    // 5. Update User
-    const user = await User.findOne({ userId: Number(userId) });
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    // 6. Save Deposit
-    const deposit = new Deposit({
-      userId: Number(userId),
-      name: name || user.name,
-      amount: verifiedAmount,
-      txnHash,
-      method: "USDT BEP20 (Auto)",
-      status: "approved",
-    });
-    await deposit.save();
-
-    // 7. Save Transaction
-    const transaction = new Transaction({
-      userId: Number(userId),
-      type: "deposit",
-      amount: verifiedAmount,
-      grossAmount: verifiedAmount,
-      netAmount: verifiedAmount,
-      txnHash,
-      description: "Web3 Deposit Verified",
-      date: new Date(),
-      status: "completed",
-      plan: "plan1", 
-    });
-    await transaction.save();
-
-    // 8. Credit Wallet
-    user.walletBalance += verifiedAmount;
-
-    // Fix ROI Plans if missing
-    let updatedROI = false;
-    user.dailyROI.forEach(roi => {
-       if (!roi.plan) { roi.plan = "plan1"; updatedROI = true; }
-    });
-    if (updatedROI) await user.save();
-
-    await user.save();
-
-    console.log(`✅ Success: Credited ${verifiedAmount} USDT to User ${userId}`);
-
-    res.json({
-      success: true,
-      message: "Deposit verified! Balance updated.",
-      walletBalance: user.walletBalance,
-    });
-
-  } catch (err) {
-    console.error("Auto-Verify Error:", err);
-    res.status(500).json({ success: false, message: "Server error during verification." });
-  }
-});
+ 
 
  
 
@@ -297,6 +175,7 @@ router.post("/web3-deposit", async (req, res) => {
  
 // 🧾 GET /wallet/deposit-history/:userId
 
+// 🧾 GET /wallet/deposit-history/:userId
 router.get('/deposit-history/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -307,12 +186,14 @@ router.get('/deposit-history/:userId', async (req, res) => {
     }
 
     const deposits = await Deposit.find({ userId: numericUserId }).sort({ createdAt: -1 });
-    res.json(deposits);
+    res.json(deposits); // ✅ Backend directly array return kar raha hai []
   } catch (err) {
     console.error('Error fetching deposit history:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+
 // 🔹 Wallet Transfer
 const bcrypt = require('bcrypt');
 
