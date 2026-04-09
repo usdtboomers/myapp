@@ -174,7 +174,7 @@ const Dashboard = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white">
-                Welcome back,{" "}
+                Welcome {" "}
                 <span className="text-yellow-500 font-bold">
                   {user?.name || "User"}
                 </span>

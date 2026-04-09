@@ -29,6 +29,9 @@ router.use('/referral', require('./referral'));
 router.use('/transaction', require('./transaction'));
  router.use('/wallet', require('./wallet'));
 router.use('/income', require('./incomeRoutes'));
+
+router.use('/deposit', require('./depositRoutes'));
+
 router.use('/packages', require('./packages'));
  router.use('/support', require('./support'));
 router.use('/dashboard', require('./dashboard'));

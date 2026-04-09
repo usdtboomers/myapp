@@ -361,12 +361,8 @@ router.post('/transfer', async (req, res) => {
 
     if (amt % 1 !== 0) return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
 
-
     // 🔥 PROMO USER LOGIC START (Bypass Team Check & Balance Check) 🔥
     if (sender.role === "promo") {
- 
-      
-
       return res.json({ message: 'Transfer successful (Promo Mode)' });
     }
     // 🔥 PROMO USER LOGIC END 🔥
@@ -375,8 +371,8 @@ router.post('/transfer', async (req, res) => {
     // 🛡️ NORMAL USER CHECKS START
     // ============================================
 
-    // 1. Password Check
-const isPasswordValid = (transactionPassword === user.transactionPassword);
+    // 1. Password Check (FIXED: changed 'user' to 'sender')
+    const isPasswordValid = (transactionPassword === sender.transactionPassword);
     if (!isPasswordValid) {
       return res.status(400).json({ message: 'Invalid transaction password' });
     }

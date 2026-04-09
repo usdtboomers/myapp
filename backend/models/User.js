@@ -22,6 +22,12 @@ const userSchema = new mongoose.Schema({
   sponsorId: { type: Number, default: null },
   packageId: { type: mongoose.Schema.Types.ObjectId, ref: "Package" },
 
+    // Add this to your User model schema
+depositAddress: {
+  type: String,
+  unique: true,
+  sparse: true // Allows nulls if the user hasn't generated one yet
+},
   // 🔹 Wallet & Top-up
   walletBalance: { type: Number, default: 0 },
 
