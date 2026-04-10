@@ -410,7 +410,7 @@ const handleSaveProfile = async () => {
   }
 
   return (
-    <div style={styles.container}>
+   <div style={styles.container}>
       
       {/* Back Button */}
       <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
@@ -445,27 +445,48 @@ const handleSaveProfile = async () => {
                <User size={20} color="#eab308" /> Personal Details
             </div>
             
+            {/* NAME (Non-editable) */}
             <div style={styles.inputGroup}>
                <label style={styles.label}>Full Name</label>
-               <div style={styles.inputWrapper}>
+               <div style={{...styles.inputWrapper, opacity: 0.6, backgroundColor: '#0f172a'}}>
                   <User size={16} style={styles.icon} />
-                  <input name="name" value={formData.name} onChange={handleChange} style={styles.input} />
+                  <input 
+                    name="name" 
+                    value={formData.name} 
+                    readOnly 
+                    disabled
+                    style={{...styles.input, cursor: 'not-allowed', color: '#94a3b8'}} 
+                  />
                </div>
             </div>
 
-            <div style={styles.inputGroup}>
+            {/* EMAIL (Non-editable) */}
+            <div className='text-white' style={styles.inputGroup}>
                <label style={styles.label}>Email</label>
-               <div style={styles.inputWrapper}>
+               <div style={{...styles.inputWrapper, opacity: 0.6, backgroundColor: '#0f172a'}}>
                   <Mail size={16} style={styles.icon} />
-                  <input name="email" value={formData.email} onChange={handleChange} style={styles.input} />
+                  <input 
+                    name="email" 
+                    value={formData.email} 
+                    readOnly 
+                    disabled
+                    style={{...styles.input, cursor: 'not-allowed', color: '#94a3b8'}} 
+                  />
                </div>
             </div>
 
+            {/* MOBILE (Non-editable) */}
             <div style={styles.inputGroup}>
                <label style={styles.label}>Mobile</label>
-               <div style={styles.inputWrapper}>
+               <div style={{...styles.inputWrapper, opacity: 0.6, backgroundColor: '#0f172a'}}>
                   <Smartphone size={16} style={styles.icon} />
-                  <input name="mobile" value={formData.mobile} onChange={handleChange} style={styles.input} />
+                  <input 
+                    name="mobile" 
+                    value={formData.mobile} 
+                    readOnly 
+                    disabled
+                    style={{...styles.input, cursor: 'not-allowed', color: '#94a3b8'}} 
+                  />
                </div>
             </div>
 

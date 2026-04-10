@@ -13,7 +13,7 @@ import Modals from "../../components/modals/Modals";
 import SuccessModal from "../../components/modals/SuccessModal";
 import TopUpModalWithInput from "../../components/modals/TopUpModalWithInput";
 import CreditToWalletModal from "../../components/modals/CreditToWalletModal";
- import TopNav from "../../components/navbar/TopNav";
+import TopNav from "../../components/navbar/TopNav";
  
 const Dashboard = () => {
   const { user, token, setUser, logout } = useAuth();
