@@ -3,17 +3,17 @@ const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
   try {
-    // ✅ Simple & Reliable Gmail Config
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,   // Gmail
-        pass: process.env.EMAIL_PASS,   // App Password
-      },
-    });
+   const transporter = nodemailer.createTransport({
+  host: "mail.privateemail.com",   // ✅ Namecheap SMTP
+  port: 465,                       // ✅ SSL Port
+  secure: true,                    // ✅ true for 465
+  auth: {
+    user: process.env.EMAIL_USER,  // e.g. noreply@yourdomain.com
+    pass: process.env.EMAIL_PASS,  // email password (NOT app password)
+  },
+});
 
-    // ✅ Sender Info
-    const senderName = process.env.APP_NAME || 'System Admin';
+    const senderName = process.env.APP_NAME || 'USDBoomer';
 
     const mailOptions = {
       from: `"${senderName}" <${process.env.EMAIL_USER}>`,
@@ -23,7 +23,6 @@ const sendEmail = async (options) => {
       html: options.html,
     };
 
-    // ✅ Send Mail
     const info = await transporter.sendMail(mailOptions);
 
     console.log("✅ Email sent:", info.messageId);

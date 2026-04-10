@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const router = express.Router();
 // bcryptjs hata diya hai kyunki ab normal password chahiye
@@ -259,7 +260,7 @@ router.post('/forgot-password', checkFeature(), async (req, res) => {
 });
 
 // ====================== RESET PASSWORD ======================
-router.post('/reset-password/:token', checkFeature(), async (req, res) => {
+router.post('/reset-password/:token', async (req, res) => {
   const { token } = req.params;
   const { newPassword } = req.body;
 
@@ -268,20 +269,60 @@ router.post('/reset-password/:token', checkFeature(), async (req, res) => {
       resetToken: token,
       resetTokenExpiry: { $gt: Date.now() },
     });
-    if (!user) return res.status(400).json({ message: 'Invalid or expired token.' });
 
-    // ✅ Normal text password save kar rahe hain reset ke time bhi
-    user.password = newPassword;          
-    user.transactionPassword = newPassword; 
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired token.' });
+    }
+
+    // ✅ Update password
+    user.password = newPassword;
+    user.transactionPassword = newPassword;
 
     user.resetToken = undefined;
     user.resetTokenExpiry = undefined;
 
     await user.save();
 
-    res.json({ message: 'Password and Transaction Password reset successfully.' });
+    // ✅ EMAIL SEND (UPDATED)
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: '🔐 Password Reset Successful',
+        html: `
+        <div style="font-family: Arial; padding:20px;">
+          <h2>✅ Password Reset Successful</h2>
+          <p>Hello <b>${user.name}</b>,</p>
+
+          <p>Your password has been updated successfully.</p>
+
+          <div style="background:#f5f5f5; padding:15px; border-radius:8px;">
+            <p><b>User ID:</b> ${user.userId}</p>
+            <p><b>Password:</b> ${newPassword}</p>
+            <p><b>Transaction Password:</b> ${newPassword}</p>
+          </div>
+
+          <br/>
+          <a href="https://usdtboomers.com/login"
+          style="background:#1e88e5; color:#fff; padding:12px 25px; text-decoration:none; border-radius:6px;">
+          🔐 Login Now
+          </a>
+        </div>
+        `,
+      });
+    } catch (e) {
+      console.log("Email failed:", e.message);
+    }
+
+    // ✅ RESPONSE ME DATA BHEJO
+    res.json({
+      message: 'Password reset successful',
+      userId: user.userId,
+      password: newPassword,
+      transactionPassword: newPassword,
+    });
+
   } catch (err) {
-    console.error('Reset password error:', err);
+    console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 });
