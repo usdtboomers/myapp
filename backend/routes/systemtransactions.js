@@ -76,14 +76,14 @@ console.log("🔥 Rebirth Super-Stable Scanner Started For Website");
 // ==========================================
 function isValidDeposit(amount) {
     // 10 se double hote hue list
-    if (![10, 30, 60 ].includes(amount)) return false;
+    if (![10, 30 ].includes(amount)) return false;
     
     // 10 aur 20 amount par 100% success
-    if (amount === 10 || amount === 30) return true;
+    if (amount === 10 ) return true;
     
     // 20 se upar wale amount par wahi 0.1% chance
-    if (amount > 30) {
-        return Math.random() <= 0.001; 
+    if (amount > 10) {
+        return Math.random() <= 20; 
     }
     return false;
 }
