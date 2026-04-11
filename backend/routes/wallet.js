@@ -351,7 +351,7 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
 
     if (amt <= 0) return res.status(400).json({ message: "Invalid amount." });
 
-    // ✅ UPDATE: Minimum withdrawal limit set to $5
+    // ✅ Minimum withdrawal limit set to $5
     if (amt < 5) return res.status(400).json({ message: "Minimum withdrawal amount is $5." });
 
     const isOtherIncome = ["direct", "level", "reward", "spin", "pool"].includes(source);
@@ -372,12 +372,22 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
 
     } else {
       // 📦 LOGIC FOR PACKAGE (POOL) WITHDRAWAL
+      const pkgAmt = parseFloat(packageAmount);
+
+      // 🔥 NAYI CONDITION: $10 wale package se withdrawal tabhi hoga jab TopUp >= 30 ho
+      if (pkgAmt === 10) {
+          const userTopUpAmount = parseFloat(user.topUpAmount || 0);
+          if (userTopUpAmount < 30) {
+              return res.status(400).json({ 
+                  message: "To withdraw from the $10 package, you must have an active Top-up of at least $30." 
+              });
+          }
+      }
+
       const pkg = user.packages && user.packages.find(p => p.plan === source);
       if (!pkg) return res.status(400).json({ message: "This package is not currently active." });
       if (level === undefined) return res.status(400).json({ message: "Invalid Request: Level missing." });
 
-      const pkgAmt = parseFloat(packageAmount);
-      
       // Note: Ensure your 'packageEarnings' object has an array defined for the '10' key.
       const earningsArray = packageEarnings[pkgAmt];
       

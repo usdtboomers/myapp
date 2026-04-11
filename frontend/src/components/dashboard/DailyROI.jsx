@@ -100,10 +100,16 @@ export default function Plan() {
             <div key={pkg.amount} className="w-full">
 
               {/* ✅ PACKAGE HEADER LINE */}
-              <div className="border border-white px-5 py-4 rounded-lg mb-4 md:mb-6 flex items-center">
+            {/* ✅ PACKAGE HEADER LINE */}
+              <div className="border border-white/20 bg-white/5 px-5 py-4 rounded-xl mb-4 md:mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
                 <h2 className="text-lg md:text-xl font-black uppercase tracking-widest text-white">
-                  ${pkg.amount} Package
+                  ${pkg.amount} Package 
                 </h2>
+                
+                {/* Dynamically showing double amount */}
+                <p className="text-xs md:text-sm font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 inline-block w-fit">
+                  💰 Withdraw ${pkg.amount * 2} in 5 Installments
+                </p>
               </div>
 
               {/* ✅ TABLE BOX */}

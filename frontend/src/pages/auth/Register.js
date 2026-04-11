@@ -432,7 +432,7 @@ onChange={(e) => {
       </div>
 
       {/* Success Modal (Txn Password Removed from Display) */}
-      {showPopup && registeredData && (
+    {showPopup && registeredData && (
         <div style={modalOverlay}>
           {showConfetti && (
             <Confetti width={window.innerWidth} height={window.innerHeight} numberOfPieces={400} gravity={0.18} recycle style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }} />
@@ -471,15 +471,32 @@ onChange={(e) => {
               </p>
             </div>
 
+            {/* 🔥 NAYA ADD KIYA GAYA OFFER BANNER 🔥 */}
+            <div style={{
+              background: 'linear-gradient(45deg, rgba(234, 179, 8, 0.1), rgba(234, 179, 8, 0.3))',
+              border: '1px solid #eab308',
+              borderRadius: '8px',
+              padding: '10px',
+              marginBottom: '15px',
+              textAlign: 'center',
+              animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+            }}>
+              <h3 style={{ color: '#eab308', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase' }}>
+                🎁 Limited Time Mega Offer!
+              </h3>
+              <p style={{ color: '#fff', fontSize: '12px', margin: 0, lineHeight: '1.4' }}>
+                Login now and activate your <strong style={{color: '#4ade80'}}>$10 Package absolutely FREE!</strong> Offer valid only till <strong style={{color: '#facc15'}}>30th April</strong>. Don't miss out! 🚀
+              </p>
+            </div>
+
             <p className="font-bold" style={{ color: '#ff4d4d', fontSize: 14, marginBottom: 15 }}>
               📸 Please take a screenshot of this information for your records.
             </p>
             
-            <button onClick={handlePopupClose} style={{ ...primaryBtn, width: '100%' }}>OK</button>
+            <button onClick={handlePopupClose} style={{ ...primaryBtn, width: '100%' }}>LOGIN TO CLAIM FREE $10</button>
           </div>
         </div>
       )}
-
     </div>
   );
 }

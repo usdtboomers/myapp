@@ -55,7 +55,7 @@ const QuickActions = ({
     },
     
     { 
-      label: "Create Wallet", 
+      label: "Withdraw to Wallet", 
       icon: CreditCard, 
       onClick: onCreditToWalletClick, 
       color: "text-cyan-400",

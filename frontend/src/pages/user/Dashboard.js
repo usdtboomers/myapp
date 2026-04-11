@@ -14,7 +14,10 @@ import SuccessModal from "../../components/modals/SuccessModal";
 import TopUpModalWithInput from "../../components/modals/TopUpModalWithInput";
 import CreditToWalletModal from "../../components/modals/CreditToWalletModal";
 import TopNav from "../../components/navbar/TopNav";
- 
+// ✅ 1. ADDED: PreLaunchPromo Import Kiya
+import PreLaunchPromo from '../../components/PreLaunchPromo';
+
+
 const Dashboard = () => {
   const { user, token, setUser, logout } = useAuth();
   const navigate = useNavigate(); 
@@ -47,9 +50,6 @@ const Dashboard = () => {
   const [showWalletReminder, setShowWalletReminder] = useState(false);
   const hasFetched = useRef(false);
 
-  // Fetch user + income
- // Fetch user + income
- // Baki state same rahengi...
   const [recentTransactions, setRecentTransactions] = useState({ deposits: [], withdrawals: [] });
 
   const fetchUserData = async () => {
@@ -62,24 +62,20 @@ const Dashboard = () => {
         setShowWalletReminder(!userRes.data.user.walletAddress);
 
         // 2. Wallet/Income fetch karna
-       // 2. Wallet/Income fetch karna
         const incomeRes = await api.get(`/wallet/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
         setIncome({
-          // Withdrawal aur Modals ke liye (Jo minus hota hai)
           directIncome: incomeRes.data.directIncome || 0,
           levelIncome: incomeRes.data.levelIncome || 0,
           dailyIncome: incomeRes.data.planIncome || 0,
           spinIncome: incomeRes.data.spinIncome || 0,
           rewardIncome: incomeRes.data.rewardIncome || 0,
 
-          // 🔥 NAYA: Dashboard Summary ke liye (Jo KABHI minus nahi hoga)
           totalDirectIncome: incomeRes.data.income?.totalDirectIncome || 0,
           totalLevelIncome: incomeRes.data.income?.totalLevelIncome || 0,
           totalRewardIncome: incomeRes.data.income?.totalRewardIncome || 0,
           totalSpinIncome: incomeRes.data.income?.totalSpinIncome || 0,
         });
 
-        // ✅ FIX: Yahan se ${user.userId} hata diya hai kyunki backend ab global data de raha hai
         const recentDepRes = await api.get(`/transactions/deposits/recent`, { 
             headers: { Authorization: `Bearer ${token}` } 
         });
@@ -95,7 +91,6 @@ const Dashboard = () => {
 
     } catch (err) {
         console.error("Failed to fetch user data:", err);
-        // Agar 404 aa raha hai toh sirf dashboard ka ye hissa khali dikhega, crash nahi hoga
         if (err?.response?.status === 401) logout();
     } finally {
         setLoading(false);
@@ -146,17 +141,15 @@ const Dashboard = () => {
   const referralLink = `${window.location.origin}/register?ref=${user.userId}`;
 
   return (
-    // ADDED: bg-slate-950 ye dark color dega jisse white text properly dikhega
     <div className="relative min-h-screen bg-slate-950 text-slate-200 overflow-x-hidden font-sans selection:bg-yellow-500/30">
       
       {/* --- PREMIUM STYLES --- */}
       <style>{`
         .bg-pattern {
-            background-color: #020617; /* Very dark slate color for base */
+            background-color: #020617; 
             background-image: radial-gradient(#334155 1px, transparent 1px);
             background-size: 24px 24px;
         }
-        /* Custom Scrollbar for dashboard */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #020617; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -165,6 +158,9 @@ const Dashboard = () => {
 
       {loading && <SpinnerOverlay />}
       
+      {/* ✅ 2. ADDED: Free Topup Popup (Agar ID inactive hai toh ye aage aayega) */}
+      <PreLaunchPromo />
+
       {/* TopNav - Fixed at top */}
       <TopNav onHamburgerClick={() => setShowSidebar(true)} />
 
@@ -210,115 +206,106 @@ const Dashboard = () => {
             </section>
 
             {/* Income Summary & Binary */}
-          {/* Income Summary & Binary */}
-<div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-   <div className="bg-slate-800/40 p-1 rounded-xl h-full border border-slate-700/50">
-      {/* Yahan update kiya hai: directIncome, levelIncome, rewardIncome etc. sahi se map kiye hain */}
-   <IncomeSummary 
-        income={income} 
-        user={user} 
-      />
-      
-   </div>
-   <div className="space-y-6">
-      <ReferralLink link={referralLink} />
-   </div>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+               <div className="bg-slate-800/40 p-1 rounded-xl h-full border border-slate-700/50">
+               <IncomeSummary 
+                   income={income} 
+                   user={user} 
+                 />
+               </div>
+               <div className="space-y-6">
+                  <ReferralLink link={referralLink} />
+               </div>
 
-   {/* --- NAYA SECTION: RECENT DEPOSITS & WITHDRAWALS PREVIEW --- */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              {/* Deposits Preview */}
-              <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <span className="w-1 h-5 bg-green-500 rounded-full"></span> Recent Deposits
-                  </h3>
-                  <button 
-                    onClick={() => navigate('/system-deposit-history')}
-                    className="text-sm text-yellow-500 hover:text-yellow-400 underline"
-                  >
-                    View All
-                  </button>
-                </div>
-                {/* Check for undefined or empty array safely */}
-                {!recentTransactions?.deposits || recentTransactions.deposits.length === 0 ? (
-                  <p className="text-white text-sm">Waiting for live deposits...</p>
-                ) : (
-                  <ul className="space-y-3">
-                    {/* .slice(0, 5) ensures only top 5 are shown here */}
-                    {recentTransactions.deposits.slice(0, 5).map((dep, i) => (
-                      <li key={i} className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2 hover:bg-slate-800/30 p-1 rounded transition-colors">
-                        <div className="flex flex-col">
-                          <span className="text-white">
-                            {new Date(dep.createdAt).toLocaleDateString()} 
-                            <span className="text-slate-500 text-xs ml-2">
-                              {new Date(dep.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+               {/* RECENT DEPOSITS & WITHDRAWALS PREVIEW */}
+               <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
+                  {/* Deposits Preview */}
+                  <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <span className="w-1 h-5 bg-green-500 rounded-full"></span> Recent Deposits
+                      </h3>
+                      <button 
+                        onClick={() => navigate('/system-deposit-history')}
+                        className="text-sm text-yellow-500 hover:text-yellow-400 underline"
+                      >
+                        View All
+                      </button>
+                    </div>
+                    {!recentTransactions?.deposits || recentTransactions.deposits.length === 0 ? (
+                      <p className="text-white text-sm">Waiting for live deposits...</p>
+                    ) : (
+                      <ul className="space-y-3">
+                        {recentTransactions.deposits.slice(0, 5).map((dep, i) => (
+                          <li key={i} className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2 hover:bg-slate-800/30 p-1 rounded transition-colors">
+                            <div className="flex flex-col">
+                              <span className="text-white">
+                                {new Date(dep.createdAt).toLocaleDateString()} 
+                                <span className="text-slate-500 text-xs ml-2">
+                                  {new Date(dep.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </span>
+                              </span>
+                              {dep.hash && (
+                                <span className="text-blue-400/80 text-xs font-mono mt-0.5">
+                                  {dep.hash.substring(0, 6)}...{dep.hash.substring(dep.hash.length - 4)}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-green-400 font-bold bg-green-500/10 px-3 py-1 rounded">
+                              + ${dep.amount}
                             </span>
-                          </span>
-                          {/* Hash display to make it look professional */}
-                          {dep.hash && (
-                            <span className="text-blue-400/80 text-xs font-mono mt-0.5">
-                              {dep.hash.substring(0, 6)}...{dep.hash.substring(dep.hash.length - 4)}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-green-400 font-bold bg-green-500/10 px-3 py-1 rounded">
-                          + ${dep.amount}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
 
-              {/* Withdrawals Preview */}
-              <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <span className="w-1 h-5 bg-red-500 rounded-full"></span> Recent Withdrawals
-                  </h3>
-                  <button 
-                    onClick={() => navigate('/system-withdrawal-history')}
-                    className="text-sm text-yellow-500 hover:text-yellow-400 underline"
-                  >
-                    View All
-                  </button>
-                </div>
-                {!recentTransactions?.withdrawals || recentTransactions.withdrawals.length === 0 ? (
-                  <p className="text-gray-400 text-sm">Waiting for live withdrawals...</p>
-                ) : (
-                  <ul className="space-y-3">
-                    {/* .slice(0, 5) ensures only top 5 are shown here */}
-                    {recentTransactions.withdrawals.slice(0, 5).map((withd, i) => (
-                      <li key={i} className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2 hover:bg-slate-800/30 p-1 rounded transition-colors">
-                        <div className="flex flex-col">
-                          <span className="text-white">
-                            {new Date(withd.createdAt).toLocaleDateString()} 
-                            <span className="text-slate-500 text-xs ml-2">
-                              {new Date(withd.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  {/* Withdrawals Preview */}
+                  <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <span className="w-1 h-5 bg-red-500 rounded-full"></span> Recent Withdrawals
+                      </h3>
+                      <button 
+                        onClick={() => navigate('/system-withdrawal-history')}
+                        className="text-sm text-yellow-500 hover:text-yellow-400 underline"
+                      >
+                        View All
+                      </button>
+                    </div>
+                    {!recentTransactions?.withdrawals || recentTransactions.withdrawals.length === 0 ? (
+                      <p className="text-gray-400 text-sm">Waiting for live withdrawals...</p>
+                    ) : (
+                      <ul className="space-y-3">
+                        {recentTransactions.withdrawals.slice(0, 5).map((withd, i) => (
+                          <li key={i} className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2 hover:bg-slate-800/30 p-1 rounded transition-colors">
+                            <div className="flex flex-col">
+                              <span className="text-white">
+                                {new Date(withd.createdAt).toLocaleDateString()} 
+                                <span className="text-slate-500 text-xs ml-2">
+                                  {new Date(withd.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </span>
+                              </span>
+                              {withd.hash && (
+                                <span className="text-blue-400/80 text-xs font-mono mt-0.5">
+                                  {withd.hash.substring(0, 6)}...{withd.hash.substring(withd.hash.length - 4)}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-red-400 font-bold bg-red-500/10 px-3 py-1 rounded">
+                              - ${withd.amount}
                             </span>
-                          </span>
-                          {withd.hash && (
-                            <span className="text-blue-400/80 text-xs font-mono mt-0.5">
-                              {withd.hash.substring(0, 6)}...{withd.hash.substring(withd.hash.length - 4)}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-red-400 font-bold bg-red-500/10 px-3 py-1 rounded">
-                          - ${withd.amount}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
 
-            </section>
-
-</div>
+               </section>
+            </div>
 
             <section>
-               
                 <DailyROIPlan dailyROI={user.dailyROI || []} onClaim={claimDailyROI} />
             </section>
            
@@ -349,26 +336,19 @@ const Dashboard = () => {
             />
           )}
 
-          
-
           {/* Credit to Wallet Modal */}
-{modalState.showCreditToWallet && (
-  <CreditToWalletModal
-    userId={user.userId}
-    balances={{
-      direct: income.directIncome,
-      level: income.levelIncome,
-      reward: income.rewardIncome // ✅ Reward add kar diya
-    }}
-    onClose={() => setModalState((prev) => ({ ...prev, showCreditToWallet: false }))}
-    onSuccess={(amount) => handleTopUpSuccess(amount, user.userId)}
-  />
-)}
-
-           
-          
-
-         
+          {modalState.showCreditToWallet && (
+            <CreditToWalletModal
+              userId={user.userId}
+              balances={{
+                direct: income.directIncome,
+                level: income.levelIncome,
+                reward: income.rewardIncome 
+              }}
+              onClose={() => setModalState((prev) => ({ ...prev, showCreditToWallet: false }))}
+              onSuccess={(amount) => handleTopUpSuccess(amount, user.userId)}
+            />
+          )}
 
         </main>
       </div>

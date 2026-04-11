@@ -222,7 +222,8 @@ router.put(
   async (req, res) => {
     try {
       const targetUserId = Number(req.params.userId);
-      const { amount, transactionPassword } = req.body;
+      // 🔥 NAYA: isPromoFree frontend se accept kar rahe hain
+      const { amount, transactionPassword, isPromoFree } = req.body;
 
       // 🔹 1. User & Password Check
       const currentUser = await User.findOne({ userId: req.user.userId });
@@ -250,6 +251,7 @@ router.put(
       let isAuthorized = isSelf || isPromo; 
 
       if (!isAuthorized) {
+        // Ye function aapke paas upar define hona chahiye (jaise aapke purane code me tha)
         isAuthorized = await isUserInDownline(currentUser.userId, targetUserId);
       }
 
@@ -258,14 +260,12 @@ router.put(
       }
 
       // 🔹 3. Package Validation & STEP-BY-STEP CHECK
-      // 🔥 UPDATE: Added 10 to the packages array
       const allPackages = [10, 30, 60, 120, 240, 480, 960];
       
       if (!allPackages.includes(amount)) {
         return res.status(400).json({ message: "Invalid package amount." });
       }
 
-      // 🌟 YAHAN DALNA THA YE CODE: Accurate bought packages check
       const boughtSet = new Set();
       if (targetUser.packages) {
         targetUser.packages.forEach(p => boughtSet.add(Number(p.amount)));
@@ -290,7 +290,7 @@ router.put(
         });
       }
 
-      // Step-by-Step Condition Check (Using the safe boughtSet)
+      // Step-by-Step Condition Check
       if (amount > 10) {
         const currentIndex = allPackages.indexOf(amount);
         const previousPackageAmount = allPackages[currentIndex - 1];
@@ -302,12 +302,18 @@ router.put(
         }
       }
 
-      // 🔹 4. Wallet Balance Check & Deduction
-      if (currentUser.walletBalance < amount) {
-        return res.status(400).json({ message: 'Insufficient balance in wallet' });
+      // =======================================================
+      // 🔹 4. Wallet Balance Check & Deduction (MODIFIED FOR FREE $10)
+      // =======================================================
+      // Agar frontend ne isPromoFree=true bheja hai AUR amount sirf 10 hai, toh paise mat kaato
+      if (!(isPromoFree && amount === 10)) {
+        // Normal topup - Paisa kaato
+        if (currentUser.walletBalance < amount) {
+          return res.status(400).json({ message: 'Insufficient balance in wallet' });
+        }
+        currentUser.walletBalance -= amount;
+        await currentUser.save();
       }
-      currentUser.walletBalance -= amount;
-      await currentUser.save();
 
       // 🔹 5. Plan Calculation
       const packageToPlan = {
@@ -319,6 +325,11 @@ router.put(
       const createTransaction = async (data) => Transaction.create({ ...data, date: new Date() });
 
       // 🔹 6. Record Topup Transactions
+      let txDescription = `Self top-up of $${amount}`;
+      if (isPromoFree && amount === 10) {
+          txDescription = `FREE Promo Activation of $10 Package`;
+      }
+
       if (isSelf) {
         await createTransaction({
           userId: targetUser.userId,
@@ -327,7 +338,7 @@ router.put(
           amount,
           fromUserId: currentUser.userId,
           toUserId: targetUser.userId,
-          description: `Self top-up of $${amount}`,
+          description: txDescription,
           package: amount,
           plan: assignedPlan,
         });
@@ -356,7 +367,7 @@ router.put(
         });
       }
 
-      // Update TopUp Log
+      // Update TopUp Log (Agar TopUp model hai toh)
       if (typeof TopUp !== 'undefined') {
         await TopUp.create({
             funderUserId: currentUser.userId,
@@ -372,7 +383,6 @@ router.put(
       targetUser.topUpDate = new Date();
       targetUser.isToppedUp = true;
 
-      // Update packages array
       if (!targetUser.packages) targetUser.packages = [];
       targetUser.packages.push({
         plan: assignedPlan,
@@ -381,7 +391,6 @@ router.put(
         withdrawn: 0
       });
 
-      // Update purchasedPackages list (Ye important hai step-by-step ke liye)
       if (!targetUser.purchasedPackages) targetUser.purchasedPackages = [];
       targetUser.purchasedPackages.push(amount);
 
@@ -390,18 +399,13 @@ router.put(
       // ==========================================
       // 🔹 7.5 🔥 DIRECT INCOME LOGIC (10%) 🔥
       // ==========================================
-      if (targetUser.sponsorId) {
+      // ✅ NAYI CONDITION: Agar amount 10 hai, toh direct income MAT do.
+      if (targetUser.sponsorId && amount !== 10) {
         const sponsor = await User.findOne({ userId: targetUser.sponsorId });
         if (sponsor) {
-          const directIncomeAmount = amount * 0.10; // 10% calculate kiya
+          const directIncomeAmount = amount * 0.10; 
           
-          // ✅ UPDATE: Main wallet me add nahi kar rahe hain.
-          // sponsor.walletBalance += directIncomeAmount; <-- HATA DIYA
-          
-          // ✅ UPDATE: Seedha Direct Income ke khate me daal rahe hain
           sponsor.directIncome = (sponsor.directIncome || 0) + directIncomeAmount; 
-          
-          // Lifetime records ke liye total me bhi jod diya (taaki dashboard summary se kam na ho withdrawal ke baad)
           sponsor.totalDirectIncome = (sponsor.totalDirectIncome || 0) + directIncomeAmount;
           sponsor.totalIncome = (sponsor.totalIncome || 0) + directIncomeAmount; 
           
@@ -409,7 +413,7 @@ router.put(
 
           await createTransaction({
             userId: sponsor.userId,
-            type: "direct_income", // Transaction type
+            type: "direct_income", 
             source: "topup",
             amount: directIncomeAmount,
             fromUserId: targetUser.userId,
@@ -421,21 +425,24 @@ router.put(
 
       // 🔹 8. 🔥 MANAGER USDT REWARD LOGIC 🔥
       if (amount >= 30 && targetUser.sponsorId) {
-          setTimeout(async () => {
-              try {
-                  let sponsorId = targetUser.sponsorId;
-                  let levelsChecked = 0;
-                  while (sponsorId && levelsChecked < 15) {
-                      const sponsor = await User.findOne({ userId: sponsorId });
-                      if (!sponsor) break;
-                      await checkAndAwardManagerReward(sponsor.userId);
-                      sponsorId = sponsor.sponsorId; 
-                      levelsChecked++;
-                  }
-              } catch (error) {
-                  console.error("Manager Reward Error:", error);
-              }
-          }, 0);
+        setTimeout(async () => {
+            try {
+                let sponsorId = targetUser.sponsorId;
+                let levelsChecked = 0;
+                while (sponsorId && levelsChecked < 15) {
+                    const sponsor = await User.findOne({ userId: sponsorId });
+                    if (!sponsor) break;
+                    // Ye checkAndAwardManagerReward wala function bahar define hona chahiye
+                    if (typeof checkAndAwardManagerReward === 'function') {
+                       await checkAndAwardManagerReward(sponsor.userId);
+                    }
+                    sponsorId = sponsor.sponsorId; 
+                    levelsChecked++;
+                }
+            } catch (error) {
+                console.error("Manager Reward Error:", error);
+            }
+        }, 0);
       }
 
       // 🔹 9. DONE!

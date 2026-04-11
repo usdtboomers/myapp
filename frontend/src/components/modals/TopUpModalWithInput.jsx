@@ -6,7 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import { CheckCircle, ShieldCheck } from "lucide-react"; 
 
 // --- SIMPLE CONFIGURATION (10 package added) ---
-const packages = [10, 30, 60, 120, 240, 480, 960];
+const packages = [ 30, 60, 120, 240, 480, 960];
 
 const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   // --- STATE & AUTH ---
@@ -15,7 +15,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   const [userInfo, setUserInfo] = useState(null);
   
   // Default selected amount changed to 10
-  const [selectedAmount, setSelectedAmount] = useState(10);
+  const [selectedAmount, setSelectedAmount] = useState(30);
   const [walletBalance, setWalletBalance] = useState(null);
   const [transactionPassword, setTransactionPassword] = useState("");
   const [loading, setLoading] = useState(false);

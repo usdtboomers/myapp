@@ -354,23 +354,80 @@ const packageOffsets = { 10: 0, 30: 5, 60: 10, 120: 15, 240: 20, 480: 25, 960: 3
               </div>
 
               {/* MATRIX INCOME WALLETS */}
+            {/* MATRIX INCOME WALLETS */}
               <div>
                 <div style={{fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px', marginTop:'5px', letterSpacing: '1px'}}>Global Growth INCOME</div>
                 
                 {Object.keys(planToPackageAmount).map((planKey) => {
-                  
-                  const allLevelsData = [0, 1, 2, 3, 4].map(idx => getLevelData(planKey, idx));
-                  const hasPackage = allLevelsData[0].hasPackage;
-                  
-                  // 🔥 If bought -> Show all 5 levels. If free -> Show only achieved levels.
-                  const visibleLevels = allLevelsData.filter(d => hasPackage ? true : d.isAchievedFree);
-                  if (visibleLevels.length === 0) return null;
+                  const pkgAmount = planToPackageAmount[planKey];
+                  const userPackages = loggedInUser?.packages || [];
+                  const activePackage = userPackages.find(p => p.amount === pkgAmount);
+                  const hasPackage = !!activePackage;
 
-                  const activeTimerIdx = allLevelsData.findIndex(l => !l.isUnlockedPaid); 
-                  const availableInThisPlan = balances.planIncomes[planKey] || 0;
+                  // 1️⃣ FREE LOGIC DATES (Based on Join Date)
+                  const joinDate = loggedInUser?.createdAt ? new Date(loggedInUser.createdAt).getTime() : Date.now();
+                  const daysSinceJoined = Math.max(0, Math.floor((currentTime - joinDate) / (1000 * 60 * 60 * 24)));
+                  const hoursSinceJoined = Math.max(0, Math.floor((currentTime - joinDate) / (1000 * 60 * 60)));
+                  const pkgOffset = packageOffsets[pkgAmount];
+
+                  const earningsArray = packageEarnings[pkgAmount] || [];
+                  const allProcessedLevels = [];
+
+                  // 2️⃣ PROCESS ALL 5 LEVELS FIRST
+                  for (let idx = 0; idx < earningsArray.length; idx++) {
+                      
+                      // Free Check
+                      let isAchievedFree = false;
+                      if (pkgAmount === 10) {
+                        isAchievedFree = hoursSinceJoined >= (idx * 4);
+                      } else {
+                        isAchievedFree = daysSinceJoined >= (pkgOffset + idx);
+                      }
+
+                      // Paid & Timer Check
+                      let isAchievedPaid = false;
+                      let isUnlockedPaid = false;
+                      let timeLeftPaid = 0;
+
+                      if (hasPackage) {
+                        const startDateMs = new Date(activePackage.startDate || activePackage.date).getTime(); 
+                        
+                        // Achieved Check for Paid
+                        if (pkgAmount === 10) {
+                          const activeHours = Math.max(0, Math.floor((currentTime - startDateMs) / (1000 * 60 * 60)));
+                          isAchievedPaid = activeHours >= (idx * 4);
+                        } else {
+                          const activeDays = Math.max(0, Math.floor((currentTime - startDateMs) / (1000 * 60 * 60 * 24)));
+                          isAchievedPaid = activeDays >= idx;
+                        }
+
+                        // Real Timer for Withdrawal (3, 13, 43, 73, 103 Days)
+                        const targetTime = startDateMs + (unlockDays[idx] * 24 * 60 * 60 * 1000);
+                        timeLeftPaid = Math.max(0, Math.floor((targetTime - currentTime) / 1000));
+                        isUnlockedPaid = timeLeftPaid === 0;
+                      }
+
+                      // Save all info to array
+                      allProcessedLevels.push({
+                          originalIdx: idx,
+                          earning: earningsArray[idx],
+                          isAchieved: isAchievedFree || isAchievedPaid,
+                          isUnlockedPaid,
+                          timeLeftPaid
+                      });
+                  }
+
+                  // 3️⃣ FIND ACTIVE TIMER (Wo pehla level jo Top-up ho gaya hai par time khatam nahi hua)
+                  const activeTimerIdx = allProcessedLevels.findIndex(l => !l.isUnlockedPaid);
+
+                  // 4️⃣ FILTER ONLY ACHIEVED FOR DISPLAY
+                  const achievedLevels = allProcessedLevels.filter(l => l.isAchieved);
+
+                  // Agar ek bhi level achieve nahi hua toh return null (Hide box)
+                  if (achievedLevels.length === 0) return null;
 
                   return (
-                    <div key={planKey} style={styles.planRow}>
+                   <div key={planKey} style={styles.planRow}>
                       <div style={{padding: '12px', background: '#1e293b', borderBottom: '2px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                            <span style={{fontWeight: '900', color: 'white', fontSize: '13px'}}>{planNames[planKey]}</span>
@@ -380,19 +437,29 @@ const packageOffsets = { 10: 0, 30: 5, 60: 10, 120: 15, 240: 20, 480: 25, 960: 3
                              <span>-</span>
                            )}
                          </div>
-                         {hasPackage && (
-                            <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>Max Withdraw Avail: ${availableInThisPlan.toFixed(2)}</span>
-                         )}
+                         
+                         {/* Total Calculation: Achieved sum - Withdrawn */}
+                         {hasPackage && (() => {
+                             const totalEarningsOfAchievedLevels = achievedLevels.reduce((sum, levelData) => sum + (levelData.earning || 0), 0);
+                             const totalWithdrawnInThisPlan = loggedInUser?.pendingWithdrawals?.[planKey] || 0;
+                             const frontendAvailableInThisPlan = Math.max(0, totalEarningsOfAchievedLevels - totalWithdrawnInThisPlan);
+                             
+                             return (
+                               <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>
+                                 Max Withdraw Avail: ${frontendAvailableInThisPlan.toFixed(2)}
+                               </span>
+                             );
+                         })()}
                       </div>
                       
                       <div className="custom-scroll" style={{ overflowX: 'auto', width: '100%' }}>
                         <div style={{ minWidth: '360px' }}> 
                           
-                          {visibleLevels.map((data, vIdx) => {
+                          {achievedLevels.map((data, vIdx) => {
                             const originalIdx = data.originalIdx; 
-                            const isLast = vIdx === visibleLevels.length - 1;
+                            const isLast = vIdx === achievedLevels.length - 1;
                             
-                            // 🔥 Timer logic: Only show timer if user BOUGHT package and it's the current countdown
+                            // 🔥 Timer Logic
                             const isCurrentlyCountingPaid = hasPackage && originalIdx === activeTimerIdx;
                             const { d, h, m, s } = getFormattedTime(data.timeLeftPaid);
 
@@ -413,7 +480,7 @@ const packageOffsets = { 10: 0, 30: 5, 60: 10, 120: 15, 240: 20, 480: 25, 960: 3
                                    </span>
                                 </div>
                                 
-                                {/* Center Column: (Empty for free, shows timer for paid) */}
+                                {/* Center Column: Timer or Unlocked */}
                                 <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                                    {isCurrentlyCountingPaid ? (
                                       <div style={{ display: 'flex', gap: '8px' }}>
@@ -434,6 +501,8 @@ const packageOffsets = { 10: 0, 30: 5, 60: 10, 120: 15, 240: 20, 480: 25, 960: 3
                                             <span style={styles.timerLabel}>SEC</span>
                                           </div>
                                       </div>
+                                   ) : data.isUnlockedPaid ? (
+                                      <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>✅ Unlocked</span>
                                    ) : (
                                       <div></div>
                                    )}
@@ -451,7 +520,7 @@ const packageOffsets = { 10: 0, 30: 5, 60: 10, 120: 15, 240: 20, 480: 25, 960: 3
                                        }} 
                                        value={levelWithdrawals[`${planKey}_${originalIdx}`] || ""} 
                                        onChange={e => handleLevelInputChange(e, planKey, originalIdx)} 
-                                       max={data.availableInLevel}
+                                       max={data.earning}
                                      />
                                 </div>
 

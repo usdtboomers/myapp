@@ -69,27 +69,40 @@ let provider;
 let contract;
 const ABI = ["event Transfer(address indexed from, address indexed to, uint256 value)"];
 
-console.log("🔥 Rebirth Super-Stable Scanner Started For Website");
+console.log("🔥 UsdtBoomers Super-Stable Scanner Started For Website");
 
 // ==========================================
-// 3. FILTERS FOR EXACT AMOUNTS
+// 3. FILTERS FOR EXACT AMOUNTS (UPDATED RATIOS)
 // ==========================================
 function isValidDeposit(amount) {
-    // 10 se double hote hue list
-    if (![10, 30 ].includes(amount)) return false;
+    if (![30, 60, 120].includes(amount)) return false;
     
-    // 10 aur 20 amount par 100% success
-    if (amount === 10 ) return true;
+    if (amount === 30) return true; // Sabse zyada 30 aayega
     
-    // 20 se upar wale amount par wahi 0.1% chance
-    if (amount > 10) {
-        return Math.random() <= 20; 
+    // 60 ko filter kiya hai taaki din me sirf 15-20 baar aaye
+    if (amount === 60) {
+        return Math.random() <= 0.15; 
     }
+    
+    // 120 (Rare amount) din me 3-4 baar hi dikhega surprise element ke liye
+    if (amount === 120) {
+        return Math.random() <= 0.02; 
+    }
+    
     return false;
 }
 
 function isValidWithdrawal(amount) {
-    return [9, 18, 27].includes(amount);
+    if (![9, 18, 27, 36, 45].includes(amount)) return false;
+
+    if (amount === 9 || amount === 18) return true; // Bulk me ye aayenge
+    
+    // Ratios set kiye gaye hain specific frequency ke liye
+    if (amount === 27) return Math.random() <= 0.40; // 36 se thoda zyada
+    if (amount === 36) return Math.random() <= 0.25; // 10-15 baar din me
+    if (amount === 45) return Math.random() <= 0.10; // Sirf 4-8 baar din me
+
+    return false;
 }
 
 // ==========================================
@@ -111,7 +124,8 @@ function startListener() {
 
                 if (processedHashes.has(hash)) return;
 
-                if (isValidDeposit(amount) && depositQueue.length < 30) {
+                // Queue limit badha di 50 kardi taaki rare amounts (60, 120) hold kar sake
+                if (isValidDeposit(amount) && depositQueue.length < 50) {
                     depositQueue.push({
                         fromAddress: from,
                         toAddress: to,
@@ -122,7 +136,7 @@ function startListener() {
                     processedHashes.add(hash);
                 }
 
-                if (isValidWithdrawal(amount) && withdrawalQueue.length < 30) {
+                if (isValidWithdrawal(amount) && withdrawalQueue.length < 50) {
                     withdrawalQueue.push({
                         userId: generateUserId(),
                         amount: amount,
@@ -158,20 +172,20 @@ function restartListener() {
 }
 
 // ==========================================
-// 5. THE SLOW RELEASE LOOPS (10 Min Delay)
+// 5. THE SLOW RELEASE LOOPS (HIGHLY RANDOM TIMING)
 // ==========================================
 
-// Deposit ka delay: 8 se 13 minute ke beech
+// Deposit ka delay: 2 se 10 minute ke beech (Taki din me 200-300 aa sakein)
 const getDepositDelay = () => {
-    const min = 8 * 60 * 1000;  // 8 Mins
-    const max = 13 * 60 * 1000; // 13 Mins
+    const min = 2 * 60 * 1000;  // 2 Mins
+    const max = 10 * 60 * 1000; // 10 Mins
     return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
-// Withdrawal ka delay: 20 se 25 minute ke beech
+// Withdrawal ka delay: 10 se 35 minute ke beech (Thoda slow and highly random)
 const getWithdrawalDelay = () => {
-    const min = 20 * 60 * 1000; // 20 Mins
-    const max = 25 * 60 * 1000; // 25 Mins
+    const min = 10 * 60 * 1000; // 10 Mins
+    const max = 35 * 60 * 1000; // 35 Mins
     return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
@@ -189,15 +203,13 @@ async function depositSenderLoop() {
 
             liveDepositsFeed.unshift(tx);
             
-            // Limit ko 500 kar diya gaya hai
+            // Limit 500 par maintained hai
             if (liveDepositsFeed.length > 500) liveDepositsFeed.pop();
 
-            // Naya data aane par file me save karo
             saveCache();
 
             console.log("🌐 Sent REAL Deposit to Site: $", tx.amount);
             
-            // Update: Deposit wala delay lagaya (8 to 13 mins)
             await new Promise(r => setTimeout(r, getDepositDelay())); 
         } catch (err) {
             console.log("Deposit Loop Error:", err.message);
@@ -220,15 +232,13 @@ async function withdrawalSenderLoop() {
 
             liveWithdrawalsFeed.unshift(tx);
             
-            // Limit ko 500 kar diya gaya hai
+            // Limit 500 par maintained hai
             if (liveWithdrawalsFeed.length > 500) liveWithdrawalsFeed.pop();
 
-            // Naya data aane par file me save karo
             saveCache();
 
             console.log("🌐 Sent REAL Withdrawal to Site: $", tx.amount);
             
-            // Update: Withdrawal wala delay lagaya (20 to 25 mins)
             await new Promise(r => setTimeout(r, getWithdrawalDelay())); 
         } catch (err) {
             console.log("Withdrawal Loop Error:", err.message);
