@@ -108,7 +108,7 @@ const PreLaunchPromo = () => {
             <img src="/usdtboomer.png" alt="Logo" className="h-16 mx-auto mt-4 mb-2 animate-bounce" />
             
             <h2 className="text-2xl font-bold text-white mb-2">
-              🎉 Pre-Launch Mega Offer 🎉
+              🎉 Pre-Launching Offer 🎉
             </h2>
             
             <p className="text-gray-300 text-sm mb-4">

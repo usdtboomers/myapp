@@ -154,17 +154,52 @@ const SuccessModal = ({
           </SuccessLayout>
         );
 
-      case "topup":
-        const topupPkgName = packageNames[amount] || "Unknown Package";
+     case "topup":
+        const topupPkgName = packageNames[amount] || `$${amount} Package`;
         return (
-          <SuccessLayout title="🎉 Top-Up Successful ">
-          
+          <SuccessLayout title="🎉 Top-Up Successful!">
+            <div className="flex flex-col items-center justify-center space-y-6 py-2 px-4 w-full">
+              
+              {/* 1. Glowing & Bouncing Success Icon */}
+               
 
-          
-            <p className="text-white text-md font-semibold text-center mt-1">
-              <span className="font-bold">Amount: </span>
-              <span className="text-yellow-400 font-extrabold"> ${amount}</span>
-            </p>
+              {/* 2. Main Premium Heading */}
+              <div className="text-center">
+                <h3 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-600 drop-shadow-lg mb-1">
+                  Account Activated! 🚀
+                </h3>
+                <p className="text-gray-300 text-xs font-medium mt-1">
+                  You're ready to start earning.
+                </p>
+              </div>
+
+              {/* 3. Glassmorphism Receipt Box */}
+              <div className="w-full bg-slate-800/60 backdrop-blur-md border border-slate-600/50 rounded-xl p-4 shadow-inner shadow-slate-700/50 text-left">
+                <div className="space-y-3">
+                  
+                  {/* User ID Row */}
+                  <div className="flex justify-between items-center border-b border-slate-700/50 pb-2">
+                    <span className="text-white text-[10px] uppercase tracking-wider font-bold">User ID</span>
+                    <span className="text-white text-xs font-bold font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-700">{userId}</span>
+                  </div>
+                  
+                
+                  
+                  {/* Amount Row */}
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-white text-[10px] uppercase tracking-wider font-bold mt-1">Amount Paid</span>
+                    <span className="text-2xl font-black text-yellow-500 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">
+                      ${amount}
+                    </span>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* 4. Motivational Footer Note */}
+ 
+
+            </div>
           </SuccessLayout>
         );
 

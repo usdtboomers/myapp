@@ -482,11 +482,11 @@ onChange={(e) => {
               animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
             }}>
               <h3 style={{ color: '#eab308', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase' }}>
-                🎁 Limited Time Mega Offer!
+                🎁 Limited Time Pre Launching Offer!
               </h3>
-              <p style={{ color: '#fff', fontSize: '12px', margin: 0, lineHeight: '1.4' }}>
-                Login now and activate your <strong style={{color: '#4ade80'}}>$10 Package absolutely FREE!</strong> Offer valid only till <strong style={{color: '#facc15'}}>30th April</strong>. Don't miss out! 🚀
-              </p>
+             <p style={{ color: '#fff', fontSize: '12px', margin: 0, lineHeight: '1.4' }}>
+  Login now and activate your <strong style={{color: '#4ade80'}}>$10 Package absolutely FREE!</strong> Pramote your referral link, Expand your network and Earn sustanatial Rewards. Offer valid only till <strong style={{color: '#facc15'}}>30th April</strong>! 🚀
+</p>
             </div>
 
             <p className="font-bold" style={{ color: '#ff4d4d', fontSize: 14, marginBottom: 15 }}>
