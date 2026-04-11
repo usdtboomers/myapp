@@ -20,8 +20,7 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword'; // 👈 Import karein
 // 🔹 User Pages
 import Dashboard from './pages/user/Dashboard';
-import Settings from './pages/user/Settings';
-import UserProfile from './pages/user/UserProfile';
+ import UserProfile from './pages/user/UserProfile';
 import UserWithdrawalHistory from './pages/user/UserWithdrawalHistory';
 import WalletHistory from './pages/user/WalletHistory';
 import AllTeamPage from './pages/user/AllTeamPage';
@@ -148,8 +147,7 @@ function AppContent() {
           {/* 🔐 User Routes */}
           <Route path="/dashboard" element={<RequireUserAuth><UserLayout><Dashboard /></UserLayout></RequireUserAuth>} />
           <Route path="/dashboard/:userId" element={<RequireUserAuth><UserLayout><Dashboard /></UserLayout></RequireUserAuth>} />
-          <Route path="/settings" element={<RequireUserAuth><UserLayout><Settings /></UserLayout></RequireUserAuth>} />
-          <Route path="/profile" element={<RequireUserAuth><UserLayout><UserProfile /></UserLayout></RequireUserAuth>} />
+           <Route path="/profile" element={<RequireUserAuth><UserLayout><UserProfile /></UserLayout></RequireUserAuth>} />
           <Route path="/withdrawals" element={<RequireUserAuth><UserLayout><UserWithdrawalHistory /></UserLayout></RequireUserAuth>} />
           <Route path="/notifications" element={<RequireUserAuth><UserLayout><Notifications/></UserLayout></RequireUserAuth>} />
           <Route path="/wallet-history" element={<RequireUserAuth><UserLayout><WalletHistory /></UserLayout></RequireUserAuth>} />

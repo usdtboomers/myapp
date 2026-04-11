@@ -22,12 +22,12 @@ const customStyles = `
 // ✅ All Packages Data Configuration (Added $10 Package)
 const packagesConfig = [
   { amount: 10, levels: [ { level: 1, team: 10, earning: 2 }, { level: 2, team: 20, earning: 3 }, { level: 3, team: 30, earning: 5 }, { level: 4, team: 50, earning: 5 }, { level: 5, team: 100, earning: 5 } ] },
-  { amount: 30, levels: [ { level: 1, team: 10, earning: 5 }, { level: 2, team: 20, earning: 10 }, { level: 3, team: 50, earning: 15 }, { level: 4, team: 100, earning: 15 }, { level: 5, team: 200, earning: 15 } ] },
-  { amount: 60, levels: [ { level: 1, team: 10, earning: 10 }, { level: 2, team: 20, earning: 20 }, { level: 3, team: 50, earning: 30 }, { level: 4, team: 100, earning: 30 }, { level: 5, team: 200, earning: 30 } ] },
-  { amount: 120, levels: [ { level: 1, team: 10, earning: 20 }, { level: 2, team: 20, earning: 40 }, { level: 3, team: 50, earning: 60 }, { level: 4, team: 100, earning: 60 }, { level: 5, team: 200, earning: 60 } ] },
-  { amount: 240, levels: [ { level: 1, team: 10, earning: 40 }, { level: 2, team: 20, earning: 80 }, { level: 3, team: 50, earning: 120 }, { level: 4, team: 100, earning: 120 }, { level: 5, team: 200, earning: 120 } ] },
-  { amount: 480, levels: [ { level: 1, team: 10, earning: 80 }, { level: 2, team: 20, earning: 160 }, { level: 3, team: 50, earning: 240 }, { level: 4, team: 100, earning: 240 }, { level: 5, team: 200, earning: 240 } ] },
-  { amount: 960, levels: [ { level: 1, team: 10, earning: 160 }, { level: 2, team: 20, earning: 320 }, { level: 3, team: 50, earning: 480 }, { level: 4, team: 100, earning: 480 }, { level: 5, team: 200, earning: 480 } ] }
+  { amount: 30, levels: [ { level: 1, team: 10, earning: 5 }, { level: 2, team: 20, earning: 10 }, { level: 3, team: 30, earning: 15 }, { level: 4, team: 50, earning: 15 }, { level: 5, team: 100, earning: 15 } ] },
+  { amount: 60, levels: [ { level: 1, team: 10, earning: 10 }, { level: 2, team: 20, earning: 20 }, { level: 3, team: 30, earning: 30 }, { level: 4, team: 50, earning: 30 }, { level: 5, team: 100, earning: 30 } ] },
+  { amount: 120, levels: [ { level: 1, team: 10, earning: 20 }, { level: 2, team: 20, earning: 40 }, { level: 3, team: 30, earning: 60 }, { level: 4, team: 50, earning: 60 }, { level: 5, team: 100, earning: 60 } ] },
+  { amount: 240, levels: [ { level: 1, team: 10, earning: 40 }, { level: 2, team: 20, earning: 80 }, { level: 3, team: 30, earning: 120 }, { level: 4, team: 50, earning: 120 }, { level: 5, team: 100, earning: 120 } ] },
+  { amount: 480, levels: [ { level: 1, team: 10, earning: 80 }, { level: 2, team: 20, earning: 160 }, { level: 3, team: 30, earning: 240 }, { level: 4, team: 50, earning: 240 }, { level: 5, team: 100, earning: 240 } ] },
+  { amount: 960, levels: [ { level: 1, team: 10, earning: 160 }, { level: 2, team: 20, earning: 320 }, { level: 3, team: 30, earning: 480 }, { level: 4, team: 50, earning: 480 }, { level: 5, team: 100, earning: 480 } ] }
 ];
 
 // Sequential Days Offset for Free Users

@@ -113,7 +113,7 @@ const AllTeamPage = () => {
       {/* Stats Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "15px" }}>
         <div style={styles.statCard}>
-          <h3 style={styles.statTitle}>Total Indirect Team</h3>
+          <h3 style={styles.statTitle}>Total Downline Team</h3>
           <p style={styles.statValue} className="text-blue-600">{stats.totalTeam}</p>
         </div>
         <div style={styles.statCard}>
