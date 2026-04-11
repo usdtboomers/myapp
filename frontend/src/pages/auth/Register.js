@@ -69,8 +69,10 @@ function Register() {
   };
 
   // Restrict to Numbers only for Mobile
+// Restrict to Numbers only and Prevent starting with '0'
   const handleMobileChange = (e) => {
-    const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+    let value = e.target.value.replace(/\D/g, ''); // Pehle sirf numbers allow karo
+    value = value.replace(/^0+/, ''); // Phir agar starting mein '0' hai toh usko hata do
     setMobile(value);
   };
 
@@ -275,8 +277,11 @@ function Register() {
                 <input
                   type="text"
                   value={sponsorId}
-                  onChange={(e) => { setSponsorId(e.target.value); fetchSponsorName(e.target.value); }}
-                  className={`w-full bg-white/5 border ${sponsorName === 'Invalid Sponsor' ? 'border-red-500 focus:ring-red-500' : (sponsorName && sponsorId) ? 'border-green-500 focus:ring-green-500' : 'border-white/10 focus:ring-cyan-500'} rounded-xl px-4 py-3 text-black placeholder-white/20 focus:outline-none focus:ring-2 transition-all pl-11`}
+onChange={(e) => { 
+  const val = e.target.value.replace(/\D/g, ''); // Sirf numbers allow karega
+  setSponsorId(val); 
+  fetchSponsorName(val); 
+}}                  className={`w-full bg-white/5 border ${sponsorName === 'Invalid Sponsor' ? 'border-red-500 focus:ring-red-500' : (sponsorName && sponsorId) ? 'border-green-500 focus:ring-green-500' : 'border-white/10 focus:ring-cyan-500'} rounded-xl px-4 py-3 text-black placeholder-white/20 focus:outline-none focus:ring-2 transition-all pl-11`}
                   placeholder="Enter Sponsor ID"
                 />
                 <div className="absolute left-3 top-3.5 text-black/40 group-focus-within:text-cyan-400 transition-colors">

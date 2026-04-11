@@ -4,7 +4,8 @@ import Papa from 'papaparse';
 import { saveAs } from 'file-saver';
 
 const ITEMS_PER_PAGE = 10;
-const packages = [30, 60, 120, 240, 480, 960];
+// ✅ FIX: Added 10 to the packages array
+const packages = [10, 30, 60, 120, 240, 480, 960];
 
 const toNumber = (val) => {
   if (val == null) return 0;
@@ -135,7 +136,7 @@ const TotalTopUpPage = () => {
     const table = filteredUsers.map((u) => ({
       UserID: u.userId,
       Name: u.name || '',
-      Mobile: u.mobile || 'N/A',   // ✅ Handled missing mobile
+      Mobile: u.mobile || 'N/A',
       Amount: toNumber(u.topUpAmount),
       Date: u.topUpDate ? new Date(u.topUpDate).toLocaleString() : '',
     }));
@@ -186,7 +187,8 @@ const TotalTopUpPage = () => {
       </div>
 
       {/* SUMMARY */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+      {/* ✅ Adjusted grid to fit more cards nicely */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-6">
         <SummaryCard label="Total Business" value={`$${totalBusiness}`} color="bg-green-100" />
         <SummaryCard label="Total IDs" value={totalIds} color="bg-blue-100" />
         <SummaryCard label="Today TopUps" value={todayTopUps.length} color="bg-yellow-100" />
@@ -233,7 +235,7 @@ const TotalTopUpPage = () => {
                   <tr key={u._id || i} className="border-b hover:bg-gray-50 transition">
                     <td className="px-4 py-3 font-bold text-indigo-600">{u.userId}</td>
                     <td className="px-4 py-3 text-gray-800">{u.name}</td>
-                    <td className="px-4 py-3 text-gray-600 font-medium">{u.mobile || 'N/A'}</td> {/* ✅ MOBILE DISPLAY */}
+                    <td className="px-4 py-3 text-gray-600 font-medium">{u.mobile || 'N/A'}</td>
                     <td className="px-4 py-3 text-green-600 font-bold">${toNumber(u.topUpAmount)}</td>
                     <td className="px-4 py-3 text-gray-500">{new Date(u.topUpDate).toLocaleString()}</td>
                   </tr>

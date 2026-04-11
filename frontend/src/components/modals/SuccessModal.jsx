@@ -157,7 +157,9 @@ const SuccessModal = ({
       case "topup":
         const topupPkgName = packageNames[amount] || "Unknown Package";
         return (
-          <SuccessLayout title="Top-Up Successful">
+          <SuccessLayout title="🎉 Top-Up Successful ">
+          
+
           
             <p className="text-white text-md font-semibold text-center mt-1">
               <span className="font-bold">Amount: </span>

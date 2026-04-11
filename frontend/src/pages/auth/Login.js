@@ -223,15 +223,15 @@ const UserLogin = () => {
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <User className="h-5 w-5 text-slate-500 group-focus-within:text-yellow-500 transition-colors" />
                     </div>
-                    <input
-                        type="text"
-                        value={userId}
-                        onChange={(e) => setUserId(e.target.value)}
-                        onFocus={() => setDropdownOpen(true)}
-                        className="w-full bg-slate-800 border border-slate-700 text-black rounded-xl py-3 pl-10 pr-4 outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-all placeholder-slate-600"
-                        placeholder="Enter your User ID"
-                        required
-                    />
+                  <input
+    type="text"
+    value={userId}
+    onChange={(e) => setUserId(e.target.value.replace(/\D/g, ''))} 
+    onFocus={() => setDropdownOpen(true)}
+    className="w-full bg-slate-800 border border-slate-700 text-black rounded-xl py-3 pl-10 pr-4 outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-all placeholder-slate-600"
+    placeholder="Enter your User ID"
+    required
+/>
                 </div>
 
                 {/* Saved Users Dropdown */}

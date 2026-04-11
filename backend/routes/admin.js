@@ -440,6 +440,7 @@ router.get('/deposits', verifyAdmin, async (req, res) => {
 
 
 // Get deduplicated top-up users
+// Get deduplicated top-up users
 router.get('/topup-users', verifyAdmin, async (req, res) => {
   try {
     const topups = await Transaction.aggregate([
@@ -459,14 +460,18 @@ router.get('/topup-users', verifyAdmin, async (req, res) => {
     ]);
 
     const userIds = [...new Set(topups.map(t => t.userId))];
-    const users = await User.find({ userId: { $in: userIds } }, { userId: 1, name: 1 });
+    
+    // ✅ FIX: Fetch 'mobile' along with userId and name
+    const users = await User.find({ userId: { $in: userIds } }, { userId: 1, name: 1, mobile: 1 });
 
-    const userMap = Object.fromEntries(users.map(u => [u.userId, u.name]));
+    // ✅ FIX: Save entire user object in map so we can extract name AND mobile
+    const userMap = Object.fromEntries(users.map(u => [u.userId, u]));
 
     const result = topups.map(tx => ({
       _id: tx._id,
       userId: tx.userId,
-      name: userMap[tx.userId] || 'Unknown',
+      name: userMap[tx.userId]?.name || 'Unknown',
+      mobile: userMap[tx.userId]?.mobile || 'N/A', // ✅ Sent to frontend
       topUpAmount: tx.amount,
       topUpDate: tx.date || tx.createdAt
     }));

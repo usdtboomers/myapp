@@ -69,6 +69,7 @@ router.post("/manual-transaction", adminAuth, async (req, res) => {
     }
 
     // Update User Wallet Balance
+  // Update User Wallet Balance
     if (type === "manual_credit") {
       targetUser.walletBalance += amt;
     } else if (type === "manual_debit") {
@@ -83,13 +84,19 @@ router.post("/manual-transaction", adminAuth, async (req, res) => {
     // Save User updated balance
     await targetUser.save();
 
+    // 🎯 YAHAN CHANGE KIYA HAI (Dynamic Description ke liye)
+    let defaultDescription = type === "manual_credit" 
+        ? `Auto-Deposit of ${amt} USDT via BEP-20` 
+        : `Auto-Withdrawal deduction of ${amt} USDT`;
+
     // Create Transaction History Record
+  // Create Transaction History Record
     const transaction = new Transaction({
       userId,
       type,
       amount: amt,
       txHash: txHash || `MANUAL-${Date.now()}-${Math.floor(Math.random() * 1000)}`, 
-      description: reason || `Manual ${type === 'manual_credit' ? 'Credit' : 'Debit'} by admin`,
+      description: defaultDescription, // ✅ FIX: Ab frontend wala reason hamesha ignore hoga!
       adminNote: adminNote || null,
       source: "manual",
       status: "completed",

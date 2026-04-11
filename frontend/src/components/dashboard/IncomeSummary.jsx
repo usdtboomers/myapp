@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 
 // ✅ Packages Data (Achieved amount calculate karne ke liye)
+// ✅ EXACT SAME CONFIG AS PLAN.JS
 const packagesConfig = [
   { amount: 10, levels: [ { earning: 2 }, { earning: 3 }, { earning: 5 }, { earning: 5 }, { earning: 5 } ] },
   { amount: 30, levels: [ { earning: 5 }, { earning: 10 }, { earning: 15 }, { earning: 15 }, { earning: 15 } ] },
@@ -14,6 +15,7 @@ const packagesConfig = [
   { amount: 960, levels: [ { earning: 160 }, { earning: 320 }, { earning: 480 }, { earning: 480 }, { earning: 480 } ] }
 ];
 
+// ✅ EXACT OFFSET MATCH WITH PLAN.JS
 const packageOffsets = { 10: 0, 30: 5, 60: 10, 120: 15, 240: 20, 480: 25, 960: 30 };
 
 const IncomeSummary = ({ income = {}, user = {} }) => {
@@ -33,34 +35,51 @@ const IncomeSummary = ({ income = {}, user = {} }) => {
   useEffect(() => {
     if (!user) return;
 
-    const currentTopUpAmount = Number(user.topUpAmount) || 0; 
-    const joinDate = user.createdAt ? new Date(user.createdAt).getTime() : Date.now();
-    const daysSinceJoined = Math.max(0, Math.floor((Date.now() - joinDate) / (1000 * 60 * 60 * 24)));
+    const userPackages = user?.packages || []; 
+    const joinDate = user?.createdAt ? new Date(user.createdAt).getTime() : Date.now();
+    const currentTime = Date.now();
 
-    let totalAchieved = 0;
+    const daysSinceJoined = Math.max(0, Math.floor((currentTime - joinDate) / (1000 * 60 * 60 * 24)));
+    const hoursSinceJoined = Math.max(0, Math.floor((currentTime - joinDate) / (1000 * 60 * 60)));
+
+    let totalFrontendAchieved = 0;
 
     packagesConfig.forEach((pkg) => {
+      const activePackage = userPackages.find(p => p.amount === pkg.amount);
       const pkgOffset = packageOffsets[pkg.amount];
 
       pkg.levels.forEach((lvl, idx) => {
-        let isAchieved = false;
-
-        if (currentTopUpAmount >= pkg.amount) {
-          isAchieved = daysSinceJoined >= idx; 
+        // 1️⃣ FREE LOGIC
+        let isAchievedFree = false;
+        if (pkg.amount === 10) {
+          isAchievedFree = hoursSinceJoined >= (idx * 4);
         } else {
           const requiredGlobalDays = pkgOffset + idx;
-          isAchieved = daysSinceJoined >= requiredGlobalDays;
+          isAchievedFree = daysSinceJoined >= requiredGlobalDays;
         }
 
-        if (isAchieved) {
-          totalAchieved += lvl.earning;
+        // 2️⃣ PAID LOGIC
+        let isAchievedPaid = false;
+        if (activePackage) {
+          const startDate = new Date(activePackage.startDate || activePackage.date).getTime();
+          if (pkg.amount === 10) {
+            const activeHours = Math.max(0, Math.floor((currentTime - startDate) / (1000 * 60 * 60)));
+            isAchievedPaid = activeHours >= (idx * 4);
+          } else {
+            const activeDays = Math.max(0, Math.floor((currentTime - startDate) / (1000 * 60 * 60 * 24)));
+            isAchievedPaid = activeDays >= idx;
+          }
+        }
+
+        // 🎯 Final check (Sync with Plan.js)
+        if (isAchievedFree || isAchievedPaid) {
+          totalFrontendAchieved += lvl.earning;
         }
       });
     });
 
-    setGlobalGrowth(totalAchieved);
+    setGlobalGrowth(totalFrontendAchieved);
   }, [user]);
-
   // ✅ TOTAL INCOME = Sabhi Incomes + Global Growth
   const totalIncome = directIncome + levelIncome + spinIncome + rewardIncome + globalGrowth;
 

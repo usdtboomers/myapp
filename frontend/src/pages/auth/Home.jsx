@@ -236,8 +236,8 @@ const Home = () => {
             <img src={Logo} alt="USDT Boomers" style={{ height: isMobile ? '85px' : '85px' }} />
           </Link>
           <div style={{ display: 'flex', gap: isMobile ? '10px' : '15px', alignItems: 'center' }}>
-            <Link to="/login" className="btn" style={{ color: '#cbd5e1', padding: isMobile ? '8px 12px' : '10px 20px', fontSize: isMobile ? '14px' : '16px' }}>Sign In</Link>
-            <Link to="/register" className="btn btn-primary" style={{ padding: isMobile ? '10px 16px' : '12px 28px', fontSize: isMobile ? '14px' : '16px' }}>Sign Up</Link>
+            <Link to="/login" className="btn" style={{ color: '#cbd5e1', padding: isMobile ? '8px 12px' : '10px 20px', fontSize: isMobile ? '14px' : '16px' }}>Login</Link>
+            <Link to="/register" className="btn btn-primary" style={{ padding: isMobile ? '10px 16px' : '12px 28px', fontSize: isMobile ? '14px' : '16px' }}>Register</Link>
           </div>
         </div>
       </nav>

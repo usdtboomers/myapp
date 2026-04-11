@@ -12,7 +12,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
     walletBalance: 0,
     planIncomes: {},
     rewardIncome: 0, 
-    directIncome: 0 // ✅ ADDED: Direct Income State
+    directIncome: 0 
   });
   
   const [userROI, setUserROI] = useState([]);
@@ -20,7 +20,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
   const [otherWithdrawals, setOtherWithdrawals] = useState({});
   
   const [transactionPassword, setTransactionPassword] = useState("");
-  const [walletAddress, setWalletAddress] = useState(""); // State for BEP20 Address
+  const [walletAddress, setWalletAddress] = useState(""); 
   const [isAddressMissing, setIsAddressMissing] = useState(false);
   
   const [successOpen, setSuccessOpen] = useState(false);
@@ -33,7 +33,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
   const showMessage = (title, message, type = "error") =>
     setMessageModal({ open: true, title, message, type });
 
-  // --- CONFIG (Updated for $10 Package) ---
+  // --- CONFIG ---
   const planToPackageAmount = { plan0: 10, plan1: 30, plan2: 60, plan3: 120, plan4: 240, plan5: 480, plan6: 960 };
   const planNames = {
     plan0: "$10 Package", plan1: "$30 Package", plan2: "$60 Package", plan3: "$120 Package",
@@ -51,6 +51,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
   };
 
   const unlockDays = [3, 13, 43, 73, 103];
+const packageOffsets = { 10: 0, 30: 5, 60: 10, 120: 15, 240: 20, 480: 25, 960: 30 };
 
   // --- LOGIC: Fetch Data ---
   const fetchData = useCallback(async () => {
@@ -63,7 +64,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
           walletBalance: res.data.walletBalance || 0,
           planIncomes: res.data.planIncomes || {},
           rewardIncome: res.data.reward || 0, 
-          directIncome: res.data.direct || 0, // ✅ ADDED: Fetching Direct Income from backend
+          directIncome: res.data.direct || 0, 
         });
       }
 
@@ -84,27 +85,61 @@ const WithdrawalModal = ({ userId, onClose }) => {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  // --- TIMER LOGIC ---
-  const getLevelData = (pkg, planKey, idx) => {
-    const startDate = new Date(pkg.startDate).getTime();
-    const unlockTime = startDate + (unlockDays[idx] * 24 * 60 * 60 * 1000);
-    const timeLeft = Math.max(0, Math.floor((unlockTime - currentTime) / 1000));
-    const isUnlocked = timeLeft === 0;
+  // --- 🚀 SYNCED TIMER LOGIC ---
+  const getLevelData = (planKey, idx) => {
+    const amount = planToPackageAmount[planKey];
+    const activePkg = userROI.find(r => r.plan === planKey);
+    const hasPackage = !!activePkg;
+    
+    const joinDate = loggedInUser?.createdAt ? new Date(loggedInUser.createdAt).getTime() : Date.now();
 
-    const fullEarning = packageEarnings[pkg.amount][idx];
+    // 1️⃣ FREE LOGIC (Strictly matching Plan.js to show exact same levels as Dashboard)
+    const hoursSinceJoined = Math.max(0, Math.floor((currentTime - joinDate) / (1000 * 60 * 60)));
+    const daysSinceJoined = Math.max(0, Math.floor((currentTime - joinDate) / (1000 * 60 * 60 * 24)));
+    let isAchievedFree = false;
+
+    if (amount === 10) {
+      isAchievedFree = hoursSinceJoined >= (idx * 4); // Matched Plan.js exact logic
+    } else {
+      const reqDaysFree = packageOffsets[amount] + idx; // Matched Plan.js exact logic
+      isAchievedFree = daysSinceJoined >= reqDaysFree;
+    }
+
+    // 2️⃣ PAID LOGIC (Real Backend Timers)
+    let isUnlockedPaid = false;
+    let timeLeftPaid = 0;
+
+    if (hasPackage) {
+      const startDate = new Date(activePkg.startDate || activePkg.date).getTime();
+      // Use Backend array (3, 13, 43...) for Paid Timers
+      const targetTime = startDate + (unlockDays[idx] * 24 * 60 * 60 * 1000);
+      timeLeftPaid = Math.max(0, Math.floor((targetTime - currentTime) / 1000));
+      isUnlockedPaid = timeLeftPaid === 0;
+    }
+
+    const fullEarning = packageEarnings[amount][idx];
     
     let withdrawnInPlan = (loggedInUser?.pendingWithdrawals?.[planKey] || 0);
     for(let i = 0; i < idx; i++) {
-        withdrawnInPlan -= packageEarnings[pkg.amount][i];
+        withdrawnInPlan -= packageEarnings[amount][i];
     }
     
     const levelWithdrawn = Math.max(0, withdrawnInPlan);
-    const availableInLevel = isUnlocked ? Math.max(0, fullEarning - levelWithdrawn) : 0;
+    const availableInLevel = hasPackage 
+        ? (isUnlockedPaid ? Math.max(0, fullEarning - levelWithdrawn) : 0) 
+        : Math.max(0, fullEarning - levelWithdrawn); // Fake Bait balance for Free
 
-    return { isUnlocked, timeLeft, earning: fullEarning, availableInLevel };
+    return { 
+      originalIdx: idx, 
+      hasPackage, 
+      isAchievedFree, 
+      isUnlockedPaid, 
+      timeLeftPaid, 
+      earning: fullEarning, 
+      availableInLevel 
+    };
   };
 
-  // Modern Timer Formatting (Premium Box Style)
   const getFormattedTime = (seconds) => {
     const d = Math.floor(seconds / (3600 * 24));
     const h = Math.floor((seconds % (3600 * 24)) / 3600);
@@ -144,21 +179,24 @@ const WithdrawalModal = ({ userId, onClose }) => {
         return showMessage("Warning", "Select a balance to withdraw.");
       }
 
-      // ✅ Strict validation before attempting withdrawal
       if (selectedLevel.type === "plan") {
         const { planKey, levelIdx } = selectedLevel;
         const requestedAmount = Number(planEntries[0][1]);
-        
-        const pkg = userROI.find(r => r.plan === planKey);
-        if (pkg) {
-           const levelData = getLevelData(pkg, planKey, levelIdx);
-           
-           if (!levelData.isUnlocked) {
-             return showMessage("Locked", `This level is locked. Please wait for the timer to complete before withdrawing.`);
-           }
-           if (requestedAmount > levelData.availableInLevel) {
-             return showMessage("Insufficient Funds", `You only have $${levelData.availableInLevel} available in this level.`);
-           }
+        const levelData = getLevelData(planKey, levelIdx);
+
+        if (!levelData.hasPackage) {
+           return showMessage(
+             "Top-up Required ⚠️", 
+             `You must activate the $${planToPackageAmount[planKey]} Package to withdraw this income. Please Top-up your ID first.`, 
+             "error"
+           );
+        }
+
+        if (!levelData.isUnlockedPaid) {
+          return showMessage("Warning", `This level's timer is still running. You cannot withdraw yet.`);
+        }
+        if (requestedAmount > levelData.availableInLevel) {
+          return showMessage("Insufficient Funds", `You only have $${levelData.availableInLevel} available in this level.`);
         }
       }
 
@@ -171,7 +209,6 @@ const WithdrawalModal = ({ userId, onClose }) => {
 
       setLoading(true);
 
-      // Save Wallet Address if it was missing/updated
       if (isAddressMissing) {
         try {
           await api.put(`/user/${userId}`, { walletAddress });
@@ -201,7 +238,6 @@ const WithdrawalModal = ({ userId, onClose }) => {
           amount: Number(val),
           source: sourceKey, 
         };
-        // ✅ ADDED: Title update for Direct
         successSourceTitle = sourceKey === "reward" ? "USDT Reward Income" : "Direct Income";
       }
 
@@ -279,9 +315,9 @@ const WithdrawalModal = ({ userId, onClose }) => {
 
             <div className="custom-scroll" style={styles.body}>
               
-              {/* ✅ ADDED: OTHER BALANCES (Reward & Direct) */}
+              {/* OTHER BALANCES */}
               <div>
-                <div style={{fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px', letterSpacing: '1px'}}>OTHER BALANCES</div>
+                <div style={{fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px', letterSpacing: '1px'}}>Reward & Direct Income BALANCES</div>
                 <div style={styles.planRow}>
                   
                   {/* USDT REWARD ROW */}
@@ -317,40 +353,52 @@ const WithdrawalModal = ({ userId, onClose }) => {
                 </div>
               </div>
 
-              {/* ACTIVE PACKAGES */}
+              {/* MATRIX INCOME WALLETS */}
               <div>
-                <div style={{fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px', marginTop:'5px', letterSpacing: '1px'}}>ACTIVE PACKAGES</div>
+                <div style={{fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px', marginTop:'5px', letterSpacing: '1px'}}>Global Growth INCOME</div>
+                
                 {Object.keys(planToPackageAmount).map((planKey) => {
-                  const pkg = userROI.find(r => r.plan === planKey);
-                  if (!pkg) return null;
                   
-                  const allLevelsData = [0, 1, 2, 3, 4].map(idx => getLevelData(pkg, planKey, idx));
-                  const activeTimerIdx = allLevelsData.findIndex(l => !l.isUnlocked); 
+                  const allLevelsData = [0, 1, 2, 3, 4].map(idx => getLevelData(planKey, idx));
+                  const hasPackage = allLevelsData[0].hasPackage;
                   
+                  // 🔥 If bought -> Show all 5 levels. If free -> Show only achieved levels.
+                  const visibleLevels = allLevelsData.filter(d => hasPackage ? true : d.isAchievedFree);
+                  if (visibleLevels.length === 0) return null;
+
+                  const activeTimerIdx = allLevelsData.findIndex(l => !l.isUnlockedPaid); 
                   const availableInThisPlan = balances.planIncomes[planKey] || 0;
 
                   return (
                     <div key={planKey} style={styles.planRow}>
                       <div style={{padding: '12px', background: '#1e293b', borderBottom: '2px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                         <span style={{fontWeight: '900', color: 'white', fontSize: '13px'}}>{planNames[planKey]}</span>
-                         <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>Max Withdraw Avail: ${availableInThisPlan.toFixed(2)}</span>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                           <span style={{fontWeight: '900', color: 'white', fontSize: '13px'}}>{planNames[planKey]}</span>
+                           {hasPackage ? (
+                             <span >-</span>
+                           ) : (
+                             <span>-</span>
+                           )}
+                         </div>
+                         {hasPackage && (
+                            <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>Max Withdraw Avail: ${availableInThisPlan.toFixed(2)}</span>
+                         )}
                       </div>
                       
-                      {/* WRAPPER FOR HORIZONTAL SCROLL */}
                       <div className="custom-scroll" style={{ overflowX: 'auto', width: '100%' }}>
-                        <div style={{ minWidth: '360px' }}> {/* Prevents squishing on small phones */}
+                        <div style={{ minWidth: '360px' }}> 
                           
-                          {allLevelsData.map((data, idx) => {
-                            const { isUnlocked, timeLeft, earning, availableInLevel } = data;
-                            const isLast = idx === 4;
+                          {visibleLevels.map((data, vIdx) => {
+                            const originalIdx = data.originalIdx; 
+                            const isLast = vIdx === visibleLevels.length - 1;
                             
-                            const isCurrentlyCounting = idx === activeTimerIdx;
-                            const { d, h, m, s } = getFormattedTime(timeLeft);
+                            // 🔥 Timer logic: Only show timer if user BOUGHT package and it's the current countdown
+                            const isCurrentlyCountingPaid = hasPackage && originalIdx === activeTimerIdx;
+                            const { d, h, m, s } = getFormattedTime(data.timeLeftPaid);
 
                             return (
-                              <div key={idx} style={{
+                              <div key={originalIdx} style={{
                                   display: 'grid', 
-                                  // ✅ EXACT SIZES: Left (65px) | Center Timer (180px) | Right Input (80px)
                                   gridTemplateColumns: '65px 180px 80px', 
                                   justifyContent: 'space-between', 
                                   alignItems: 'center', 
@@ -360,16 +408,14 @@ const WithdrawalModal = ({ userId, onClose }) => {
                                 
                                 {/* Left Column: Level Info */}
                                 <div>
-                                   <span  style={{color: isUnlocked ? '#e2e8f0' : '#64748b', fontWeight: 'bold', fontSize: '11px'}}>
-                                      Level {idx+1} <br/><span className="font-bold text-yellow-500" >${earning}</span>
+                                   <span style={{color: '#e2e8f0', fontWeight: 'bold', fontSize: '11px'}}>
+                                      Level {originalIdx+1} <br/><span className="font-bold text-yellow-500" >${data.earning}</span>
                                    </span>
                                 </div>
                                 
-                                {/* Center Column: Timer (Fixed 180px space keeps alignment perfect) */}
+                                {/* Center Column: (Empty for free, shows timer for paid) */}
                                 <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-                                   {isUnlocked ? (
-                                      <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>✅ Unlocked</span>
-                                   ) : isCurrentlyCounting ? (
+                                   {isCurrentlyCountingPaid ? (
                                       <div style={{ display: 'flex', gap: '8px' }}>
                                           <div style={styles.timerBox}>
                                             <span style={styles.timerValue}>{d}</span>
@@ -389,8 +435,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
                                           </div>
                                       </div>
                                    ) : (
-                                      // Empty space that still respects the grid column
-                                      <div></div> 
+                                      <div></div>
                                    )}
                                 </div>
 
@@ -402,11 +447,11 @@ const WithdrawalModal = ({ userId, onClose }) => {
                                        style={{
                                          ...styles.levelInput, 
                                          width: '100%', 
-                                         opacity: 1 // Hamesha bright dikhega
+                                         opacity: 1 
                                        }} 
-                                       value={levelWithdrawals[`${planKey}_${idx}`] || ""} 
-                                       onChange={e => handleLevelInputChange(e, planKey, idx)} 
-                                       max={availableInLevel}
+                                       value={levelWithdrawals[`${planKey}_${originalIdx}`] || ""} 
+                                       onChange={e => handleLevelInputChange(e, planKey, originalIdx)} 
+                                       max={data.availableInLevel}
                                      />
                                 </div>
 
@@ -424,31 +469,27 @@ const WithdrawalModal = ({ userId, onClose }) => {
 
               {/* WALLET ADDRESS & SECURITY */}
               <div style={{padding: '15px', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155'}}>
-                
-             {/* USDT (BEP20) WALLET ADDRESS SECTION */}
               <div style={{marginBottom: '12px'}}>
                 <label style={{fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '5px', fontWeight: 'bold'}}>
                   USDT (BEP20) WALLET ADDRESS
-                  {/* 🔥 Info Badge */}
-                  {walletAddress && <span style={{color: '#eab308', marginLeft: '10px'}}>(cannot change address after withdrawal)</span>}
+                  {!isAddressMissing && <span style={{color: '#10b981', marginLeft: '10px'}}>(Saved & Locked)</span>}
+                  {isAddressMissing && <span style={{color: '#eab308', marginLeft: '10px'}}>(Once saved, cannot be changed)</span>}
                 </label>
-                
                 <input 
                   type="text" 
                   placeholder="Enter your BEP20 Wallet Address" 
                   style={{
                       ...styles.mainInput,
-                      // 🔥 Visual feedback: agar lock hai toh grey dikhega
-                      backgroundColor: balances.isLocked ? '#1e293b' : '#0f172a',
-                      cursor: balances.isLocked ? 'not-allowed' : 'text'
+                      backgroundColor: !isAddressMissing ? '#0f172a' : '#1e293b', 
+                      cursor: !isAddressMissing ? 'not-allowed' : 'text',
+                      opacity: !isAddressMissing ? 0.6 : 1,
+                      border: !isAddressMissing ? '1px solid #334155' : '1px solid #475569'
                   }} 
                   value={walletAddress} 
                   onChange={e => setWalletAddress(e.target.value)} 
-                  // 🔥 Disable input if address is already set AND user is withdrawing
-                  disabled={!!loggedInUser?.walletAddress && isAnySelected}
+                  disabled={!isAddressMissing} 
                 />
               </div>
-
                 <div>
                   <label style={{fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '5px', fontWeight: 'bold'}}>SECURITY PASSWORD</label>
                   <input 
@@ -465,13 +506,13 @@ const WithdrawalModal = ({ userId, onClose }) => {
 
             {/* ACTION BUTTON */}
             <div style={{padding: '20px', borderTop: '1px solid #334155', background: '#0f172a'}}>
-           <button 
-  onClick={handleWithdraw} 
-  disabled={loading} // Sirf loading ke time disable hoga taaki double click na ho
-  style={styles.confirmBtn} // Hamesha bright aur active dikhega
->
-  {loading ? "Processing..." : "Withdraw Selected Amount"}
-</button>
+              <button 
+                onClick={handleWithdraw} 
+                disabled={loading} 
+                style={styles.confirmBtn}
+              >
+                {loading ? "Processing..." : "Withdraw Selected Amount"}
+              </button>
             </div>
 
           </div>

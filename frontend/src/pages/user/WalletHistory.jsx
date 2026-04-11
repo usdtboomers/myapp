@@ -14,8 +14,10 @@ const WalletHistory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // ✅ Sirf yahi 3 types filter aur show hongi
   const allTypes = [
+    "deposit",
+    "manual_credit",
+    "manual_debit",
     "credit_to_wallet",
     "transfer",
     "topup",
@@ -83,10 +85,17 @@ const WalletHistory = () => {
       // Math for running balance
       switch(txn.type) {
         case "deposit":
+        case "manual_credit":
         case "credit_to_wallet": 
           mathImpact = amount;
           colorStyle = { color: "#16a34a", fontWeight: "bold" }; // Green
           operator = "+";
+          break;
+
+        case "manual_debit":
+          mathImpact = -amount;
+          colorStyle = { color: "#dc2626", fontWeight: "bold" }; // Red
+          operator = "-";
           break;
 
         case "transfer": 
@@ -125,20 +134,24 @@ const WalletHistory = () => {
 
       balance += mathImpact; 
       
+      // ✅ YAHAN MAGIC HAI: Agar manual_credit hai toh user ko sirf "DEPOSIT" dikhao
+      let displayTypeUI = (txn.type || "unknown").replace(/_/g, " ").toUpperCase();
+      if (txn.type === "manual_credit") displayTypeUI = "DEPOSIT";
+      if (txn.type === "manual_debit") displayTypeUI = "DEDUCTION";
+
       return {
         ...txn, 
         balance: balance.toFixed(2),
         colorStyle,
-        formattedAmount: `${operator}$${amount.toFixed(2)}`
+        formattedAmount: `${operator}$${amount.toFixed(2)}`,
+        displayTypeUI // UI ke liye naya variable
       };
     });
   };
 
-  // ✅ Sirf required types hi table mein dikhayenge
-  const allowedDisplayTypes = ["credit_to_wallet", "transfer", "topup", "debit_topup"];
+  const allowedDisplayTypes = ["deposit", "manual_credit", "manual_debit", "credit_to_wallet", "transfer", "topup", "debit_topup"];
 
   const filtered = calculateBalances().filter(txn => {
-    // Agar type allowed list me nahi hai, toh use hide kar do (e.g., deposit, withdrawal)
     if (!allowedDisplayTypes.includes(txn.type)) return false;
 
     const s = searchTerm.toLowerCase();
@@ -240,7 +253,9 @@ const WalletHistory = () => {
                 return (
                   <tr key={`${txn._id}-${txn.date}-${txn.type}-${idx}`} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9" }}>
                     <td style={tdStyle}>{serialNumber}</td>
-                    <td style={tdStyle}>{(txn.type || "unknown").replace(/_/g, " ").toUpperCase()}</td>
+                    
+                    {/* ✅ YAHAN TABLE MEIN SIRF 'DEPOSIT' DIKHEGA */}
+                    <td style={tdStyle}>{txn.displayTypeUI}</td>
                     
                     <td style={{ ...tdStyle, ...txn.colorStyle }}>
                       {txn.formattedAmount}
