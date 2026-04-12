@@ -93,14 +93,16 @@ function isValidDeposit(amount) {
 }
 
 function isValidWithdrawal(amount) {
-    if (![9, 18, 27, 36, 45].includes(amount)) return false;
+    // Sirf inhi amounts ko aage badhne dega
+    if (![4.5, 9, 18, 27, 36, 45].includes(amount)) return false;
 
-    if (amount === 9 || amount === 18) return true; // Bulk me ye aayenge
+    // Chote amounts jo bulk (zyada) mein aayenge, unhe hamesha pass (true) karega
+    if (amount === 4.5 || amount === 9 || amount === 18) return true; 
     
     // Ratios set kiye gaye hain specific frequency ke liye
-    if (amount === 27) return Math.random() <= 0.40; // 36 se thoda zyada
-    if (amount === 36) return Math.random() <= 0.25; // 10-15 baar din me
-    if (amount === 45) return Math.random() <= 0.10; // Sirf 4-8 baar din me
+    if (amount === 27) return Math.random() <= 0.40; // 40% chance (36 se thoda zyada)
+    if (amount === 36) return Math.random() <= 0.25; // 25% chance (10-15 baar din me)
+    if (amount === 45) return Math.random() <= 0.10; // 10% chance (Sirf 4-8 baar din me)
 
     return false;
 }
