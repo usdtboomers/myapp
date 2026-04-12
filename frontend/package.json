@@ -16,6 +16,7 @@
     "framer-motion": "^12.23.12",
     "jspdf": "^3.0.4",
     "lucide-react": "^0.513.0",
+    "nprogress": "^0.2.0",
     "papaparse": "^5.5.3",
     "qrcode.react": "^4.2.0",
     "react": "^18.2.0",

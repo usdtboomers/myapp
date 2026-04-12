@@ -1,4 +1,9 @@
 import axios from 'axios';
+import NProgress from 'nprogress';
+import 'nprogress/nprogress.css';
+
+// 🎨 NAYA: Loading bar ki setting (Spinner hide kiya hai taaki clean dikhe)
+NProgress.configure({ showSpinner: false, speed: 400, minimum: 0.2 });
 
 // 🌐 Automatically switch between Local and Live
 const isLocal = window.location.hostname === "localhost";
@@ -10,6 +15,8 @@ const api = axios.create({
 
 // 1. Request Interceptor: Token automatically add karega
 api.interceptors.request.use((config) => {
+  NProgress.start(); // 🔥 NAYA: API call jate hi loading shuru
+
   // 🔥 FIX: Pata karo ki ye request Admin ki hai ya Normal User ki
   const isAdminRoute = config.url && config.url.startsWith('/admin');
 
@@ -28,12 +35,20 @@ api.interceptors.request.use((config) => {
   }
   
   return config;
-}, (error) => Promise.reject(error));
+}, (error) => {
+  NProgress.done(); // 🔥 NAYA: Error aaye toh bar rok do
+  return Promise.reject(error);
+});
 
 // 2. Response Interceptor: 401 error handle karega
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    NProgress.done(); // 🔥 NAYA: Data aate hi loading khatam
+    return response;
+  },
   (error) => {
+    NProgress.done(); // 🔥 NAYA: Error aane par bhi bar ruk jani chahiye
+
     const originalRequest = error.config;
 
     if (error.response && error.response.status === 401) {

@@ -98,7 +98,7 @@ const WithdrawalHistory = () => {
                       <tr className="border-b border-slate-700 text-red-400">
                         <th className="py-3 px-2">Sr. No.</th>
                         {/* ✅ FIX: Yahan header "Date & Time" kar diya hai */}
-                        <th className="py-3 px-2">Date & Time</th>
+                        <th className="py-3 px-2">Date </th>
                         <th className="py-3 px-2">Txn Hash</th>
                         <th className="py-3 px-2">Amount</th>
                         <th className="py-3 px-2">Status</th>
@@ -108,8 +108,7 @@ const WithdrawalHistory = () => {
                       {currentItems.map((withd, idx) => {
                         const dateObj = new Date(withd.createdAt);
                         const formattedDate = dateObj.toLocaleDateString('en-GB'); // Ex: 25/12/2026
-                        const formattedTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
+ 
                         return (
                           <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
                             
@@ -118,12 +117,10 @@ const WithdrawalHistory = () => {
                               {indexOfFirstItem + idx + 1}
                             </td>
 
-                            {/* ✅ FIX: Yahan Date aur Time dono print ho rahe hain */}
-                            <td className="py-3 px-2 text-white">
+                             <td className="py-3 px-2 text-white">
                                <div className="flex flex-col">
                                   <span>{formattedDate}</span>
-                                  <span className="text-xs text-slate-400">{formattedTime}</span>
-                               </div>
+                                </div>
                             </td>
                             
                             <td className="py-3 px-2 font-mono">
