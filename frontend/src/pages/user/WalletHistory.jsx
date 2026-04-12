@@ -68,7 +68,7 @@ const WalletHistory = () => {
     }
   };
 
-  const calculateBalances = () => {
+ const calculateBalances = () => {
     let balance = 0;
     
     return transactions.map(txn => {
@@ -77,6 +77,9 @@ const WalletHistory = () => {
       let mathImpact = 0;
       let colorStyle = { color: "#333" }; 
       let operator = "";
+      
+      // ✅ Naya Variable: Har baar fresh description lega
+      let finalDescription = txn.description; 
 
       const fromId = String(txn.fromUserId);
       const toId = String(txn.toUserId);
@@ -88,24 +91,24 @@ const WalletHistory = () => {
         case "manual_credit":
         case "credit_to_wallet": 
           mathImpact = amount;
-          colorStyle = { color: "#16a34a", fontWeight: "bold" }; // Green
+          colorStyle = { color: "#16a34a", fontWeight: "bold" }; 
           operator = "+";
           break;
 
         case "manual_debit":
           mathImpact = -amount;
-          colorStyle = { color: "#dc2626", fontWeight: "bold" }; // Red
+          colorStyle = { color: "#dc2626", fontWeight: "bold" }; 
           operator = "-";
           break;
 
         case "transfer": 
-          if (toId === myId) { // Aaya
+          if (toId === myId) { 
             mathImpact = amount;
-            colorStyle = { color: "#16a34a", fontWeight: "bold" }; // Green
+            colorStyle = { color: "#16a34a", fontWeight: "bold" }; 
             operator = "+";
-          } else if (fromId === myId) { // Bheja
+          } else if (fromId === myId) { 
             mathImpact = -amount;
-            colorStyle = { color: "#dc2626", fontWeight: "bold" }; // Red
+            colorStyle = { color: "#dc2626", fontWeight: "bold" }; 
             operator = "-";
           }
           break;
@@ -113,11 +116,28 @@ const WalletHistory = () => {
         case "topup":
         case "debit_topup":
         case "buy_spin": 
-          if (fromId === myId) { // Mere wallet se kata
-            mathImpact = -amount;
-            colorStyle = { color: "#dc2626", fontWeight: "bold" }; // Red
-            operator = "-";
-          } else { // Kisi aur ne mera topup kiya
+          if (fromId === myId) { 
+            
+            // 🔥 YAHAN FIX KIYA HAI
+            if (amount === 10 && (txn.type === "topup" || txn.type === "debit_topup")) {
+              mathImpact = 0; 
+              colorStyle = { color: "#d97706", fontWeight: "bold" }; 
+              operator = ""; 
+              
+              // ✅ Check karega: Agar pehle se likha hai, toh wapas nahi jodega
+              if (!finalDescription) {
+                  finalDescription = "Pre-launch Offer (No Deduction)";
+              } else if (!finalDescription.includes("(Pre-launch Offer)")) {
+                  finalDescription = finalDescription + " (Pre-launch Offer)";
+              }
+
+            } else {
+              mathImpact = -amount;
+              colorStyle = { color: "#dc2626", fontWeight: "bold" }; 
+              operator = "-";
+            }
+            
+          } else { 
             mathImpact = 0; 
             colorStyle = { color: "#333", fontWeight: "normal" }; 
             operator = ""; 
@@ -134,17 +154,17 @@ const WalletHistory = () => {
 
       balance += mathImpact; 
       
-      // ✅ YAHAN MAGIC HAI: Agar manual_credit hai toh user ko sirf "DEPOSIT" dikhao
       let displayTypeUI = (txn.type || "unknown").replace(/_/g, " ").toUpperCase();
       if (txn.type === "manual_credit") displayTypeUI = "DEPOSIT";
       if (txn.type === "manual_debit") displayTypeUI = "DEDUCTION";
 
       return {
         ...txn, 
+        description: finalDescription, // ✅ Updated description wapas bhejega
         balance: balance.toFixed(2),
         colorStyle,
         formattedAmount: `${operator}$${amount.toFixed(2)}`,
-        displayTypeUI // UI ke liye naya variable
+        displayTypeUI 
       };
     });
   };

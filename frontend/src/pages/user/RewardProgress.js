@@ -123,7 +123,7 @@ const RewardProgress = () => {
               <div style={styles.requirementBlock}>
                 <div style={styles.reqHeader}>
                   <span className="text-sm text-white">
-                    Directs Needed (Rank {rules.reqDirectRank}+)
+                    Directs Needed (Rank {rules.reqDirectRank})
                   </span>
                   <span className="text-sm font-bold text-white">
                     {directsProgress} / {rules.reqDirectCount}

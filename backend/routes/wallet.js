@@ -197,58 +197,34 @@ router.post('/transfer', async (req, res) => {
     if (!receiver) return res.status(404).json({ message: 'Recipient not found' });
 
     const amt = Number(amount);
-    if (amt < 10) return res.status(400).json({ message: "Minimum transfer amount is $10" });
+    
+    // 🔥 LIMIT CHANGED: Ab minimum $5 ka transfer ho sakta hai
+    if (amt < 5) return res.status(400).json({ message: "Minimum transfer amount is $5" });
 
     if (amt % 1 !== 0) return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
 
-    // 🔥 PROMO USER LOGIC START (Bypass Team Check & Balance Check) 🔥
+    // 🔥 PROMO USER LOGIC START
     if (sender.role === "promo") {
       return res.json({ message: 'Transfer successful (Promo Mode)' });
     }
-    // 🔥 PROMO USER LOGIC END 🔥
+    // 🔥 PROMO USER LOGIC END
 
     // ============================================
     // 🛡️ NORMAL USER CHECKS START
     // ============================================
 
-    // 1. Password Check (FIXED: changed 'user' to 'sender')
-  const isPasswordValid = (transactionPassword.toLowerCase() === sender.transactionPassword.toLowerCase());
-if (!isPasswordValid) {
-  return res.status(400).json({ message: 'Invalid transaction password' });
-}
-
+    // 1. Password Check (Capital/Small issue fixed)
+    const isPasswordValid = (transactionPassword.toLowerCase() === sender.transactionPassword.toLowerCase());
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: 'Invalid transaction password' });
+    }
 
     // 2. Balance Check
     if (sender.walletBalance < amt) {
       return res.status(400).json({ message: 'Insufficient balance' });
     }
 
-    // 3. 🔥 TEAM CHECK (DOWNLINE ONLY) 🔥
-    // Logic: Receiver ke upar check karte jao, kya Sender unka Upline hai?
-    let isDownline = false;
-    let currentSponsorId = receiver.sponsorId;
-    let safetyCounter = 0; // Infinite loop se bachne ke liye
-
-    while (currentSponsorId && safetyCounter < 50) { // Max 50 levels up check karega
-      if (currentSponsorId === sender.userId) {
-        isDownline = true;
-        break;
-      }
-      
-      // Agla upline user dhundo
-      const uplineUser = await User.findOne({ userId: currentSponsorId });
-      if (!uplineUser) break; // Chain khatam
-      
-      currentSponsorId = uplineUser.sponsorId;
-      safetyCounter++;
-    }
-
-    // Agar Receiver aapki team me nahi hai, to error do
-    if (!isDownline) {
-      return res.status(403).json({ 
-        message: 'Transfer Restricted: You can only transfer funds to your Downline Team members.' 
-      });
-    }
+    // 🔥 DOWNLINE CHECK REMOVED: Ab kisi ko bhi (anywhere) transfer ho sakta hai!
 
     // ============================================
     // 💸 TRANSFER EXECUTION

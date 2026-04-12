@@ -233,10 +233,10 @@ router.put(
         return res.status(400).json({ message: "Transaction password is required" });
       }
       
-   const isValidPassword = (transactionPassword.toLowerCase() === currentUser.transactionPassword.toLowerCase());
-if (!isValidPassword) {
-  return res.status(403).json({ message: "Invalid transaction password" });
-}
+      const isValidPassword = (transactionPassword.toLowerCase() === currentUser.transactionPassword.toLowerCase());
+      if (!isValidPassword) {
+        return res.status(403).json({ message: "Invalid transaction password" });
+      }
 
       if (!amount) return res.status(400).json({ message: 'Missing amount.' });
 
@@ -246,18 +246,9 @@ if (!isValidPassword) {
       // 🔥 CHECK: Is this a Promo User?
       const isPromo = currentUser.role === 'promo';
 
-      // 🔹 2. Authorization
+      // 🔹 2. Authorization (YAHAN SE RESTRICTION HATA DIYA HAI)
       const isSelf = targetUserId === currentUser.userId;
-      let isAuthorized = isSelf || isPromo; 
-
-      if (!isAuthorized) {
-        // Ye function aapke paas upar define hona chahiye (jaise aapke purane code me tha)
-        isAuthorized = await isUserInDownline(currentUser.userId, targetUserId);
-      }
-
-      if (!isAuthorized) {
-        return res.status(403).json({ message: 'Not authorized to top up this user.' });
-      }
+      // Ab koi pabandi nahi hai, koi bhi kisi ko bhi top-up kar sakta hai.
 
       // 🔹 3. Package Validation & STEP-BY-STEP CHECK
       const allPackages = [10, 30, 60, 120, 240, 480, 960];

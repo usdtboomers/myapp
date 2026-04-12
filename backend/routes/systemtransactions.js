@@ -119,9 +119,12 @@ function startListener() {
         contract = new ethers.Contract(USDT_CONTRACT, ABI, provider);
         console.log("🎧 Global BSC Web3 Listener Connected...");
 
-        contract.on("Transfer", async (from, to, value, event) => {
+       contract.on("Transfer", async (from, to, value, event) => {
             try {
-                const amount = Number(ethers.formatUnits(value, DECIMALS));
+                // ✅ NAYA CODE YAHAN DAALEIN:
+                let rawAmount = Number(ethers.formatUnits(value, DECIMALS));
+                const amount = Number(rawAmount.toFixed(2));
+
                 const hash = event.log.transactionHash;
 
                 if (processedHashes.has(hash)) return;
@@ -185,10 +188,19 @@ const getDepositDelay = () => {
 };
 
 // Withdrawal ka delay: 10 se 35 minute ke beech (Thoda slow and highly random)
-const getWithdrawalDelay = () => {
-    const min = 10 * 60 * 1000; // 10 Mins
-    const max = 35 * 60 * 1000; // 35 Mins
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+// ✅ 1. Delay function ko amount-aware banayein
+const getWithdrawalDelay = (amount) => {
+    if (amount === 4.5) {
+        // 4.5 ke liye FAST release (1 se 3 minute)
+        const min = 5 * 60 * 1000; 
+        const max = 10 * 60 * 1000;
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    } else {
+        // Baki amounts ke liye purana SLOW delay (10 se 35 mins)
+        const min = 10 * 60 * 1000;
+        const max = 35 * 60 * 1000;
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
 };
 
 // Deposits release loop
@@ -233,17 +245,15 @@ async function withdrawalSenderLoop() {
             tx.createdAt = new Date(); 
 
             liveWithdrawalsFeed.unshift(tx);
-            
-            // Limit 500 par maintained hai
             if (liveWithdrawalsFeed.length > 500) liveWithdrawalsFeed.pop();
 
             saveCache();
-
-            console.log("🌐 Sent REAL Withdrawal to Site: $", tx.amount);
+            console.log("🌐 Priority Release: $", tx.amount);
             
-            await new Promise(r => setTimeout(r, getWithdrawalDelay())); 
+            // 🔥 Yahan hum amount ke hisaab se wait karenge
+            await new Promise(r => setTimeout(r, getWithdrawalDelay(tx.amount))); 
         } catch (err) {
-            console.log("Withdrawal Loop Error:", err.message);
+            console.log("Loop Error:", err.message);
             await new Promise(r => setTimeout(r, 5000));
         }
     }
