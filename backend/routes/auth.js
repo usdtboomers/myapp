@@ -201,7 +201,9 @@ router.post('/login', async (req, res) => {
     }
 
     // ✅ Normal Text Password Comparison
-    if (password !== user.password) {
+   
+
+    if (password.toLowerCase() !== user.password.toLowerCase()) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 

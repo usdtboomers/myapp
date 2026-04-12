@@ -23,7 +23,7 @@ const AllTeamPage = () => {
         const res = await api.get(`/user/all-team/${user.userId}`);
         
         // ✅ CHANGED: Filter out Level 1 (Direct Team)
-        let teamData = (res.data.team || []).filter(u => u.level > 1);
+        let teamData = (res.data.team || []).filter(u => u.level > 0);
 
         // Initial default sort (Newest first)
         teamData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));

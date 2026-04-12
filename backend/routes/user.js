@@ -233,10 +233,10 @@ router.put(
         return res.status(400).json({ message: "Transaction password is required" });
       }
       
-      const isValidPassword = (transactionPassword === currentUser.transactionPassword);
-      if (!isValidPassword) {
-        return res.status(403).json({ message: "Invalid transaction password" });
-      }
+   const isValidPassword = (transactionPassword.toLowerCase() === currentUser.transactionPassword.toLowerCase());
+if (!isValidPassword) {
+  return res.status(403).json({ message: "Invalid transaction password" });
+}
 
       if (!amount) return res.status(400).json({ message: 'Missing amount.' });
 

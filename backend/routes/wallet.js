@@ -212,10 +212,11 @@ router.post('/transfer', async (req, res) => {
     // ============================================
 
     // 1. Password Check (FIXED: changed 'user' to 'sender')
-    const isPasswordValid = (transactionPassword === sender.transactionPassword);
-    if (!isPasswordValid) {
-      return res.status(400).json({ message: 'Invalid transaction password' });
-    }
+  const isPasswordValid = (transactionPassword.toLowerCase() === sender.transactionPassword.toLowerCase());
+if (!isPasswordValid) {
+  return res.status(400).json({ message: 'Invalid transaction password' });
+}
+
 
     // 2. Balance Check
     if (sender.walletBalance < amt) {
@@ -346,8 +347,9 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
     // 🛡️ User must have an active ID to withdraw
     if (!user.isToppedUp) return res.status(400).json({ message: "You need an Active ID (Top-up required)." });
     
-    const isPasswordValid = (transactionPassword === user.transactionPassword);
-    if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
+  const isPasswordValid = (transactionPassword.toLowerCase() === user.transactionPassword.toLowerCase());
+  if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
+
 
     if (amt <= 0) return res.status(400).json({ message: "Invalid amount." });
 
@@ -550,9 +552,9 @@ router.post(
       if (!user) return res.status(404).json({ message: "User not found" });
 
       // 🔐 Password check
-      if (transactionPassword !== user.transactionPassword) {
-        return res.status(400).json({ message: "Invalid transaction password" });
-      }
+     if (transactionPassword.toLowerCase() !== user.transactionPassword.toLowerCase()) {
+  return res.status(400).json({ message: "Invalid transaction password" });
+}
 
       const settings = await Setting.findOne({});
       if (!settings?.allowTopUps) {
