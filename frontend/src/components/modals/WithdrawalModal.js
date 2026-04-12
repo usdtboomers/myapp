@@ -51,8 +51,8 @@ const WithdrawalModal = ({ userId, onClose }) => {
   };
 
   const unlockDays = [3, 13, 43, 73, 103];
-const packageOffsets = { 10: 0, 30: 5, 60: 10, 120: 15, 240: 20, 480: 25, 960: 30 };
-
+// ✅ Naya Code (Continuous Flow)
+const packageOffsets = { 10: 0, 30: 1, 60: 6, 120: 11, 240: 16, 480: 21, 960: 26 };
   // --- LOGIC: Fetch Data ---
   const fetchData = useCallback(async () => {
     try {
@@ -439,17 +439,18 @@ const packageOffsets = { 10: 0, 30: 5, 60: 10, 120: 15, 240: 20, 480: 25, 960: 3
                          </div>
                          
                          {/* Total Calculation: Achieved sum - Withdrawn */}
-                         {hasPackage && (() => {
-                             const totalEarningsOfAchievedLevels = achievedLevels.reduce((sum, levelData) => sum + (levelData.earning || 0), 0);
-                             const totalWithdrawnInThisPlan = loggedInUser?.pendingWithdrawals?.[planKey] || 0;
-                             const frontendAvailableInThisPlan = Math.max(0, totalEarningsOfAchievedLevels - totalWithdrawnInThisPlan);
-                             
-                             return (
-                               <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>
-                                 Max Withdraw Avail: ${frontendAvailableInThisPlan.toFixed(2)}
-                               </span>
-                             );
-                         })()}
+                        {/* Total Calculation: Achieved sum - Withdrawn */}
+{(() => {
+    const totalEarningsOfAchievedLevels = achievedLevels.reduce((sum, levelData) => sum + (levelData.earning || 0), 0);
+    const totalWithdrawnInThisPlan = loggedInUser?.pendingWithdrawals?.[planKey] || 0;
+    const frontendAvailableInThisPlan = Math.max(0, totalEarningsOfAchievedLevels - totalWithdrawnInThisPlan);
+    
+    return (
+        <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>
+            Max Withdraw Avail: ${frontendAvailableInThisPlan.toFixed(2)}
+        </span>
+    );
+})()}
                       </div>
                       
                       <div className="custom-scroll" style={{ overflowX: 'auto', width: '100%' }}>

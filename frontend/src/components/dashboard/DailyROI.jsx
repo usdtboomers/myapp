@@ -31,7 +31,9 @@ const packagesConfig = [
 ];
 
 // Sequential Days Offset for Free Users
-const packageOffsets = { 10: 0, 30: 5, 60: 10, 120: 15, 240: 20, 480: 25, 960: 30 };
+// ✅ Naya Code (Continuous Flow)
+const packageOffsets = { 10: 0, 30: 1, 60: 6, 120: 11, 240: 16, 480: 21, 960: 26 };
+
 
 export default function Plan() {
   const { user } = useAuth();

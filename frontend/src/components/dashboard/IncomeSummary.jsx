@@ -16,7 +16,9 @@ const packagesConfig = [
 ];
 
 // ✅ EXACT OFFSET MATCH WITH PLAN.JS
-const packageOffsets = { 10: 0, 30: 5, 60: 10, 120: 15, 240: 20, 480: 25, 960: 30 };
+// ✅ Naya Code (Continuous Flow)
+const packageOffsets = { 10: 0, 30: 1, 60: 6, 120: 11, 240: 16, 480: 21, 960: 26 };
+
 
 const IncomeSummary = ({ income = {}, user = {} }) => {
   const [globalGrowth, setGlobalGrowth] = useState(0); 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
- import { ClipboardCopy, Check } from "lucide-react";
+import { ClipboardCopy, Check } from "lucide-react";
 
 const ReferralLinkBox = ({ link, userId }) => {
   const [copied, setCopied] = useState(false);
@@ -15,6 +15,12 @@ const ReferralLinkBox = ({ link, userId }) => {
 
   return (
     <div className="mt-4 bg-white p-3 rounded-lg shadow-sm border border-gray-200 text-sm">
+      
+      {/* Name / Label Add Kiya Hai */}
+      <div className="font-semibold text-gray-700 mb-2">
+        Referral Link
+      </div>
+
       {/* Input + Copy (same row) */}
       <div className="flex items-center gap-2">
         <input
@@ -26,8 +32,7 @@ const ReferralLinkBox = ({ link, userId }) => {
         />
         <button 
           onClick={handleCopy}
-          className="flex items-center bg-black
-           gap-1 bg-emerald-600 text-white px-3 py-1 rounded-md hover:bg-emerald-700 transition text-xs sm:text-sm"
+          className="flex items-center gap-1 bg-black text-white px-3 py-2 rounded-md hover:bg-emerald-700 transition text-xs sm:text-sm"
         >
           {copied ? (
             <>
@@ -43,28 +48,20 @@ const ReferralLinkBox = ({ link, userId }) => {
         </button>
       </div>
 
-{/* QR Code on the left, Share buttons on the right */}
-<div className="flex items-center justify-center mt-3 gap-4">
-  {/* QR Code */}
- 
+      {/* Share buttons (QR Hatane ke baad dono ko side-by-side align kar diya) */}
+      <div className="flex items-center mt-3 gap-2">
+        <a href={whatsappShare} target="_blank" rel="noreferrer" className="flex-1">
+          <button className="w-full bg-green-500 text-white px-3 py-2 rounded-md hover:bg-green-600 text-xs sm:text-sm font-medium transition">
+            WhatsApp
+          </button>
+        </a>
+        <a href={telegramShare} target="_blank" rel="noreferrer" className="flex-1">
+          <button className="w-full bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 text-xs sm:text-sm font-medium transition">
+            Telegram
+          </button>
+        </a>
+      </div>
 
-  {/* Share buttons stacked vertically on the right */}
-  <div className="flex flex-col gap-2">
-    <a href={whatsappShare} target="_blank" rel="noreferrer">
-      <button className="bg-green-500 text-white px-3 py-1 rounded-md hover:bg-green-600 text-xs sm:text-sm">
-        WhatsApp
-      </button>
-    </a>
-    <a href={telegramShare} target="_blank" rel="noreferrer">
-      <button className="bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600 text-xs sm:text-sm">
-        Telegram
-      </button>
-    </a>
-  </div>
-</div>
-
-
-     
     </div>
   );
 };

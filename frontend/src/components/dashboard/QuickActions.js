@@ -33,123 +33,111 @@ const QuickActions = ({
 
   const actions = [
     { 
-      label: "Deposit", 
-      icon: Wallet, 
-      onClick: onDepositClick, 
-      color: "text-blue-400",
-      bgHover: "group-hover:bg-blue-500/10",
-      borderHover: "group-hover:border-blue-500/50"
+      label: "Deposit", icon: Wallet, onClick: onDepositClick, 
+      color: "text-blue-400", bgHover: "group-hover:bg-blue-500/10", borderHover: "group-hover:border-blue-500/50"
     },
     { 
-      label: "Top-Up", 
-      icon: ArrowUpCircle, 
-      onClick: onTopUpClick, 
-      color: "text-emerald-400",
-      bgHover: "group-hover:bg-emerald-500/10",
-      borderHover: "group-hover:border-emerald-500/50"
+      label: "Top-Up", icon: ArrowUpCircle, onClick: onTopUpClick, 
+      color: "text-emerald-400", bgHover: "group-hover:bg-emerald-500/10", borderHover: "group-hover:border-emerald-500/50"
     },
     { 
-      label: "Wallet Transfer", 
-      icon: Send, 
-      onClick: onWalletTransferClick, 
-      color: "text-purple-400",
-      bgHover: "group-hover:bg-purple-500/10",
-      borderHover: "group-hover:border-purple-500/50"
+      label: "Wallet Transfer", icon: Send, onClick: onWalletTransferClick, 
+      color: "text-purple-400", bgHover: "group-hover:bg-purple-500/10", borderHover: "group-hover:border-purple-500/50"
     },
     { 
-      label: "Withdraw", 
-      icon: Download, 
-      onClick: onWithdrawClick, 
-      color: "text-orange-400",
-      bgHover: "group-hover:bg-orange-500/10",
-      borderHover: "group-hover:border-orange-500/50"
+      label: "Withdraw", icon: Download, onClick: onWithdrawClick, 
+      color: "text-orange-400", bgHover: "group-hover:bg-orange-500/10", borderHover: "group-hover:border-orange-500/50"
     },
     { 
-      label: "Withdraw to Wallet", 
-      icon: CreditCard, 
-      onClick: onCreditToWalletClick, 
-      color: "text-cyan-400",
-      bgHover: "group-hover:bg-cyan-500/10",
-      borderHover: "group-hover:border-cyan-500/50"
+      label: "Withdraw to Wallet", icon: CreditCard, onClick: onCreditToWalletClick, 
+      color: "text-cyan-400", bgHover: "group-hover:bg-cyan-500/10", borderHover: "group-hover:border-cyan-500/50"
     },
-    // 🔥 Telegram Wala Box jisme animation flag true kar diya hai 🔥
-    { 
-      label: "Join Telegram", 
-      icon: TelegramIcon, 
-      link: "https://t.me/usdt_boomers", 
-      color: "text-[#229ED9]", 
-      bgHover: "group-hover:bg-[#229ED9]/20",
-      borderHover: "group-hover:border-[#229ED9]",
-      isAnimated: true // Ye naya property add kiya animation ke liye
-    },
+    {
+      label: "Join Telegram", icon: TelegramIcon, link: "https://t.me/usdt_boomers",
+      isAnimated: true 
+    }
   ];
 
   return (
     <>
-      {/* 🌟 Sirf is component ke liye Animation ki styling 🌟 */}
       <style>
         {`
           @keyframes telegram-pulse {
-            0% { box-shadow: 0 0 5px rgba(34, 158, 217, 0.2); transform: scale(1); }
-            50% { box-shadow: 0 0 15px rgba(34, 158, 217, 0.6); transform: scale(1.02); }
-            100% { box-shadow: 0 0 5px rgba(34, 158, 217, 0.2); transform: scale(1); }
+            0% { box-shadow: 0 0 5px rgba(56, 165, 225, 0.4); transform: scale(1); }
+            50% { box-shadow: 0 0 15px rgba(56, 165, 225, 0.8); transform: scale(1.02); }
+            100% { box-shadow: 0 0 5px rgba(56, 165, 225, 0.4); transform: scale(1); }
           }
           
+          /* 🔥 Light Aane-Jane ka Smooth Animation 🔥 */
           @keyframes telegram-shine {
             0% { left: -100%; }
-            20% { left: 100%; }
-            100% { left: 100%; }
+            50% { left: 200%; } /* Ye light ko pura aage bhejega */
+            100% { left: -100%; } /* Ye wapas piche layega (aane-jane ka effect) */
           }
 
           .telegram-special-box {
-            animation: telegram-pulse 2s infinite;
-            border-color: rgba(34, 158, 217, 0.5) !important; /* Halka blue border hamesha rahega */
+            background-color: #38A5E1 !important; /* Pehle se lighter aur bright blue */
+            border-color: #38A5E1 !important;
+            animation: telegram-pulse 2.5s infinite;
             overflow: hidden;
+            position: relative; /* Light ko box ke andar rakhne ke liye */
           }
 
+          .telegram-special-box * {
+            color: white !important; 
+          }
+
+          .telegram-special-box .icon-wrapper {
+            background-color: rgba(255, 255, 255, 0.25) !important;
+          }
+
+          /* Light Effect (Shine Bar) */
           .telegram-special-box::after {
             content: '';
             position: absolute;
             top: 0;
             left: -100%;
-            width: 50px;
+            width: 80px; /* Light ki chaudai badhayi hai */
             height: 100%;
             background: linear-gradient(
               to right, 
-              rgba(255, 255, 255, 0) 0%, 
-              rgba(255, 255, 255, 0.15) 50%, 
-              rgba(255, 255, 255, 0) 100%
+              rgba(255,255,255,0) 0%, 
+              rgba(255,255,255,0.6) 50%, /* Safed light ko thoda dark/visible kiya */
+              rgba(255,255,255,0) 100%
             );
             transform: skewX(-25deg);
-            animation: telegram-shine 3s infinite;
+            animation: telegram-shine 3s ease-in-out infinite; /* Smooth chalne ke liye ease-in-out */
           }
 
           .telegram-special-box:hover {
             animation: none;
-            background-color: rgba(34, 158, 217, 0.1) !important;
+            background-color: #229ED9 !important; /* Hover par thoda dark hoga */
+            border-color: #229ED9 !important;
           }
           
           .telegram-special-box:hover::after {
-            animation: none;
+            animation: none; /* Hover karne par light ruk jayegi */
           }
         `}
       </style>
 
-      <div className="grid grid-cols-3 md:grid-cols-4 text-white lg:grid-cols-6 gap-3 ">
+      <div className="grid grid-cols-3 md:grid-cols-4 text-white lg:grid-cols-6 gap-3">
         
-        {/* Standard Action Buttons */}
         {actions.map((action, index) => {
-          // Check karte hain agar item 'isAnimated' hai, toh special class add karenge
-          const specialClass = action.isAnimated ? "telegram-special-box" : "";
+          const isTelegram = action.isAnimated;
           
-          const boxStyles = `relative group flex flex-col items-center justify-center p-3 rounded-xl bg-[#1e293b] border border-slate-700 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-900/50 ${action.borderHover} h-full w-full ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${specialClass}`;
+          const defaultBoxStyle = isTelegram ? "" : `bg-[#1e293b] border-slate-700 ${action.borderHover}`;
           
+          const boxStyles = `relative group flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-900/50 h-full w-full ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${defaultBoxStyle} ${isTelegram ? 'telegram-special-box' : ''}`;
+          
+          const defaultIconStyle = isTelegram ? "icon-wrapper" : `bg-slate-800 ${action.color} ${action.bgHover}`;
+
           const content = (
             <>
-              <div className={`mb-2 p-2.5 rounded-full bg-slate-800 transition-colors ${action.color} ${action.bgHover} flex items-center justify-center`}>
+              <div className={`mb-2 p-2.5 rounded-full flex items-center justify-center transition-colors ${defaultIconStyle}`}>
                 <action.icon size={18} />
               </div>
-              <span className={`text-[11px] font-semibold tracking-wide uppercase text-center transition-colors ${action.isAnimated ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}>
+              <span className={`text-[11px] font-semibold tracking-wide uppercase text-center transition-colors ${isTelegram ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}>
                 {action.label}
               </span>
             </>
@@ -157,26 +145,14 @@ const QuickActions = ({
 
           if (action.link) {
             return (
-              <a
-                key={index}
-                href={action.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={boxStyles}
-                style={{ textDecoration: 'none' }} 
-              >
+              <a key={index} href={action.link} target="_blank" rel="noopener noreferrer" className={boxStyles} style={{ textDecoration: 'none' }}>
                 {content}
               </a>
             );
           }
 
           return (
-            <button
-              key={index}
-              onClick={() => !disabled && action.onClick && action.onClick()}
-              disabled={disabled}
-              className={boxStyles}
-            >
+            <button key={index} onClick={() => !disabled && action.onClick && action.onClick()} disabled={disabled} className={boxStyles}>
               {content}
             </button>
           );
