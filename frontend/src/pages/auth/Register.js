@@ -3,7 +3,7 @@ import api from '../../api/axios'; // Make sure this path is correct
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import Select from 'react-select';
 import Confetti from 'react-confetti';
-
+import TelegramButton from '../../components/TelegramButton';
 // --- Icons Components ---
 const EyeOpenIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -70,9 +70,16 @@ function Register() {
 
   // Restrict to Numbers only for Mobile
 // Restrict to Numbers only and Prevent starting with '0'
+ // Restrict to Numbers only, Prevent starting with '0', and Max 10 Digits
   const handleMobileChange = (e) => {
     let value = e.target.value.replace(/\D/g, ''); // Pehle sirf numbers allow karo
     value = value.replace(/^0+/, ''); // Phir agar starting mein '0' hai toh usko hata do
+    
+    // Agar number 10 digit se zyada type ho, toh usko cut kar do
+    if (value.length > 10) {
+      value = value.slice(0, 10);
+    }
+    
     setMobile(value);
   };
 
@@ -347,13 +354,14 @@ onChange={(e) => {
             <div>
                <label className="text-xs font-medium text-blue-200 ml-1 uppercase tracking-wider">Mobile Number</label>
                <div className="relative group mt-1">
-                   <input
-                     type="tel"
-                     value={mobile}
-                     onChange={handleMobileChange}
-                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-10 text-black focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all"
-                     placeholder="Enter Mobile Number"
-                   />
+                 <input
+  type="tel"
+  value={mobile}
+  onChange={handleMobileChange}
+  maxLength="10" /* <-- Ye line nayi add karni hai */
+  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-10 text-black focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all"
+  placeholder="Enter Mobile Number"
+/>
                    <div className="absolute left-3 top-3.5 text-black/40 group-focus-within:text-cyan-400 transition-colors">
                      <PhoneIcon />
                    </div>
@@ -417,6 +425,8 @@ onChange={(e) => {
               <button className="w-full py-4 bg-yellow-600 rounded-xl font-bold text-lg bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-400 hover:to-yellow-800 text-black shadow-lg shadow-cyan-500/25 transform hover:-translate-y-1 transition-all duration-200 tracking-wide">
                 REGISTER NOW
               </button>
+
+              <TelegramButton />
               
               <button 
                 type="button" 

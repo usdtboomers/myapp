@@ -65,7 +65,7 @@ const QuickActions = ({
   ];
 
   return (
-    <div className="grid grid-cols-3 md:grid-cols-4 text-white lg:grid-cols-7 gap-3 mb-6">
+    <div className="grid grid-cols-3 md:grid-cols-4 text-white lg:grid-cols-7 gap-3 ">
       
       {/* Standard Action Buttons */}
       {actions.map((action, index) => (

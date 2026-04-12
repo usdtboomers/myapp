@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from 'api/axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Lock, ArrowRight, Eye, EyeOff, Check } from 'lucide-react';
-
+import TelegramButton from '../../components/TelegramButton';
 // ----------------------------------------------------------------------
 // ✅ REAL IMPORT
 // ----------------------------------------------------------------------
@@ -365,6 +365,8 @@ const UserLogin = () => {
                     </>
                 )}
             </button>
+
+            <TelegramButton />
 
         </form>
 
