@@ -48,8 +48,7 @@ const Dashboard = () => {
     amount: 0,
   });
 
-  const [showWalletReminder, setShowWalletReminder] = useState(false);
-  const hasFetched = useRef(false);
+   const hasFetched = useRef(false);
 
   const [recentTransactions, setRecentTransactions] = useState({ deposits: [], withdrawals: [] });
 
@@ -60,8 +59,7 @@ const Dashboard = () => {
         // 1. User details fetch karna
         const userRes = await api.get(`/user/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
         setUser(userRes.data.user); 
-        setShowWalletReminder(!userRes.data.user.walletAddress);
-
+ 
         // 2. Wallet/Income fetch karna
         const incomeRes = await api.get(`/wallet/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
         setIncome({
