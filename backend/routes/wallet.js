@@ -107,32 +107,32 @@ const calculatePackageEarnings = (packages, planKey) => {
 };
  
 
-// ==========================================
-// ✅ HELPER: Get Lifetime Incomes (Har type ki total earning)
-// ==========================================
- 
-
-// ==========================================
-// ✅ UPDATED ROUTE: Get User Wallet & Income Stats
-// (Isko file mein sabse NEECHE rakho)
-// ==========================================
- 
- 
+// ✅ NEW FUNCTION: Check if a specific level is unlocked for withdrawal
+const getLevelUnlockData = (pkg, level) => {
+  // Check how many days have passed since the package was bought
+  const diffDays = Math.floor((Date.now() - new Date(pkg.startDate)) / (1000 * 60 * 60 * 24));
   
+  // Get required days from the unlockDays array based on the level requested (0 to 4)
+  const requiredDays = unlockDays[level];
+
+  // If level is invalid
+  if (requiredDays === undefined) {
+    return { isUnlocked: false, timeLeft: "Invalid Level" };
+  }
+
+  const isUnlocked = diffDays >= requiredDays;
+  let timeLeft = "";
+
+  if (!isUnlocked) {
+    const daysLeft = requiredDays - diffDays;
+    timeLeft = `${daysLeft} days remaining`;
+  }
+
+  return { isUnlocked, timeLeft };
+};
 
  
-// Provider Setup
  
-
- 
-
-
-
- 
-
- 
-// 🧾 GET /wallet/deposit-history/:userId
-
 // 🧾 GET /wallet/deposit-history/:userId
 router.get('/deposit-history/:userId', async (req, res) => {
   try {
@@ -157,7 +157,6 @@ const bcrypt = require('bcrypt');
 
  
  
- 
 
 // 🔹 Calculate total withdrawn from DB
 async function getTotalWithdrawn(userId) {
@@ -168,14 +167,7 @@ async function getTotalWithdrawn(userId) {
   return result[0]?.total || 0;
 }
 
-// 🔹 Run binary matching for eligible users only
  
-
-
-
-
- 
-
 
 
 
@@ -257,17 +249,7 @@ router.post('/transfer', async (req, res) => {
 
   
 
-
-// ==========================================
-// ✅ UPDATED ROUTE: Get User Wallet & Income Stats
-// ==========================================
-    // ... rest of your existing route code ...
-// ==========================================
-// 1. UPDATED WITHDRAWABLE API (Directs removed)
-// ==========================================
-// ==========================================
-// 1. UPDATED WITHDRAWABLE API 
-// ==========================================
+ 
 // 1. GET WITHDRAWABLE BALANCE API
 // ==========================================
 router.get("/withdrawable/:userId", async (req, res) => {
@@ -312,9 +294,13 @@ router.get("/withdrawable/:userId", async (req, res) => {
 // ==========================================
 // 2. UPDATED WITHDRAW POST API 
 // ==========================================
+// ==========================================
+// 2. UPDATED WITHDRAW POST API 
+// ==========================================
 router.post("/withdraw", authMiddleware, async (req, res) => {
   try {
-    const { amount, source, transactionPassword, package: packageAmount, level } = req.body;
+    // 🔥 CHANGE 1: totalBatchAmount yahan add kiya
+    const { amount, source, transactionPassword, package: packageAmount, level, totalBatchAmount } = req.body;
     const amt = Math.floor(parseFloat(amount));
 
     const user = await User.findOne({ userId: req.user.userId });
@@ -323,18 +309,21 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
     // 🛡️ User must have an active ID to withdraw
     if (!user.isToppedUp) return res.status(400).json({ message: "You need an Active ID (Top-up required)." });
     
-  const isPasswordValid = (transactionPassword.toLowerCase() === user.transactionPassword.toLowerCase());
-  if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
-
+    const isPasswordValid = (transactionPassword.toLowerCase() === user.transactionPassword.toLowerCase());
+    if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
 
     if (amt <= 0) return res.status(400).json({ message: "Invalid amount." });
 
-    // ✅ Minimum withdrawal limit set to $5
-    if (amt < 5) return res.status(400).json({ message: "Minimum withdrawal amount is $5." });
+    // 🔥 CHANGE 2: $5 ka check totalBatchAmount par laga diya
+    const checkAmt = totalBatchAmount ? parseFloat(totalBatchAmount) : amt;
+    if (checkAmt < 5) {
+        return res.status(400).json({ message: "Minimum total withdrawal amount is $5." });
+    }
 
     const isOtherIncome = ["direct", "level", "reward", "spin", "pool"].includes(source);
     let finalSourceForDB = source;
-
+    
+ 
     if (isOtherIncome) {
       // Find dynamic balance field (e.g. rewardIncome)
       const balanceField = `${source}Income`; 
@@ -423,9 +412,7 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
   }
 });
 
-
-
-
+ 
 
 router.get('/wallet-history/:userId', async (req, res) => {
   try {
@@ -454,32 +441,7 @@ router.get('/wallet-history/:userId', async (req, res) => {
 });
 
 
-
-
-
-
-
-
-
-
-
-
-// ---------------------------
-// Optional: Paginated withdrawal history
-// ---------------------------
  
-
-
-
-
-
-
-// ---------------------------
-// CREDIT TO WALLET ROUTE
-// Atomic and safe
-// ---------------------------
-// ---------------------------
-// CREDIT TO WALLET ROUTE (UPDATED FOR REWARD & POOL ONLY)
 // ---------------------------
 router.post(
   "/credit-to-wallet",

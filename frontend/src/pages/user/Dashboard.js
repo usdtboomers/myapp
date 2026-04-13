@@ -16,7 +16,7 @@ import CreditToWalletModal from "../../components/modals/CreditToWalletModal";
 import TopNav from "../../components/navbar/TopNav";
 // ✅ 1. ADDED: PreLaunchPromo Import Kiya
 import PreLaunchPromo from "../../components/PreLaunchPromo"; // Path check kar lijiye agar aapne kahin aur rakha ho
-
+import TeamPromoPopup from "../../components/TeamPromoPopup"; // Ye nayi line add karni hai
 
 
 const Dashboard = () => {
@@ -159,6 +159,8 @@ const Dashboard = () => {
       
       {/* ✅ 2. ADDED: Free Topup Popup (Agar ID inactive hai toh ye aage aayega) */}
       <PreLaunchPromo />
+
+      <TeamPromoPopup />
 
       {/* TopNav - Fixed at top */}
       <TopNav onHamburgerClick={() => setShowSidebar(true)} />

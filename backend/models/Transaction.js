@@ -25,7 +25,7 @@ const transactionSchema = new mongoose.Schema(
         "manual_credit",
         "manual_debit",
         "refund",
-        "reward_income" // ✅ Added for Manager Rewards
+        "reward_income" 
       ],
       required: true,
     },
@@ -37,6 +37,15 @@ const transactionSchema = new mongoose.Schema(
         "direct",
         "level",
         "plan",
+        "plan0", // 🔥 YAHAN ADD KIYE HAIN SAARE PLANS
+        "plan1",
+        "plan2",
+        "plan3",
+        "plan4",
+        "plan5",
+        "plan6",
+        "plan7",
+        "pool",  // 🔥 Pool bhi add kar diya safety ke liye
         "spin",
         "buy_spin",
         "use_spin",
@@ -44,8 +53,8 @@ const transactionSchema = new mongoose.Schema(
         "topup",
         "manual",
         "mixed",
-        "reward", // ✅ Added generic reward
-        "manager_level_1", // ✅ Added specific levels
+        "reward", 
+        "manager_level_1", 
         "manager_level_2",
         "manager_level_3",
         "manager_level_4",
@@ -89,7 +98,8 @@ const transactionSchema = new mongoose.Schema(
     date: { type: Date, default: Date.now },
 
     fromAddress: { type: String },
-toAddress: { type: String },
+    toAddress: { type: String },
+    
     // 🔹 Reversal fields
     reversed: { type: Boolean, default: false },
     reversedAt: { type: Date, default: null },
@@ -121,8 +131,5 @@ transactionSchema.set("toJSON", {
     return ret;
   },
 });
-
-
-
 
 module.exports = mongoose.model("Transaction", transactionSchema);

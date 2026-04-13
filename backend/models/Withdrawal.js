@@ -15,7 +15,7 @@ const withdrawalSchema = new mongoose.Schema({
       "reward", // ✅ YAHAN "reward" ADD KIYA HAI (Naye frontend boxes ke liye)
       "mixed",  
       "plan",   // ✅ YAHAN "plan" ADD KIYA HAI (Taki fallback me error na aaye)
-      "plan1","plan2","plan3","plan4","plan5","plan6","plan7"
+     "plan0", "plan1","plan2","plan3","plan4","plan5","plan6","plan7"
     ]
   },
 
