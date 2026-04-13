@@ -27,6 +27,8 @@ const WithdrawalModal = ({ userId, onClose }) => {
   const [successData, setSuccessData] = useState({ userId: "", amount: 0, source: "" });
   const [messageModal, setMessageModal] = useState({ open: false, title: "", message: "", type: "info" });
   const [currentTime, setCurrentTime] = useState(Date.now());
+// State section mein ye line add karo
+const [latestWithdrawals, setLatestWithdrawals] = useState({});
 
   const { user: loggedInUser, token } = useAuth();
 
@@ -70,6 +72,7 @@ const packageOffsets = { 10: 0, 30: 1, 60: 6, 120: 11, 240: 16, 480: 21, 960: 26
 
       if (profileRes.data?.user) {
         setUserROI(profileRes.data.user.packages || []);
+        setLatestWithdrawals(profileRes.data.user.pendingWithdrawals || {});
         const addr = (profileRes.data.user.walletAddress || "").trim();
         setWalletAddress(addr);
         setIsAddressMissing(!addr);
@@ -460,9 +463,15 @@ const handleWithdraw = async () => {
                          
                          {/* Total Calculation: Achieved sum - Withdrawn */}
                         {/* Total Calculation: Achieved sum - Withdrawn */}
+{/* IS HISSE KO REPLACE KAR DO */}
 {(() => {
+    // 1. achievedLevels ka total sum
     const totalEarningsOfAchievedLevels = achievedLevels.reduce((sum, levelData) => sum + (levelData.earning || 0), 0);
-    const totalWithdrawnInThisPlan = loggedInUser?.pendingWithdrawals?.[planKey] || 0;
+    
+    // 2. 🔥 CHANGE: loggedInUser ki jagah latestWithdrawals use kiya
+    const totalWithdrawnInThisPlan = latestWithdrawals[planKey] || 0;
+    
+    // 3. Calculation
     const frontendAvailableInThisPlan = Math.max(0, totalEarningsOfAchievedLevels - totalWithdrawnInThisPlan);
     
     return (

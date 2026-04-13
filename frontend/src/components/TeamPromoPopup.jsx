@@ -9,27 +9,19 @@ const TelegramIcon = () => (
 );
 
 const TeamPromoPopup = () => {
-  const { user, token } = useAuth();
+  const { user } = useAuth(); // Token ki ab zarurat nahi memory ke liye
   const [isOpen, setIsOpen] = useState(false); 
   const [copied, setCopied] = useState(false);
 
+  // 🔥 CHANGE: Ab koi storage check nahi hai. Dashboard mount hote hi dikhega.
   useEffect(() => {
-    if (user && token) {
-      const sessionKey = `promoShown_${token.substring(0, 15)}`;
-      const hasSeenPromo = sessionStorage.getItem(sessionKey);
-      
-      if (!hasSeenPromo) {
-        setIsOpen(true);
-      }
+    if (user) {
+      setIsOpen(true);
     }
-  }, [user, token]);
+  }, [user]);
 
   const closePopup = () => {
     setIsOpen(false);
-    if (token) {
-      const sessionKey = `promoShown_${token.substring(0, 15)}`;
-      sessionStorage.setItem(sessionKey, "true");
-    }
   };
 
   if (!isOpen || !user) return null;
@@ -54,12 +46,9 @@ const TeamPromoPopup = () => {
         
         .tp-box {
           position: relative; width: 100%; max-width: 420px;
-          background-color: #0f172a; 
-          border: 2px solid rgba(234, 179, 8, 0.4); 
-          border-radius: 20px; 
-          box-shadow: 0 0 40px rgba(234, 179, 8, 0.2); 
-          overflow: hidden; 
-          animation: tp-popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          background-color: #0f172a; border: 2px solid rgba(234, 179, 8, 0.4); 
+          border-radius: 20px; box-shadow: 0 0 40px rgba(234, 179, 8, 0.2); 
+          overflow: hidden; animation: tp-popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         
         @keyframes tp-popIn {
@@ -94,33 +83,18 @@ const TeamPromoPopup = () => {
         }
         .tp-close-btn:hover { background: rgba(234, 179, 8, 0.8); color: black; }
         
-        .tp-logo {
-          height: 70px; 
-          margin: 0 auto 15px; 
-          display: block;
-          animation: tp-logo-pulse 2s infinite; 
-        }
-        
-        .tp-title { 
-          color: white; font-size: 24px; font-weight: bold; margin: 0; 
-          text-shadow: 0 2px 4px rgba(0,0,0,0.5); 
-        }
-        
+        .tp-logo { height: 70px; margin: 0 auto 15px; display: block; animation: tp-logo-pulse 2s infinite; }
+        .tp-title { color: white; font-size: 24px; font-weight: bold; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         .tp-body { padding: 24px; text-align: center; }
         
-        /* Highlighted Free ID Tag */
         .tp-free-tag {
           background: linear-gradient(90deg, rgba(234, 179, 8, 0.15) 0%, rgba(234, 179, 8, 0.3) 50%, rgba(234, 179, 8, 0.15) 100%);
-          border: 1px solid rgba(234, 179, 8, 0.5);
-          border-radius: 8px; padding: 10px 16px; display: block; margin-bottom: 20px;
-          color: #facc15; font-size: 16px; font-weight: 900; letter-spacing: 0.5px;
-          animation: tp-blink 2s infinite;
+          border: 1px solid rgba(234, 179, 8, 0.5); border-radius: 8px; padding: 10px 16px; 
+          display: block; margin-bottom: 20px; color: #facc15; font-size: 16px; font-weight: 900; 
+          letter-spacing: 0.5px; animation: tp-blink 2s infinite;
         }
 
-        .tp-sub-tag {
-          color: #94a3b8; font-size: 12px; font-weight: bold; margin-top: 4px; display: block; text-transform: uppercase;
-        }
-        
+        .tp-sub-tag { color: #94a3b8; font-size: 12px; font-weight: bold; margin-top: 4px; display: block; text-transform: uppercase; }
         .tp-text { color: #e2e8f0; font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
         
         .tp-btn {
@@ -130,18 +104,9 @@ const TeamPromoPopup = () => {
           gap: 8px; text-decoration: none; margin-bottom: 12px;
         }
         
-        .tp-btn-copy { 
-          background: linear-gradient(to right, #facc15, #eab308); 
-          color: #000; 
-          box-shadow: 0 4px 15px rgba(234, 179, 8, 0.3); 
-        }
-        .tp-btn-copy:hover { 
-          background: linear-gradient(to right, #eab308, #ca8a04); 
-          transform: translateY(-2px); 
-        }
-        
+        .tp-btn-copy { background: linear-gradient(to right, #facc15, #eab308); color: #000; box-shadow: 0 4px 15px rgba(234, 179, 8, 0.3); }
+        .tp-btn-copy:hover { background: linear-gradient(to right, #eab308, #ca8a04); transform: translateY(-2px); }
         .tp-btn-success { background-color: #22c55e; color: white; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3); pointer-events: none; }
-        
         .tp-btn-telegram { background-color: #229ED9; color: white; box-shadow: 0 4px 15px rgba(34, 158, 217, 0.3); }
         .tp-btn-telegram:hover { background-color: #1C88BA; transform: translateY(-2px); }
         
@@ -154,18 +119,13 @@ const TeamPromoPopup = () => {
 
       <div className="tp-overlay">
         <div className="tp-box">
-          
-          {/* Header */}
           <div className="tp-header">
             <button onClick={closePopup} className="tp-close-btn">✕</button>
             <img src="/usdtboomer.png" alt="USDT Boomers" className="tp-logo" />
             <h2 className="tp-title">Build Your Network!</h2>
           </div>
 
-          {/* Body */}
           <div className="tp-body">
-            
-            {/* 🔥 Naya Free ID Wala Bold Tag 🔥 */}
             <div className="tp-free-tag">
               🎁 $10 ID IS ABSOLUTELY FREE! 🎁
               <span className="tp-sub-tag">Pre-Launching Offer Valid Till 30th April</span>
@@ -175,30 +135,18 @@ const TeamPromoPopup = () => {
               Don't miss this massive opportunity! Grow your <strong style={{ color: '#38bdf8' }}>Direct</strong> and <strong style={{ color: '#38bdf8' }}>Level Team</strong> right now. Share your referral link, activate free IDs for your network, and maximize your earnings.
             </p>
 
-            {/* Buttons */}
             <div>
-              <button
-                onClick={handleCopyLink}
-                className={`tp-btn ${copied ? 'tp-btn-success' : 'tp-btn-copy'}`}
-              >
+              <button onClick={handleCopyLink} className={`tp-btn ${copied ? 'tp-btn-success' : 'tp-btn-copy'}`}>
                 {copied ? "✅ LINK COPIED!" : "📋 COPY REFERRAL LINK"}
               </button>
 
-              <a
-                href="https://t.me/usdt_boomers"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="tp-btn tp-btn-telegram"
-              >
+              <a href="https://t.me/usdt_boomers" target="_blank" rel="noopener noreferrer" className="tp-btn tp-btn-telegram">
                 <TelegramIcon /> JOIN TELEGRAM CHANNEL
               </a>
 
-              <button onClick={closePopup} className="tp-btn-dismiss">
-                I'll do it later
-              </button>
+              <button onClick={closePopup} className="tp-btn-dismiss">I'll do it later</button>
             </div>
           </div>
-
         </div>
       </div>
     </>
