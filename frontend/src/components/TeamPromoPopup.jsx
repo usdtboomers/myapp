@@ -44,7 +44,6 @@ const TeamPromoPopup = () => {
 
   return (
     <>
-      {/* DIRECT CSS STYLES - Brand Colors aur Animations */}
       <style>{`
         .tp-overlay {
           position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -56,9 +55,9 @@ const TeamPromoPopup = () => {
         .tp-box {
           position: relative; width: 100%; max-width: 420px;
           background-color: #0f172a; 
-          border: 2px solid rgba(234, 179, 8, 0.4); /* Yellow/Gold Border */
+          border: 2px solid rgba(234, 179, 8, 0.4); 
           border-radius: 20px; 
-          box-shadow: 0 0 40px rgba(234, 179, 8, 0.2); /* Gold Glow */
+          box-shadow: 0 0 40px rgba(234, 179, 8, 0.2); 
           overflow: hidden; 
           animation: tp-popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
@@ -68,11 +67,16 @@ const TeamPromoPopup = () => {
           100% { opacity: 1; transform: scale(1); }
         }
 
-        /* Naya Animation apne Logo ke liye */
         @keyframes tp-logo-pulse {
           0% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2)); }
           50% { transform: scale(1.08); filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.6)); }
           100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2)); }
+        }
+        
+        @keyframes tp-blink {
+          0% { opacity: 1; }
+          50% { opacity: 0.6; }
+          100% { opacity: 1; }
         }
 
         .tp-header {
@@ -91,10 +95,10 @@ const TeamPromoPopup = () => {
         .tp-close-btn:hover { background: rgba(234, 179, 8, 0.8); color: black; }
         
         .tp-logo {
-          height: 70px; /* Logo ka size */
+          height: 70px; 
           margin: 0 auto 15px; 
           display: block;
-          animation: tp-logo-pulse 2s infinite; /* Animation laga diya */
+          animation: tp-logo-pulse 2s infinite; 
         }
         
         .tp-title { 
@@ -104,11 +108,17 @@ const TeamPromoPopup = () => {
         
         .tp-body { padding: 24px; text-align: center; }
         
-        .tp-tag {
-          background-color: rgba(234, 179, 8, 0.1); 
-          border: 1px solid rgba(234, 179, 8, 0.3);
-          border-radius: 8px; padding: 6px 16px; display: inline-block; margin-bottom: 20px;
-          color: #facc15; font-size: 14px; font-weight: bold; letter-spacing: 0.5px;
+        /* Highlighted Free ID Tag */
+        .tp-free-tag {
+          background: linear-gradient(90deg, rgba(234, 179, 8, 0.15) 0%, rgba(234, 179, 8, 0.3) 50%, rgba(234, 179, 8, 0.15) 100%);
+          border: 1px solid rgba(234, 179, 8, 0.5);
+          border-radius: 8px; padding: 10px 16px; display: block; margin-bottom: 20px;
+          color: #facc15; font-size: 16px; font-weight: 900; letter-spacing: 0.5px;
+          animation: tp-blink 2s infinite;
+        }
+
+        .tp-sub-tag {
+          color: #94a3b8; font-size: 12px; font-weight: bold; margin-top: 4px; display: block; text-transform: uppercase;
         }
         
         .tp-text { color: #e2e8f0; font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
@@ -148,21 +158,21 @@ const TeamPromoPopup = () => {
           {/* Header */}
           <div className="tp-header">
             <button onClick={closePopup} className="tp-close-btn">✕</button>
-            
-            {/* 🚀 Apna USDT Boomers Logo Here 🚀 */}
             <img src="/usdtboomer.png" alt="USDT Boomers" className="tp-logo" />
-            
             <h2 className="tp-title">Build Your Network!</h2>
           </div>
 
           {/* Body */}
           <div className="tp-body">
-            <div className="tp-tag">
-              ⏳ Offer Valid Till <strong style={{ color: '#fff' }}>30th April</strong>
+            
+            {/* 🔥 Naya Free ID Wala Bold Tag 🔥 */}
+            <div className="tp-free-tag">
+              🎁 $10 ID IS ABSOLUTELY FREE! 🎁
+              <span className="tp-sub-tag">Pre-Launching Offer Valid Till 30th April</span>
             </div>
 
             <p className="tp-text">
-              Don't miss out on the <strong style={{ color: '#facc15' }}>Pre-Launching Offer!</strong> Expand your team now. Share your referral link with friends and maximize your income.
+              Don't miss this massive opportunity! Grow your <strong style={{ color: '#38bdf8' }}>Direct</strong> and <strong style={{ color: '#38bdf8' }}>Level Team</strong> right now. Share your referral link, activate free IDs for your network, and maximize your earnings.
             </p>
 
             {/* Buttons */}
