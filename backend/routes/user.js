@@ -75,34 +75,84 @@ const getDownlineCount = async (sponsorId) => {
 // ---------------------------
 // 1. UPDATED: Direct Team Route
 // ---------------------------
+// ---------------------------
+// 1. UPDATED (SUPER FAST): Direct Team Route
+// ---------------------------
 router.get('/direct-team/:userId', async (req, res) => {
   try {
     const currentUserId = Number(req.params.userId);
 
-    // Step 1: Login user ki khud ki Total Team nikalna (Top Card ke liye)
-    const myTotalTeamCount = await getDownlineCount(currentUserId);
+    // 🔥 1. Ek hi Aggregation Query me Directs aur unki Total Team/Directs Count nikal lenge
+    // Ye query 1 second se bhi kam me execute hogi
+    const result = await User.aggregate([
+      // Step A: Find the main user's directs
+      { $match: { sponsorId: currentUserId } },
+      
+      // Step B: Har direct member ki poori downline nikalna (Team Size ke liye)
+      {
+        $graphLookup: {
+          from: "users",
+          startWith: "$userId",
+          connectFromField: "userId",
+          connectToField: "sponsorId",
+          as: "fullDownline",
+          maxDepth: 10 // Kitne level deep tak jana hai
+        }
+      },
 
-    // Step 2: Direct Members fetch karna
-    const directMembers = await User.find({ sponsorId: currentUserId });
+      // Step C: Result ko format karna aur counts banana
+      {
+        $project: {
+          _id: 1,
+          userId: 1,
+          name: 1,
+          mobile: 1,
+          country: 1,
+          topUpAmount: 1,
+          createdAt: 1,
+          
+          // Directs of this member
+          totalDirects: {
+            $size: {
+              $filter: {
+                input: "$fullDownline",
+                as: "member",
+                cond: { $eq: ["$$member.sponsorId", "$userId"] }
+              }
+            }
+          },
+          
+          // Total Team Size of this member
+          totalTeam: { $size: "$fullDownline" }
+        }
+      },
+      // Optional: Naye log upar dikhane ke liye sort
+      { $sort: { createdAt: -1 } }
+    ]);
 
-    // Step 3: Har Direct Member ke liye stats calculate karna
-    const teamWithStats = await Promise.all(
-      directMembers.map(async (member, i) => {
-        // A. Member ke khud ke Directs count karna
-        const memberDirectsCount = await User.countDocuments({ sponsorId: member.userId });
+    // 🔥 2. Main User (Aapki) Total Team Count Nikalna
+    const myTotalTeamResult = await User.aggregate([
+      { $match: { userId: currentUserId } },
+      {
+        $graphLookup: {
+          from: "users",
+          startWith: "$userId",
+          connectFromField: "userId",
+          connectToField: "sponsorId",
+          as: "myDownline",
+          maxDepth: 10
+        }
+      },
+      { $project: { totalMyTeam: { $size: "$myDownline" } } }
+    ]);
 
-        // B. Member ki khud ki Total Team calculate karna (Recursive)
-        const memberTeamSize = await getDownlineCount(member.userId);
+    const myTotalTeamCount = myTotalTeamResult.length > 0 ? myTotalTeamResult[0].totalMyTeam : 0;
 
-        return {
-          srNo: i + 1,
-          ...member.toObject(),
-          // Ye keys Frontend me use hongi:
-          totalDirects: memberDirectsCount, 
-          totalTeam: memberTeamSize        
-        };
-      })
-    );
+    // Formatting for frontend
+    const teamWithStats = result.map((member, i) => ({
+      srNo: i + 1,
+      ...member
+    }));
 
     res.json({
       team: teamWithStats,      // Table ka data
@@ -118,34 +168,71 @@ router.get('/direct-team/:userId', async (req, res) => {
 // ---------------------------
 // 2. All Team (No Change Needed, but kept for reference)
 // ---------------------------
+// ---------------------------
+// 2. All Team (HIGHLY OPTIMIZED WITH GRAPH LOOKUP)
+// ---------------------------
 router.get('/all-team/:userId', async (req, res) => {
-  const { userId } = req.params;
+  const userId = Number(req.params.userId);
 
   try {
-    const getDownline = async (sponsorId, level = 1) => {
-      const referrals = await User.find({ sponsorId: Number(sponsorId) });
-      let all = referrals.map(r => ({ ...r.toObject(), level }));
-      for (const r of referrals) {
-        all = [...all, ...(await getDownline(r.userId, level + 1))];
+    // MongoDB aggregation query for lightning-fast downline extraction
+    const result = await User.aggregate([
+      { $match: { userId: userId } },
+      {
+        $graphLookup: {
+          from: "users",
+          startWith: "$userId",
+          connectFromField: "userId",
+          connectToField: "sponsorId",
+          as: "downline",
+          maxDepth: 10,
+          depthField: "level"
+        }
       }
-      return all;
-    };
+    ]);
 
-    const allTeam = await getDownline(userId);
-    const teamWithSrNo = allTeam.map((u, i) => ({ srNo: i + 1, ...u }));
+    if (!result || result.length === 0 || !result[0].downline) {
+      return res.json({
+        team: [],
+        totalTeamCount: 0,
+        directCount: 0,
+        indirectCount: 0,
+        levelWiseCount: {}
+      });
+    }
+
+    let allTeam = result[0].downline;
 
     const levelWiseCount = {};
-    teamWithSrNo.forEach(u => {
-      levelWiseCount[u.level] = (levelWiseCount[u.level] || 0) + 1;
+    let directCount = 0;
+    
+    // Formatting data for frontend
+    const formattedTeam = allTeam.map((u, i) => {
+      const actualLevel = (u.level || 0) + 1; // graphLookup level 0 se start karta hai
+      
+      levelWiseCount[actualLevel] = (levelWiseCount[actualLevel] || 0) + 1;
+      if (actualLevel === 1) directCount++;
+
+      return {
+        srNo: i + 1,
+        _id: u._id,
+        userId: u.userId,
+        name: u.name,
+        country: u.country,
+        topUpAmount: u.topUpAmount || 0,
+        createdAt: u.createdAt,
+        level: actualLevel
+      };
     });
 
     res.json({
-      team: teamWithSrNo,
-      totalTeamCount: teamWithSrNo.length,
-      directCount: levelWiseCount[1] || 0,
-      indirectCount: teamWithSrNo.length - (levelWiseCount[1] || 0),
-      levelWiseCount
+      team: formattedTeam,
+      totalTeamCount: formattedTeam.length,
+      directCount: directCount,
+      indirectCount: formattedTeam.length - directCount,
+      levelWiseCount: levelWiseCount
     });
+
   } catch (err) {
     console.error('Error fetching team:', err);
     res.status(500).json({ message: 'Server error' });
@@ -636,6 +723,9 @@ router.get('/sponsor-name/:id', async (req, res) => {
 // ==========================================
 // ✅ GET REWARD PROGRESS STATS API
 // ==========================================
+// ==========================================
+// ✅ FAST: GET REWARD PROGRESS STATS API
+// ==========================================
 router.get('/reward-stats/:userId', async (req, res) => {
   try {
     const userId = Number(req.params.userId);
@@ -643,32 +733,45 @@ router.get('/reward-stats/:userId', async (req, res) => {
     
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Helper to calculate team size excluding directs
-    const calculateTeamSize = async (mainUserId, minAmount) => {
-      let totalCount = 0;
-      const directReferrals = await User.find({ sponsorId: mainUserId }, { userId: 1 });
-      let queue = directReferrals.map(d => d.userId);
-
-      while (queue.length > 0) {
-        const currentId = queue.shift();
-        const teamMembers = await User.find({ sponsorId: currentId }, { userId: 1, topUpAmount: 1 });
-        for (let member of teamMembers) {
-          if ((member.topUpAmount || 0) >= minAmount) {
-            totalCount++;
-          }
-          queue.push(member.userId);
+    // 🔥 FASTER WAY: Ek single database call se saari team nikal lo
+    const result = await User.aggregate([
+      { $match: { userId: userId } },
+      {
+        $graphLookup: {
+          from: "users",
+          startWith: "$userId",
+          connectFromField: "userId",
+          connectToField: "sponsorId",
+          as: "fullTeam",
+          maxDepth: 15,
+          depthField: "level" // direct = level 0, indirect = level 1+
         }
       }
-      return totalCount;
-    };
+    ]);
 
-    // Calculate Downline Team Size for each track
-    const teamSize30 = await calculateTeamSize(userId, 30);
-    const teamSize60 = await calculateTeamSize(userId, 60);
-    const teamSize120 = await calculateTeamSize(userId, 120);
+    let teamSize30 = 0;
+    let teamSize60 = 0;
+    let teamSize120 = 0;
+    let directs = [];
 
-    // Get all directs to check their ranks
-    const directs = await User.find({ sponsorId: userId });
+    // Memory (RAM) mein fast counting
+    if (result.length > 0 && result[0].fullTeam) {
+       const fullTeam = result[0].fullTeam;
+       
+       for (const member of fullTeam) {
+           // Level 0 ka matlab Direct Member hai
+           if (member.level === 0) {
+               directs.push(member);
+           } 
+           // Level > 0 ka matlab Downline Team (indirects) hai
+           else {
+               const amt = member.topUpAmount || 0;
+               if (amt >= 30) teamSize30++;
+               if (amt >= 60) teamSize60++;
+               if (amt >= 120) teamSize120++;
+           }
+       }
+    }
 
     res.json({
       success: true,
