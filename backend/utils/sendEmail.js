@@ -13,7 +13,11 @@ const sendEmail = async (options) => {
   },
 });
 
-    const senderName = process.env.APP_NAME || 'USDBoomer';
+
+
+
+
+    const senderName = process.env.APP_NAME || 'USDT Boomers';
 
     const mailOptions = {
       from: `"${senderName}" <${process.env.EMAIL_USER}>`,

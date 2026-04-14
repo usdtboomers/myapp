@@ -594,103 +594,132 @@ router.get('/global-team-count/:userId', async (req, res) => {
 
 
 // GET Downline Business
+// 🚀 UPDATED (SUPER FAST): Downline Business Route
 router.get("/downline-business/:userId", async (req, res) => {
   try {
     const userId = Number(req.params.userId);
 
-    // Find main user
+    // 1. Find main user
     const user = await User.findOne({ userId });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Recursive function to fetch all downline users
-    const getDownline = async (sponsorId, level = 1) => {
-      const referrals = await User.find({ sponsorId });
-      let all = [];
+    // 2. Sirf 1 DB call mein saari downline team nikal lo (GraphLookup)
+    const teamResult = await User.aggregate([
+      { $match: { userId: userId } },
+      {
+        $graphLookup: {
+          from: "users",
+          startWith: "$userId",
+          connectFromField: "userId",
+          connectToField: "sponsorId",
+          as: "downline",
+          maxDepth: 15, // 15 level deep tak ki team fetch karega
+          depthField: "level"
+        }
+      }
+    ]);
 
-      for (const r of referrals) {
-        // Fetch transactions only of type topup or withdrawal
-       const transactions = await Transaction.find({
-  userId: r.userId,
-  type: { $in: ["topup", "withdrawal"] }
-})
-  .lean()
-  .sort({ date: -1 });
+    // Agar downline nahi hai, toh empty data bhej do
+    if (!teamResult || teamResult.length === 0 || !teamResult[0].downline) {
+      return res.json({
+        totalTopup: 0,
+        totalWithdrawal: 0,
+        totalBusiness: 0,
+        totalTeamCount: 0,
+        directCount: 0,
+        indirectCount: 0,
+        team: []
+      });
+    }
 
-transactions.forEach(t => {
-  if (t.amount && typeof t.amount === "object") {
-    t.amount = parseFloat(t.amount.toString());
-  }
-});
+    const rawTeam = teamResult[0].downline;
+    // Saare downline users ki ID ek array mein nikal lo
+    const downlineUserIds = rawTeam.map(u => u.userId);
 
+    // 3. Poori team ki transactions sirf 1 DB call mein nikal lo (Yahan loop khatam ho gaya!)
+    const allTransactions = await Transaction.find({
+      userId: { $in: downlineUserIds },
+      type: { $in: ["topup", "withdrawal"] }
+    }).lean().sort({ date: -1 });
 
-        const totalTopup = transactions
-          .filter(t => t.type === "topup")
-.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-
-       const totalWithdrawal = transactions
-  .filter(t => t.type === "withdrawal")
-  .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-
-
-        // NEW: totalBusiness is now sum of all transactions
-const totalBusiness = transactions
-  .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-
-        all.push({
-          userId: r.userId,
-          name: r.name || "N/A",
-          level,
-          totalTopup,
-          totalWithdrawal,
-          totalBusiness,
-          transactions: transactions.map(t => ({
-            type: t.type,
-            amount: t.amount,
-            date: t.date,
-          })),
-        });
-
-        // Recurse for next level
-        const subTeam = await getDownline(r.userId, level + 1);
-        all = [...all, ...subTeam];
+    // 4. Transactions ko fast processing ke liye Map (Dictionary) mein daal lo
+    const txMap = {};
+    allTransactions.forEach(t => {
+      if (!txMap[t.userId]) txMap[t.userId] = [];
+      
+      // Amount format fix
+      let amt = t.amount;
+      if (amt && typeof amt === "object") {
+        amt = parseFloat(amt.toString());
+      } else {
+        amt = Number(amt || 0);
       }
 
-      return all;
-    };
+      txMap[t.userId].push({
+        type: t.type,
+        amount: amt,
+        date: t.date
+      });
+    });
 
-    // Fetch full downline
-    const allTeam = await getDownline(userId);
+    // 5. Final Calculations
+    let totalSystemTopup = 0;
+    let totalSystemWithdrawal = 0;
+    let totalSystemBusiness = 0;
+    let directCount = 0;
+    let indirectCount = 0;
 
-    // Summary calculations
-const totalTopup = allTeam.reduce(
-  (sum, u) => sum + Number(u.totalTopup || 0),
-  0
-); 
-   const totalWithdrawal = allTeam.reduce(
-  (sum, u) => sum + Number(u.totalWithdrawal || 0),
-  0
-);
-    // NEW: totalBusiness = sum of all individual totalBusiness
-const totalBusiness = allTeam.reduce(
-  (sum, u) => sum + Number(u.totalBusiness || 0),
-  0
-);
+    const formattedTeam = rawTeam.map((u, idx) => {
+      const actualLevel = (u.level || 0) + 1; // GraphLookup 0 se start karta hai
+      
+      if (actualLevel === 1) directCount++;
+      else indirectCount++;
 
-    const directCount = allTeam.filter(u => u.level === 1).length;
-    const indirectCount = allTeam.filter(u => u.level > 1).length;
+      const userTxs = txMap[u.userId] || [];
+      
+      let totalTopup = 0;
+      let totalWithdrawal = 0;
+      let totalBusiness = 0;
 
-    // Return response
+      userTxs.forEach(t => {
+        if (t.type === "topup") totalTopup += t.amount;
+        if (t.type === "withdrawal") totalWithdrawal += t.amount;
+        totalBusiness += t.amount;
+      });
+
+      totalSystemTopup += totalTopup;
+      totalSystemWithdrawal += totalWithdrawal;
+      totalSystemBusiness += totalBusiness;
+
+      return {
+        userId: u.userId,
+        name: u.name || "N/A",
+        level: actualLevel,
+        totalTopup,
+        totalWithdrawal,
+        totalBusiness,
+        transactions: userTxs
+      };
+    });
+
+    // Level ke hisaab se sort karo (Directs pehle aayenge)
+    formattedTeam.sort((a, b) => a.level - b.level);
+
+    // Frontend ke hisaab se srNo add karo
+    const finalTeam = formattedTeam.map((u, idx) => ({
+      srNo: idx + 1,
+      ...u
+    }));
+
+    // 6. Return response
     res.json({
-      totalTopup,
-      totalWithdrawal,
-      totalBusiness,
-      totalTeamCount: allTeam.length,
+      totalTopup: totalSystemTopup,
+      totalWithdrawal: totalSystemWithdrawal,
+      totalBusiness: totalSystemBusiness,
+      totalTeamCount: finalTeam.length,
       directCount,
       indirectCount,
-      team: allTeam.map((u, idx) => ({
-        srNo: idx + 1,
-        ...u,
-      })),
+      team: finalTeam
     });
 
   } catch (err) {
@@ -698,7 +727,6 @@ const totalBusiness = allTeam.reduce(
     res.status(500).json({ message: "Server error" });
   }
 });
-
 
 
 

@@ -157,7 +157,7 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
         
         {/* Header */}
         <div style={styles.header}>
-           <h2 style={styles.title}>Credit To Wallet</h2>
+           <h2 style={styles.title}>Withdraw To Wallet</h2>
         </div>
 
         {/* Body */}

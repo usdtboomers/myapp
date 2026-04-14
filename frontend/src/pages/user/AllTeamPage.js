@@ -188,8 +188,10 @@ const AllTeamPage = () => {
                   <td style={{ ...styles.td, fontWeight: "bold", color: u.topUpAmount > 0 ? "green" : "red" }}>
                     ${u.topUpAmount || 0}
                   </td>
-                  <td style={styles.td}>{u.name || "-"}</td>
-                  <td style={styles.td}>{u.country || "-"}</td>
+{/* Name Column with Truncation and Tooltip */}
+<td style={{ ...styles.td, whiteSpace: "nowrap", minWidth: "150px" }}>
+  {u.name || "-"}
+</td>                <td style={styles.td}>{u.country || "-"}</td>
                   <td style={styles.td}>
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "-"}
                   </td>
@@ -284,6 +286,12 @@ const styles = {
     padding: "6px 8px",
     borderBottom: "1px solid #eee",
     color: "#333",
+  },
+  nameCell: {
+    maxWidth: "120px", // Aap isko apne hisaab se kam ya zyada kar sakte hain (e.g., 150px)
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   tr: {
     transition: "background 0.2s ease",

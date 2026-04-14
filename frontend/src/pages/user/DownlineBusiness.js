@@ -105,7 +105,7 @@ const filteredTotal = filtered.reduce(
       <div className="text-white" style={{ marginBottom: 12, fontSize: 13 }}>
         <p><strong>Total Team:</strong> {summary.totalTeamCount}</p>
         <p><strong>Direct Count:</strong> {summary.directCount}</p>
-        <p><strong>Indirect Count:</strong> {summary.indirectCount}</p>
+        <p><strong>Downline Count:</strong> {summary.indirectCount}</p>
         <p className="text-yellow-500"><strong className="text-white"> Total Business:</strong> ${Number(summary.totalBusiness).toFixed(2)}</p>
       </div>
 

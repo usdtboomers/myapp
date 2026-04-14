@@ -4,7 +4,7 @@ import useAuth from "../../hooks/useAuth";
 
 // Match backend logic precisely
 const RANK_RULES = {
-  1: { reqDirectRank: 0, reqDirectCount: 5, reqTeamSize: 10 },
+  1: { reqDirectRank: "-", reqDirectCount: 5, reqTeamSize: 10 },
   2: { reqDirectRank: 1, reqDirectCount: 2, reqTeamSize: 30 },
   3: { reqDirectRank: 1, reqDirectCount: 5, reqTeamSize: 150 },
   4: { reqDirectRank: 2, reqDirectCount: 2, reqTeamSize: 250 },
@@ -123,7 +123,7 @@ const RewardProgress = () => {
               <div style={styles.requirementBlock}>
                 <div style={styles.reqHeader}>
                   <span className="text-sm text-white">
-                    Directs Needed (Rank {rules.reqDirectRank})
+                    Directs Needed (M {rules.reqDirectRank})
                   </span>
                   <span className="text-sm font-bold text-white">
                     {directsProgress} / {rules.reqDirectCount}
