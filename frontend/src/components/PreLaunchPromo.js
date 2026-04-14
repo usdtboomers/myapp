@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api from '../api/userAxios'; 
 import Confetti from "react-confetti";
-
 import { useAuth } from '../context/AuthContext';
 import SuccessModal from './modals/SuccessModal';
 import MessageModal from './modals/MessageModal';
@@ -19,10 +18,8 @@ const PreLaunchPromo = () => {
 
   const showMessage = (title, message, type = "info") => setMessageModal({ open: true, title, message, type });
 
-  // 🟢 CHECK: Agar user ne topup nahi kiya hai, tabhi popup dikhao
   useEffect(() => {
     if (user) {
-      // Agar topUpAmount 0 hai ya undefined hai, matlab id inactive hai
       const isInactive = !user.topUpAmount || user.topUpAmount === 0;
       if (isInactive) {
         setIsOpen(true);
@@ -39,20 +36,20 @@ const PreLaunchPromo = () => {
 
     setLoading(true);
     try {
-      // ⚠️ IMPORTANT: Backend API call. 
-      // (Backend me bhi ensure karna ki is API route pe free topup allow ho pre-launch tak)
       await api.put(
         `/user/topup/${user.userId}`,
-        { amount: 10, transactionPassword, isPromoFree: true }, // isPromoFree flag bheja hai
+        { amount: 10, transactionPassword, isPromoFree: true }, 
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Success Data Set karo
-      setSuccessData({ userId: user.userId, amount: 10 });
-      setIsOpen(false); // Popup band karo
-      setSuccessModalOpen(true); // Success Modal kholo
+      // 🔥 FLAG SET: Taaki Team popup abhi galti se na khul jaye
+      window.isTopupInProgress = true; 
 
-      // User data refresh karo taaki topup update ho jaye aur popup dubara na aaye
+      setSuccessData({ userId: user.userId, amount: 10 });
+      setIsOpen(false); 
+      setSuccessModalOpen(true); 
+
+      // User data refresh
       const refreshedRes = await api.get(`/user/${user.userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -67,16 +64,20 @@ const PreLaunchPromo = () => {
     }
   };
 
-  // Agar popup open nahi hai aur success modal bhi open nahi hai, to kuch mat dikhao
   if (!isOpen && !successModalOpen) return null;
 
   return (
     <>
-      {/* 🔴 SUCCESS MODAL (Wahi same topup wala modal) */}
+      {/* 🔴 SUCCESS MODAL */}
       {successModalOpen && (
         <SuccessModal
           isOpen={successModalOpen}
-          onClose={() => setSuccessModalOpen(false)}
+          onClose={() => {
+            setSuccessModalOpen(false);
+            // 🔥 FLAG CLEAR AUR EVENT FIRE: Success modal close hote hi Team Popup ko bulao
+            window.isTopupInProgress = false;
+            window.dispatchEvent(new CustomEvent('showTeamPromo')); 
+          }}
           type="topup"
           userId={successData.userId}
           amount={successData.amount}
@@ -84,7 +85,7 @@ const PreLaunchPromo = () => {
         />
       )}
 
-      {/* 🔴 MESSAGE MODAL (For errors) */}
+      {/* 🔴 MESSAGE MODAL */}
       <MessageModal
         isOpen={messageModal.open}
         onClose={() => setMessageModal({ ...messageModal, open: false })}
@@ -100,16 +101,13 @@ const PreLaunchPromo = () => {
           
           <div className="relative z-10 bg-slate-900 border-2 border-yellow-500 rounded-2xl w-full max-w-md p-6 shadow-[0_0_40px_rgba(234,179,8,0.3)] text-center">
             
-            {/* Tag */}
             <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black font-black px-4 py-1 rounded-full text-sm tracking-widest shadow-lg">
               LIMITED TIME OFFER
             </div>
 
             <img src="/usdtboomer.png" alt="Logo" className="h-16 mx-auto mt-4 mb-2 animate-bounce" />
             
-            <h2 className="text-2xl font-bold text-white mb-2">
-              🎉 Pre-Launching Offer 🎉
-            </h2>
+            <h2 className="text-2xl font-bold text-white mb-2">🎉 Pre-Launching Offer 🎉</h2>
             
             <p className="text-gray-300 text-sm mb-4">
               Valid only until <strong className="text-yellow-400">30th April</strong>! Activate your ID absolutely FREE and start your journey.

@@ -333,7 +333,7 @@ onChange={(e) => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-black focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all"
-                  placeholder="you@example.com"
+                  placeholder="you@gmail.com"
                 />
             </div>
 
@@ -372,7 +372,7 @@ onChange={(e) => {
             </div>
 
             {/* Passwords - Simplified to Login & Confirm */}
-            <div className="grid grid-cols-2 gap-4 pt-2">
+            <div className="grid grid-cols-1 gap-4 pt-2">
                 <div>
                   <label className="text-xs font-medium text-blue-200 ml-1 uppercase tracking-wider">Password</label>
                   <div className="relative mt-1 group">
@@ -381,7 +381,7 @@ onChange={(e) => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-black focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all pr-10"
-                        placeholder="••••••"
+                        placeholder=""
                       />
                       <button
                         type="button"
@@ -401,7 +401,7 @@ onChange={(e) => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-black focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all pr-10"
-                        placeholder="••••••"
+                        placeholder=""
                       />
                       <button
                         type="button"

@@ -9,16 +9,32 @@ const TelegramIcon = () => (
 );
 
 const TeamPromoPopup = () => {
-  const { user } = useAuth(); // Token ki ab zarurat nahi memory ke liye
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false); 
   const [copied, setCopied] = useState(false);
 
-  // 🔥 CHANGE: Ab koi storage check nahi hai. Dashboard mount hote hi dikhega.
+  // LOGIC 1: Agar user login karte hi pehle se active hai, toh isko direct dikhao
+  // !window.isTopupInProgress ensure karta hai ki Free Topup process ke beech me ye na aaye
   useEffect(() => {
-    if (user) {
+    if (user && user.topUpAmount > 0 && !window.isTopupInProgress) {
       setIsOpen(true);
     }
   }, [user]);
+
+  // LOGIC 2: Free ID claim karne ke baad jab Success Modal close hoga, tab ye trigger hoga
+  useEffect(() => {
+    const handleTrigger = () => {
+      // Thoda sa delay diya hai taaki pichla modal smoothly close ho jaye
+      setTimeout(() => {
+        setIsOpen(true);
+      }, 400); 
+    };
+
+    window.addEventListener('showTeamPromo', handleTrigger);
+    
+    // Cleanup listener
+    return () => window.removeEventListener('showTeamPromo', handleTrigger);
+  }, []);
 
   const closePopup = () => {
     setIsOpen(false);
