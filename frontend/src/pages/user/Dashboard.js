@@ -243,9 +243,7 @@ const Dashboard = () => {
                             <div className="flex flex-col">
                               <span className="text-white">
                                 {new Date(dep.createdAt).toLocaleDateString()} 
-                                <span className="text-slate-500 text-xs ml-2">
-                                  {new Date(dep.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </span>
+                               
                               </span>
                               {dep.hash && (
                                 <span className="text-blue-400/80 text-xs font-mono mt-0.5">
@@ -284,9 +282,7 @@ const Dashboard = () => {
                             <div className="flex flex-col">
                               <span className="text-white">
                                 {new Date(withd.createdAt).toLocaleDateString()} 
-                                <span className="text-slate-500 text-xs ml-2">
-                                  {new Date(withd.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </span>
+                                
                               </span>
                               {withd.hash && (
                                 <span className="text-blue-400/80 text-xs font-mono mt-0.5">
