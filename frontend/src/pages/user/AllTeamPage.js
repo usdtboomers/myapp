@@ -189,9 +189,12 @@ const AllTeamPage = () => {
                     ${u.topUpAmount || 0}
                   </td>
 {/* Name Column with Truncation and Tooltip */}
-<td style={{ ...styles.td, whiteSpace: "nowrap", minWidth: "150px" }}>
+<td 
+  style={{ ...styles.td, ...styles.nameCell }} 
+  title={u.name || "-"} 
+>
   {u.name || "-"}
-</td>                <td style={styles.td}>{u.country || "-"}</td>
+</td>                  <td style={styles.td}>{u.country || "-"}</td>
                   <td style={styles.td}>
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "-"}
                   </td>

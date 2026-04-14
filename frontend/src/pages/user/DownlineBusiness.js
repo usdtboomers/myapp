@@ -12,7 +12,8 @@ const DownlineBusiness = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [transactionFilter, setTransactionFilter] = useState("all");
+  // NAYA: Package Filter state
+  const [packageFilter, setPackageFilter] = useState("all");
 
   useEffect(() => {
     const fetchDownline = async () => {
@@ -20,13 +21,16 @@ const DownlineBusiness = () => {
         const res = await api.get(`/user/downline-business/${user.userId}`);
         const team = res.data.team || [];
 
+        // NAYA: Backend se aate hi sirf "topup" ko nikalenge, withdrawal ko ignore kar denge
         const allTx = team.flatMap(d =>
-          (d.transactions || []).map(t => ({
-            ...t,
-            userId: d.userId,
-            name: d.name,
-            level: d.level,
-          }))
+          (d.transactions || [])
+            .filter(t => t.type === "topup") // Sirf topup allow karega
+            .map(t => ({
+              ...t,
+              userId: d.userId,
+              name: d.name,
+              level: d.level,
+            }))
         );
 
         allTx.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -35,7 +39,8 @@ const DownlineBusiness = () => {
         setFiltered(allTx);
 
         setSummary({
-          totalBusiness: res.data.totalBusiness ?? 0,
+          // NAYA: Summary mein bhi ab sirf Total Topup dikhayega
+          totalBusiness: res.data.totalTopup ?? 0, 
           totalTeamCount: res.data.totalTeamCount ?? 0,
           directCount: res.data.directCount ?? 0,
           indirectCount: res.data.indirectCount ?? 0,
@@ -72,13 +77,14 @@ const DownlineBusiness = () => {
       data = data.filter(t => new Date(t.date) <= to);
     }
 
-    if (transactionFilter !== "all") {
-      data = data.filter(t => t.type === transactionFilter);
+    // NAYA: Package Amount ke hisaab se filter
+    if (packageFilter !== "all") {
+      data = data.filter(t => Number(t.amount) === Number(packageFilter));
     }
 
     setFiltered(data);
     setCurrentPage(1);
-  }, [search, fromDate, toDate, transactionFilter, transactions]);
+  }, [search, fromDate, toDate, packageFilter, transactions]);
 
   // Pagination
   const paginated = filtered.slice(
@@ -87,26 +93,26 @@ const DownlineBusiness = () => {
   );
   const pageCount = Math.ceil(filtered.length / itemsPerPage);
 
- const pageTotal = paginated.reduce(
-  (sum, t) => sum + Number(t.amount || 0),
-  0
-);
+  const pageTotal = paginated.reduce(
+    (sum, t) => sum + Number(t.amount || 0),
+    0
+  );
 
-const filteredTotal = filtered.reduce(
-  (sum, t) => sum + Number(t.amount || 0),
-  0
-);
+  const filteredTotal = filtered.reduce(
+    (sum, t) => sum + Number(t.amount || 0),
+    0
+  );
 
   return (
     <div style={{ padding: 20, fontFamily: "Segoe UI, sans-serif", fontSize: 13 }}>
-      <h3 className="text-white font-bold" style={{ marginBottom: 12 }}>📊 Downline Business</h3>
+      <h3 className="text-white font-bold" style={{ marginBottom: 12 }}>📊 Downline Business (Top-Ups)</h3>
 
       {/* Summary */}
       <div className="text-white" style={{ marginBottom: 12, fontSize: 13 }}>
         <p><strong>Total Team:</strong> {summary.totalTeamCount}</p>
         <p><strong>Direct Count:</strong> {summary.directCount}</p>
         <p><strong>Downline Count:</strong> {summary.indirectCount}</p>
-        <p className="text-yellow-500"><strong className="text-white"> Total Business:</strong> ${Number(summary.totalBusiness).toFixed(2)}</p>
+        <p className="text-yellow-500"><strong className="text-white"> Total Top-Up Business:</strong> ${Number(summary.totalBusiness).toFixed(2)}</p>
       </div>
 
       {/* Filters */}
@@ -120,11 +126,19 @@ const filteredTotal = filtered.reduce(
         />
         <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={inputStyle} />
         <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} style={inputStyle} />
-        <select value={transactionFilter} onChange={e => setTransactionFilter(e.target.value)} style={inputStyle}>
-          <option value="all">All</option>
-          <option value="topup">Topup</option>
-          <option value="withdrawal">Withdrawal</option>
+        
+        {/* NAYA: Package Filter Dropdown */}
+        <select value={packageFilter} onChange={e => setPackageFilter(e.target.value)} style={inputStyle}>
+          <option value="all">All Packages</option>
+          <option value="10">$10</option>
+          <option value="30">$30</option>
+          <option value="60">$60</option>
+          <option value="120">$120</option>
+          <option value="240">$240</option>
+          <option value="480">$480</option>
+          <option value="960">$960</option>
         </select>
+
         <select value={itemsPerPage} onChange={e => setItemsPerPage(Number(e.target.value))} style={inputStyle}>
           {[10, 20, 50].map(num => (
             <option key={num} value={num}>{num} / page</option>
@@ -155,7 +169,7 @@ const filteredTotal = filtered.reduce(
                     <td style={tdStyle}>{t.userId}</td>
                     <td style={tdStyle}>{t.name}</td>
                     <td style={tdStyle}>{t.level}</td>
-                    <td style={tdStyle}>{t.type}</td>
+                    <td style={tdStyle}>Topup</td>
                     <td style={tdStyle}>${Number(t.amount ?? 0).toFixed(2)}</td>
                     <td style={tdStyle}>{new Date(t.date).toLocaleDateString()}</td>
                   </tr>
@@ -164,12 +178,12 @@ const filteredTotal = filtered.reduce(
                 {/* Totals */}
                 <tr style={{ background: "#f4f4f4", fontWeight: "bold" }}>
                   <td colSpan={5} style={{ textAlign: "right", padding: "6px 8px" }}>Page Total:</td>
-<td style={tdStyle}>${Number(pageTotal).toFixed(2)}</td>
+                  <td style={tdStyle}>${Number(pageTotal).toFixed(2)}</td>
                   <td></td>
                 </tr>
                 <tr style={{ background: "#eaeaea", fontWeight: "bold" }}>
                   <td colSpan={5} style={{ textAlign: "right", padding: "6px 8px" }}>Filtered Total:</td>
-<td style={tdStyle}>${Number(filteredTotal).toFixed(2)}</td>
+                  <td style={tdStyle}>${Number(filteredTotal).toFixed(2)}</td>
                   <td></td>
                 </tr>
               </>
