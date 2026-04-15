@@ -185,8 +185,7 @@ router.get('/all-team/:userId', async (req, res) => {
           connectFromField: "userId",
           connectToField: "sponsorId",
           as: "downline",
-          maxDepth: 10,
-          depthField: "level"
+           depthField: "level"
         }
       }
     ]);

@@ -297,114 +297,144 @@ router.get("/withdrawable/:userId", async (req, res) => {
 // ==========================================
 // 2. UPDATED WITHDRAW POST API 
 // ==========================================
+// Purana router.post("/withdraw"...) delete karke ye naya wala paste karo:
+
 router.post("/withdraw", authMiddleware, async (req, res) => {
   try {
-    // 🔥 CHANGE 1: totalBatchAmount yahan add kiya
-    const { amount, source, transactionPassword, package: packageAmount, level, totalBatchAmount } = req.body;
-    const amt = Math.floor(parseFloat(amount));
+    // 🔥 CHANGE: Ab hum single amount ki jagah 'items' ka array lenge.
+    // Frontend se aayega: { transactionPassword: "xxx", items: [{source: "direct", amount: 3}, {source: "plan0", package: 10, level: 1, amount: 2}] }
+    const { items, transactionPassword } = req.body;
 
     const user = await User.findOne({ userId: req.user.userId });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // 🛡️ User must have an active ID to withdraw
+    // 🛡️ BASIC CHECKS (Top-up & Password)
     if (!user.isToppedUp) return res.status(400).json({ message: "You need an Active ID (Top-up required)." });
     
     const isPasswordValid = (transactionPassword.toLowerCase() === user.transactionPassword.toLowerCase());
     if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
 
-    if (amt <= 0) return res.status(400).json({ message: "Invalid amount." });
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "No withdrawal items provided." });
+    }
 
-    // 🔥 CHANGE 2: $5 ka check totalBatchAmount par laga diya
-    const checkAmt = totalBatchAmount ? parseFloat(totalBatchAmount) : amt;
-    if (checkAmt < 5) {
+    // 💰 CALCULATE TOTAL AMOUNT
+    let totalAmt = 0;
+    for (let item of items) {
+      totalAmt += Math.floor(parseFloat(item.amount));
+    }
+    // $5 Minimum Check
+    if (totalAmt < 5) {
         return res.status(400).json({ message: "Minimum total withdrawal amount is $5." });
     }
 
-    const isOtherIncome = ["direct", "level", "reward", "spin", "pool"].includes(source);
-    let finalSourceForDB = source;
-    
- 
-    if (isOtherIncome) {
-      // Find dynamic balance field (e.g. rewardIncome)
-      const balanceField = `${source}Income`; 
-      
-      if ((user[balanceField] || 0) < amt) {
-        return res.status(400).json({ message: `Insufficient balance in ${source.toUpperCase()} wallet.` });
-      }
+    // =========================================================
+    // 🔥 STEP 1: PRE-CHECK LOGIC (ALL OR NOTHING GATEKEEPER)
+    // =========================================================
+    // Ye loop sirf check karega, database se kuch nahi katega.
+    let simPending = { ...(user.pendingWithdrawals || {}) };
+    let simWallets = {}; 
 
-      // Deduct Balance
-      user[balanceField] -= amt;
-      user.totalWithdrawn = (user.totalWithdrawn || 0) + amt;
-      finalSourceForDB = source;
+    for (let item of items) {
+      const amt = Math.floor(parseFloat(item.amount));
+      if (amt <= 0) return res.status(400).json({ message: "Invalid amount detected." });
 
-    } else {
-      // 📦 LOGIC FOR PACKAGE (POOL) WITHDRAWAL
-      const pkgAmt = parseFloat(packageAmount);
+      const isOtherIncome = ["direct", "level", "reward", "spin", "pool", "usdt"].includes(item.source);
 
-      // 🔥 NAYI CONDITION: $10 wale package se withdrawal tabhi hoga jab TopUp >= 30 ho
-      if (pkgAmt === 10) {
+      if (isOtherIncome) {
+        const balanceField = `${item.source}Income`; 
+        simWallets[balanceField] = simWallets[balanceField] !== undefined ? simWallets[balanceField] : (user[balanceField] || 0);
+
+        if (simWallets[balanceField] < amt) {
+          return res.status(400).json({ message: `Insufficient balance in ${item.source.toUpperCase()} wallet.` });
+        }
+        simWallets[balanceField] -= amt; // Simulate deduction
+
+      } else {
+        // 📦 PACKAGE & LEVEL CHECKS
+        const pkgAmt = parseFloat(item.package);
+
+        // $10 Package Rule
+        if (pkgAmt === 10) {
           const userTopUpAmount = parseFloat(user.topUpAmount || 0);
           if (userTopUpAmount < 30) {
-              return res.status(400).json({ 
-                  message: "To withdraw from the $10 package, you must have an active Top-up of at least $30." 
-              });
+            return res.status(400).json({ message: "To withdraw from the $10 package, you must have an active Top-up of at least $30." });
           }
+        }
+
+        const pkg = user.packages && user.packages.find(p => p.plan === item.source);
+        if (!pkg) return res.status(400).json({ message: `Package ${item.source} is not active.` });
+        if (item.level === undefined) return res.status(400).json({ message: `Level missing for package ${item.source}.` });
+
+        // Ensure packageEarnings and getLevelUnlockData exist in your scope
+        const earningsArray = packageEarnings[pkgAmt];
+        const { isUnlocked } = getLevelUnlockData(pkg, item.level);
+        if (!isUnlocked) return res.status(400).json({ message: `Level ${item.level} is locked for ${item.source}. Wait for the timer to complete.` });
+
+        // Calculate Available Balance for this Level
+        let withdrawnTotal = simPending[item.source] || 0;
+        let totalAvailable = 0;
+        for (let i = 0; i <= item.level; i++) {
+          const used = Math.min(withdrawnTotal, earningsArray[i]);
+          withdrawnTotal -= used;
+          totalAvailable += (earningsArray[i] - used);
+        }
+
+        if (amt > totalAvailable) {
+          return res.status(400).json({ message: `Amount exceeds available Level balance in ${item.source}.` });
+        }
+
+        // Add to simulated pending so next loop iteration (if same package) sees correct balance
+        simPending[item.source] = (simPending[item.source] || 0) + amt;
       }
-
-      const pkg = user.packages && user.packages.find(p => p.plan === source);
-      if (!pkg) return res.status(400).json({ message: "This package is not currently active." });
-      if (level === undefined) return res.status(400).json({ message: "Invalid Request: Level missing." });
-
-      // Note: Ensure your 'packageEarnings' object has an array defined for the '10' key.
-      const earningsArray = packageEarnings[pkgAmt];
-      
-      const { isUnlocked, timeLeft } = getLevelUnlockData(pkg, level);
-      if (!isUnlocked) {
-        return res.status(400).json({ message: `Level is locked. Wait for the timer to complete.` });
-      }
-
-      // Check balance availability 
-      let withdrawnTotal = user.pendingWithdrawals?.[source] || 0;
-      let totalAvailable = 0;
-      for (let i = 0; i <= level; i++) {
-        const used = Math.min(withdrawnTotal, earningsArray[i]);
-        withdrawnTotal -= used;
-        totalAvailable += (earningsArray[i] - used);
-      }
-
-      if (amt > totalAvailable) {
-          return res.status(400).json({ message: `Requested amount exceeds available Level balance.` });
-      }
-
-      user.pendingWithdrawals = user.pendingWithdrawals || {};
-      user.pendingWithdrawals[source] = (user.pendingWithdrawals[source] || 0) + amt;
-      user.totalWithdrawn = (user.totalWithdrawn || 0) + amt;
-      finalSourceForDB = source; 
     }
 
+    // =========================================================
+    // 🔥 STEP 2: REAL DEDUCTION & DATABASE UPDATE
+    // =========================================================
+    // Agar ek bhi error hota, toh code yahan tak nahi aata. Ab safe hai paise katna.
+    
+    for (let item of items) {
+      const amt = Math.floor(parseFloat(item.amount));
+      const isOtherIncome = ["direct", "level", "reward", "spin", "pool", "usdt"].includes(item.source);
+
+      if (isOtherIncome) {
+        const balanceField = `${item.source}Income`; 
+        user[balanceField] -= amt;
+      } else {
+        user.pendingWithdrawals = user.pendingWithdrawals || {};
+        user.pendingWithdrawals[item.source] = (user.pendingWithdrawals[item.source] || 0) + amt;
+      }
+
+      user.totalWithdrawn = (user.totalWithdrawn || 0) + amt;
+
+      // Withdrawal Record create karna
+      await Withdrawal.create({
+        userId: user.userId,
+        source: item.source, 
+        grossAmount: amt,
+        fee: amt * 0.10, // 10% deduction
+        netAmount: amt * 0.90,
+        walletAddress: user.walletAddress,
+        status: "pending",
+        date: new Date()
+      });
+
+      // Transaction History create karna
+      await Transaction.create({
+        userId: user.userId,
+        type: "withdrawal",
+        source: item.source, 
+        amount: amt,
+        description: `Withdrawal from ${item.source.toUpperCase()}`,
+        status: "pending"
+      });
+    }
+
+    // Saare changes ek sath DB me save kardo
     await user.save();
 
-    await Withdrawal.create({
-      userId: user.userId,
-      source: finalSourceForDB, 
-      grossAmount: amt,
-      fee: amt * 0.10, // 10% deduction on all withdrawals
-      netAmount: amt * 0.90,
-      walletAddress: user.walletAddress,
-      status: "pending",
-      date: new Date()
-    });
-
-    await Transaction.create({
-      userId: user.userId,
-      type: "withdrawal",
-      source: finalSourceForDB, 
-      amount: amt,
-      description: `Withdrawal from ${source.toUpperCase()}`,
-      status: "pending"
-    });
-
-    return res.json({ success: true, message: `Withdrawal request for $${amt} submitted.` });
+    return res.json({ success: true, message: `Withdrawal request for $${totalAmt} submitted successfully.` });
 
   } catch (err) {
     console.error("Withdraw Error:", err);

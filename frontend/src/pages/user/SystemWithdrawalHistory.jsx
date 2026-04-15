@@ -66,7 +66,7 @@ const WithdrawalHistory = () => {
           
           {/* Main Heading Pure White */}
           <h1 className="text-2xl font-bold text-white mb-2">Live System Withdrawals</h1>
-          <p className="text-slate-400 mb-6 pt-2 text-l font-bold italic">Latest payouts processed by the system.</p>
+          <p className="text-slate-400 mb-6 pt-2 text-l font-bold italic">Latest Withdrawals processed by the system.</p>
           
           {loading ? <SpinnerOverlay /> : (
             <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">

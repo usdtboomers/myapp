@@ -173,125 +173,110 @@ const packageOffsets = { 10: 0, 30: 1, 60: 6, 120: 11, 240: 16, 480: 21, 960: 26
   };
 
 const handleWithdraw = async () => {
-    try {
-      const planEntries = Object.entries(levelWithdrawals).filter(([_, val]) => Number(val) > 0);
-      const otherEntries = Object.entries(otherWithdrawals).filter(([_, val]) => Number(val) > 0);
+  try {
+    const planEntries = Object.entries(levelWithdrawals).filter(([_, val]) => Number(val) > 0);
+    const otherEntries = Object.entries(otherWithdrawals).filter(([_, val]) => Number(val) > 0);
 
-      // 1. Sabse pehle Total Amount calculate karo
-      let totalRequested = 0;
-      planEntries.forEach(([_, val]) => totalRequested += Number(val));
-      otherEntries.forEach(([_, val]) => totalRequested += Number(val));
+    let totalRequested = 0;
+    planEntries.forEach(([_, val]) => totalRequested += Number(val));
+    otherEntries.forEach(([_, val]) => totalRequested += Number(val));
 
-      if (totalRequested === 0) {
-        return showMessage("Warning", "Enter amount to withdraw.");
+    if (totalRequested === 0) return showMessage("Warning", "Enter amount to withdraw.");
+    if (totalRequested < 5) return showMessage("Warning", "Minimum total withdrawal amount is $5.");
+    if (!walletAddress.trim()) return showMessage("Warning", "Please enter your USDT BEP20 Wallet Address.");
+    if (!transactionPassword.trim()) return showMessage("Warning", "Enter transaction password.");
+
+    // 🔥 CHANGE: Create a single 'items' array for the backend
+    let items = []; 
+    let successMessages = [];
+
+    // Process Matrix Levels
+    for (const [key, val] of planEntries) {
+      const [planKey, levelIdx] = key.split("_");
+      const requestedAmount = Number(val);
+      const levelData = getLevelData(planKey, parseInt(levelIdx));
+
+      if (!levelData.hasPackage) {
+         return showMessage("Top-up Required ⚠️", `You must activate the $${planToPackageAmount[planKey]} Package to withdraw this income. Please Top-up your ID first.`, "error");
+      }
+      if (!levelData.isUnlockedPaid) {
+        return showMessage("Warning", `Level ${parseInt(levelIdx) + 1} timer is still running for ${planNames[planKey]}. You cannot withdraw yet.`);
+      }
+      if (requestedAmount > levelData.availableInLevel) {
+        return showMessage("Insufficient Funds", `You only have $${levelData.availableInLevel} available in Level ${parseInt(levelIdx) + 1} of ${planNames[planKey]}.`);
       }
 
-      // 🔥 NAYA CHECK: Total amount kam se kam $5 hona chahiye
-      if (totalRequested < 5) {
-        return showMessage("Warning", "Minimum total withdrawal amount is $5.");
-      }
-
-      // 2. Basics Check
-      if (!walletAddress.trim()) {
-        return showMessage("Warning", "Please enter your USDT BEP20 Wallet Address.");
-      }
-      if (!transactionPassword.trim()) {
-        return showMessage("Warning", "Enter transaction password.");
-      }
-
-      let payloads = []; 
-      let successMessages = [];
-
-      // Plan Check (Matrix Levels)
-      for (const [key, val] of planEntries) {
-        const [planKey, levelIdx] = key.split("_");
-        const requestedAmount = Number(val);
-        const levelData = getLevelData(planKey, parseInt(levelIdx));
-
-        if (!levelData.hasPackage) {
-           return showMessage("Top-up Required ⚠️", `You must activate the $${planToPackageAmount[planKey]} Package to withdraw this income. Please Top-up your ID first.`, "error");
-        }
-        if (!levelData.isUnlockedPaid) {
-          return showMessage("Warning", `Level ${parseInt(levelIdx) + 1} timer is still running for ${planNames[planKey]}. You cannot withdraw yet.`);
-        }
-        if (requestedAmount > levelData.availableInLevel) {
-          return showMessage("Insufficient Funds", `You only have $${levelData.availableInLevel} available in Level ${parseInt(levelIdx) + 1} of ${planNames[planKey]}.`);
-        }
-
-        payloads.push({
-          userId,
-          transactionPassword,
-          amount: requestedAmount,
-          totalBatchAmount: totalRequested, // 🔥 Backend ko bata rahe hain ki TOTAL kitna hai
-          source: planKey,
-          level: parseInt(levelIdx),
-          package: planToPackageAmount[planKey],
-        });
-        successMessages.push(planNames[planKey]);
-      }
-
-      // Reward & Direct Check
-      for (const [sourceKey, val] of otherEntries) {
-        const requestedAmount = Number(val);
-        
-        if (sourceKey === 'reward' && requestedAmount > balances.rewardIncome) {
-           return showMessage("Insufficient Funds", `You only have $${balances.rewardIncome} in Reward Income.`);
-        }
-        if (sourceKey === 'direct' && requestedAmount > balances.directIncome) {
-           return showMessage("Insufficient Funds", `You only have $${balances.directIncome} in Direct Income.`);
-        }
-
-        payloads.push({
-          userId,
-          transactionPassword,
-          amount: requestedAmount,
-          totalBatchAmount: totalRequested, // 🔥 Yaha bhi total bhej rahe hain
-          source: sourceKey,
-        });
-        successMessages.push(sourceKey === "reward" ? "USDT Reward" : "Direct Income");
-      }
-
-      setLoading(true);
-
-      if (isAddressMissing) {
-        try {
-          await api.put(`/user/${userId}`, { walletAddress });
-        } catch (e) {
-          console.log("Failed to update wallet address initially, continuing anyway...", e);
-        }
-      }
-
-      // Ek sath sab API calls bhejo
-      const apiCalls = payloads.map(payload => 
-        api.post("/wallet/withdraw", payload, { headers: { Authorization: `Bearer ${token}` } })
-      );
-
-      await Promise.all(apiCalls);
-
-      const uniqueSources = [...new Set(successMessages)].join(", ");
-
-      setSuccessData({
-        userId,
-        amount: totalRequested,
-        source: uniqueSources,
+      // Add to items array
+      items.push({
+        source: planKey,
+        level: parseInt(levelIdx),
+        package: planToPackageAmount[planKey],
+        amount: requestedAmount,
       });
-
-      setSuccessOpen(true);
-      setLevelWithdrawals({});
-      setOtherWithdrawals({});
-      setTransactionPassword("");
-      await fetchData();
-
-    } catch (err) {
-      console.log(err);
-      const msg = err.response?.status === 403
-        ? "Invalid Transaction Password"
-        : err.response?.data?.message || "One or more withdrawals failed. Please check balance.";
-      showMessage("Error", msg);
-    } finally {
-      setLoading(false); 
+      successMessages.push(planNames[planKey]);
     }
-  };
+
+    // Process Reward & Direct
+    for (const [sourceKey, val] of otherEntries) {
+      const requestedAmount = Number(val);
+      
+      if (sourceKey === 'reward' && requestedAmount > balances.rewardIncome) {
+         return showMessage("Insufficient Funds", `You only have $${balances.rewardIncome} in Reward Income.`);
+      }
+      if (sourceKey === 'direct' && requestedAmount > balances.directIncome) {
+         return showMessage("Insufficient Funds", `You only have $${balances.directIncome} in Direct Income.`);
+      }
+
+      // Add to items array
+      items.push({
+        source: sourceKey,
+        amount: requestedAmount,
+      });
+      successMessages.push(sourceKey === "reward" ? "USDT Reward" : "Direct Income");
+    }
+
+    setLoading(true);
+
+    if (isAddressMissing) {
+      try {
+        await api.put(`/user/${userId}`, { walletAddress });
+      } catch (e) {
+        console.log("Failed to update wallet address initially, continuing anyway...", e);
+      }
+    }
+
+    // 🔥 CHANGE: Send a single request with the items array
+    await api.post("/wallet/withdraw", {
+      transactionPassword,
+      items
+    }, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    });
+
+    const uniqueSources = [...new Set(successMessages)].join(", ");
+
+    setSuccessData({
+      userId,
+      amount: totalRequested,
+      source: uniqueSources,
+    });
+
+    setSuccessOpen(true);
+    setLevelWithdrawals({});
+    setOtherWithdrawals({});
+    setTransactionPassword("");
+    await fetchData();
+
+  } catch (err) {
+    console.log(err);
+    const msg = err.response?.status === 403
+      ? "Invalid Transaction Password"
+      : err.response?.data?.message || "One or more withdrawals failed. Please check balance.";
+    showMessage("Error", msg);
+  } finally {
+    setLoading(false); 
+  }
+};
   const isAnySelected = Object.values(levelWithdrawals).some(v => Number(v) > 0) || Object.values(otherWithdrawals).some(v => Number(v) > 0);
 
   // --- STYLES ---
