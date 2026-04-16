@@ -19,7 +19,8 @@ let liveDepositsFeed = [];
 let liveWithdrawalsFeed = [];
 
 // Ye file aapke routes folder mein banegi data save rakhne ke liye
- const CACHE_FILE = path.join(__dirname, "botFeedCache.txt");
+const CACHE_FILE = path.join(__dirname, "botFeedCache.txt");
+
 // 📂 Function to Load Old Data on Server Restart
 function loadCache() {
     try {
@@ -59,57 +60,49 @@ let listenerStarted = false;
 const generateUserId = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // ==========================================
-// 2. WEB3 SETUP
+// 2. WEB3 SETUP (ONLY USDT)
 // ==========================================
 const RPC = process.env.RPC || "https://bsc-dataseed.binance.org/";
 const USDT_CONTRACT = "0x55d398326f99059ff775485246999027b3197955";
- const TARGET_WALLET = "0x08b666399959F8019013CfAd6d5D6E3730860688".toLowerCase(); // Apna wallet
+const TARGET_WALLET = "0x08b666399959F8019013CfAd6d5D6E3730860688".toLowerCase(); // Apna wallet
 const DECIMALS = 18;
 
 let provider;
 let contract;
+// Sirf USDT ka transfer event, BNB isme aayega hi nahi
 const ABI = ["event Transfer(address indexed from, address indexed to, uint256 value)"];
 
 console.log("🔥 UsdtBoomers Super-Stable Scanner Started For Website");
 
 // ==========================================
-// 3. FILTERS FOR EXACT AMOUNTS (UPDATED RATIOS)
+// 3. FILTERS FOR EXACT AMOUNTS (GLOBAL BOT)
 // ==========================================
 function isValidDeposit(amount) {
     if (![30, 60, 120].includes(amount)) return false;
-    
     if (amount === 30) return true; // Sabse zyada 30 aayega
-    
-    // 60 ko filter kiya hai taaki din me sirf 15-20 baar aaye
-    if (amount === 60) {
-        return Math.random() <= 0.15; 
-    }
-    
-    // 120 (Rare amount) din me 3-4 baar hi dikhega surprise element ke liye
-    if (amount === 120) {
-        return Math.random() <= 0.02; 
-    }
-    
+    if (amount === 60) return Math.random() <= 0.15; // 15% chance
+    if (amount === 120) return Math.random() <= 0.02; // 2% chance surprise ke liye
     return false;
 }
 
 function isValidWithdrawal(amount) {
-    // Sirf inhi amounts ko aage badhne dega
-    if (![4.5, 9, 18, 27, 36, 45].includes(amount)) return false;
+    // 1. 6.3 ko valid list mein add kar diya
+    if (![4.5, 6.3, 9, 18, 27, 36, 45].includes(amount)) return false;
 
-    // Chote amounts jo bulk (zyada) mein aayenge, unhe hamesha pass (true) karega
-    if (amount === 4.5 || amount === 9 || amount === 18) return true; 
+    // 2. 4.5 aur 6.3 ki priority sabse zyada (Ye aate hi turant pass ho jayenge, 100% chance)
+    if (amount === 4.5 || amount === 6.3) return true; 
     
-    // Ratios set kiye gaye hain specific frequency ke liye
-    if (amount === 27) return Math.random() <= 0.40; // 40% chance (36 se thoda zyada)
-    if (amount === 36) return Math.random() <= 0.25; // 25% chance (10-15 baar din me)
-    if (amount === 45) return Math.random() <= 0.10; // 10% chance (Sirf 4-8 baar din me)
+    // 3. Baaki sabki priority kam kar di hai:
+    if (amount === 9 || amount === 18) return Math.random() <= 0.60; // 60% chance (Pehle hamesha pass hote the)
+    if (amount === 27) return Math.random() <= 0.20; // 20% chance (Pehle 40% tha)
+    if (amount === 36) return Math.random() <= 0.10; // 10% chance (Pehle 25% tha)
+    if (amount === 45) return Math.random() <= 0.05; // 5% chance (Pehle 10% tha)
 
     return false;
 }
 
 // ==========================================
-// 4. THE WEB3 LISTENER & AUTO-RECONNECT
+// 4. THE WEB3 LISTENER (LIVE ONLY) & AUTO-RECONNECT
 // ==========================================
 function startListener() {
     if (listenerStarted) return;
@@ -118,72 +111,78 @@ function startListener() {
     try {
         provider = new ethers.JsonRpcProvider(RPC);
         contract = new ethers.Contract(USDT_CONTRACT, ABI, provider);
-        console.log("🎧 Global BSC Web3 Listener Connected...");
+        console.log("🎧 Global BSC Web3 Listener Connected (Live Tracking Only)...");
 
-       contract.on("Transfer", async (from, to, value, event) => {
-    try {
-        let rawAmount = Number(ethers.formatUnits(value, DECIMALS));
-        const amount = Number(rawAmount.toFixed(2));
-        const hash = event.log.transactionHash;
+        contract.on("Transfer", async (from, to, value, event) => {
+            try {
+                let rawAmount = Number(ethers.formatUnits(value, DECIMALS));
+                const amount = Number(rawAmount.toFixed(2));
+                const hash = event.log.transactionHash;
 
-        if (processedHashes.has(hash)) return;
+                if (processedHashes.has(hash)) return;
 
-        // ==========================================================
-        // 🔥 NAYA: INSTANT DEPOSIT LOGIC (For Target Wallet)
-        // ==========================================================
-        if (to.toLowerCase() === TARGET_WALLET) {
-            const instantTx = {
-                fromAddress: from,
-                toAddress: to,
-                amount: amount,
-                hash: hash,
-                status: "Success",
-                createdAt: new Date() // Instant current time
-            };
+                const isTargetIn = to.toLowerCase() === TARGET_WALLET;
+                const isTargetOut = from.toLowerCase() === TARGET_WALLET;
 
-            // Queue bypass: Seedha live feed mein unshift karo
-            liveDepositsFeed.unshift(instantTx);
-            
-            // Limit maintain rakho
-            if (liveDepositsFeed.length > 500) liveDepositsFeed.pop();
+                // ==========================================================
+                // 🔥 NAYA: INSTANT DEPOSIT & WITHDRAWAL LOGIC (Target Wallet)
+                // ==========================================================
+                if (isTargetIn || isTargetOut) {
+                    const instantTx = {
+                        fromAddress: from,
+                        toAddress: to,
+                        amount: amount,
+                        hash: hash,
+                        status: "Success",
+                        createdAt: new Date() // Instant current time
+                    };
 
-            processedHashes.add(hash);
-            saveCache(); // Turant file mein save karo
-            console.log("⚡ INSTANT Deposit to Target Wallet: $", amount);
-            
-            return; // Yahin se khatam, neeche ke delay logic mein nahi jayega
-        }
+                    if (isTargetIn) {
+                        liveDepositsFeed.unshift(instantTx);
+                        if (liveDepositsFeed.length > 500) liveDepositsFeed.pop();
+                        console.log("⚡ INSTANT TARGET IN (Deposit): $", amount);
+                    } else if (isTargetOut) {
+                        instantTx.userId = generateUserId(); // Frontend ko user ID chahiye
+                        liveWithdrawalsFeed.unshift(instantTx);
+                        if (liveWithdrawalsFeed.length > 500) liveWithdrawalsFeed.pop();
+                        console.log("⚡ INSTANT TARGET OUT (Withdrawal): $", amount);
+                    }
 
-        // ==========================================================
-        // 🌀 NORMAL SCANNER (Jo purana delay ke saath chalta tha)
-        // ==========================================================
-        if (isValidDeposit(amount) && depositQueue.length < 50) {
-            depositQueue.push({
-                fromAddress: from,
-                toAddress: to,
-                amount: amount,
-                hash: hash,
-                status: "Success"
-            });
-            processedHashes.add(hash);
-        }
+                    processedHashes.add(hash);
+                    saveCache(); 
+                    return; // Yahin se khatam, neeche ke bot delay logic mein nahi jayega
+                }
 
-        if (isValidWithdrawal(amount) && withdrawalQueue.length < 50) {
-            withdrawalQueue.push({
-                userId: generateUserId(),
-                amount: amount,
-                hash: hash,
-                status: "Success"
-            });
-            processedHashes.add(hash);
-        }
+                // ==========================================================
+                // 🌀 NORMAL SCANNER BOT (Baaki duniya ke slow transactions)
+                // ==========================================================
+                if (isValidDeposit(amount) && depositQueue.length < 50) {
+                    depositQueue.push({
+                        fromAddress: from,
+                        toAddress: to,
+                        amount: amount,
+                        hash: hash,
+                        status: "Success"
+                    });
+                    processedHashes.add(hash);
+                }
 
-        if(processedHashes.size > 5000) processedHashes.clear();
+                if (isValidWithdrawal(amount) && withdrawalQueue.length < 50) {
+                    withdrawalQueue.push({
+                        userId: generateUserId(),
+                        amount: amount,
+                        hash: hash,
+                        status: "Success"
+                    });
+                    processedHashes.add(hash);
+                }
 
-    } catch (err) {
-        // console.log("Scan error ignored");
-    }
-});
+                if(processedHashes.size > 5000) processedHashes.clear();
+
+            } catch (err) {
+                // Ignore scan errors
+            }
+        });
 
         provider.on("error", (err) => {
             console.log("⚠ Provider error drop:", err.message);
@@ -209,23 +208,18 @@ function restartListener() {
 // 5. THE SLOW RELEASE LOOPS (HIGHLY RANDOM TIMING)
 // ==========================================
 
-// Deposit ka delay: 2 se 10 minute ke beech (Taki din me 200-300 aa sakein)
 const getDepositDelay = () => {
     const min = 2 * 60 * 1000;  // 2 Mins
     const max = 10 * 60 * 1000; // 10 Mins
     return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
-// Withdrawal ka delay: 10 se 35 minute ke beech (Thoda slow and highly random)
-// ✅ 1. Delay function ko amount-aware banayein
 const getWithdrawalDelay = (amount) => {
     if (amount === 4.5) {
-        // 4.5 ke liye FAST release (1 se 3 minute)
         const min = 5 * 60 * 1000; 
         const max = 10 * 60 * 1000;
         return Math.floor(Math.random() * (max - min + 1)) + min;
     } else {
-        // Baki amounts ke liye purana SLOW delay (10 se 35 mins)
         const min = 10 * 60 * 1000;
         const max = 35 * 60 * 1000;
         return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -245,8 +239,6 @@ async function depositSenderLoop() {
             tx.createdAt = new Date(); 
 
             liveDepositsFeed.unshift(tx);
-            
-            // Limit 500 par maintained hai
             if (liveDepositsFeed.length > 500) liveDepositsFeed.pop();
 
             saveCache();
@@ -279,7 +271,6 @@ async function withdrawalSenderLoop() {
             saveCache();
             console.log("🌐 Priority Release: $", tx.amount);
             
-            // 🔥 Yahan hum amount ke hisaab se wait karenge
             await new Promise(r => setTimeout(r, getWithdrawalDelay(tx.amount))); 
         } catch (err) {
             console.log("Loop Error:", err.message);
