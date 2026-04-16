@@ -1163,12 +1163,23 @@ router.get('/user/:userId', verifyAdmin, async (req, res) => {
 
 
 // routes/admin.js ke andar
+// routes/admin.js ke andar
 router.get('/search-user/:userId', verifyAdmin, async (req, res) => {
   try {
+    // 1. Pehle user ko dhundo
     const user = await User.findOne({ userId: Number(req.params.userId) }).lean();
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Ensure we are sending EVERYTHING, including passwords
+    // 2. ✅ NAYA LOGIC: Agar iska koi sponsorId hai, toh database se uska naam nikalo
+    if (user.sponsorId) {
+      const sponsor = await User.findOne({ userId: Number(user.sponsorId) }).select('name').lean();
+      // Agar sponsor mila toh uska naam daalo, warna "Unknown" likh do
+      user.sponsorName = sponsor ? sponsor.name : "Unknown"; 
+    } else {
+      user.sponsorName = "N/A"; // Agar kisi ne refer nahi kiya
+    }
+
+    // Ensure we are sending EVERYTHING, including passwords and the new sponsorName
     res.json({ user: user });
   } catch (err) {
     console.error(err);

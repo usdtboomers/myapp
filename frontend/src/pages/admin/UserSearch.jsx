@@ -1,10 +1,6 @@
 import React, { useState } from "react";
 import api from "../../api/axios"; // Path apne hisaab se theek kar lena
-import { Search, Ban, CheckCircle, Save, LogIn, Eye, EyeOff, Copy } from "lucide-react"; // ✅ Added Copy icon
-
-// Tweak this if your API base is different in axios config
- 
- 
+import { Search, Ban, CheckCircle, Save, LogIn, Eye, EyeOff, Copy } from "lucide-react"; 
 
 function UserSearch() {
   const [searchId, setSearchId] = useState("");
@@ -25,10 +21,9 @@ function UserSearch() {
 
     try {
       setMessage("Searching...");
-      // ✅ FIX: API URL CHANGED TO AVOID ANY CONFLICT WITH NORMAL USER ROUTES
-     const res = await api.get(`/admin/search-user/${searchId}`);
+      const res = await api.get(`/admin/search-user/${searchId}`);
 
-      console.log("Data received from backend:", res.data.user); // Check console to verify password is coming
+      console.log("Data received from backend:", res.data.user); 
 
       setUser(res.data.user);
       setFormData(res.data.user);
@@ -47,11 +42,11 @@ function UserSearch() {
     if (!token) return setMessage("Admin not authenticated");
 
     try {
-  const url = user.isBlocked
-  ? `/admin/unblock-user/${user.userId}`
-  : `/admin/block-user/${user.userId}`;
+      const url = user.isBlocked
+        ? `/admin/unblock-user/${user.userId}`
+        : `/admin/block-user/${user.userId}`;
 
-await api.put(url);
+      await api.put(url);
 
       setUser((prev) => ({ ...prev, isBlocked: !prev.isBlocked }));
       setMessage(`User ${user.isBlocked ? "unblocked" : "blocked"} successfully`);
@@ -74,11 +69,11 @@ await api.put(url);
     try {
       const payload = { ...formData };
 
-      // ❌ Avoid sending unchanged passwords
+      // Avoid sending unchanged passwords
       if (payload.password === user.password) delete payload.password;
       if (payload.transactionPassword === user.transactionPassword) delete payload.transactionPassword;
 
-     const res = await api.put(`/admin/${user.userId}`, payload);
+      const res = await api.put(`/admin/${user.userId}`, payload);
 
       setUser(res.data.user);
       setFormData(res.data.user);
@@ -95,9 +90,9 @@ await api.put(url);
     if (!token) return setMessage("Admin not authenticated");
 
     try {
-    const res = await api.post(`/admin/impersonate`, {
-  userId: user.userId,
-});
+      const res = await api.post(`/admin/impersonate`, {
+        userId: user.userId,
+      });
 
       const { token: userToken, user: impersonatedUser } = res.data;
 
@@ -112,7 +107,7 @@ await api.put(url);
     }
   };
 
-  // ✅ ================= COPY FUNCTION =================
+  // ================= COPY FUNCTION =================
   const handleCopy = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
@@ -142,6 +137,28 @@ await api.put(url);
       {user && (
         <div className="bg-gray-50 p-4 rounded border space-y-3">
           
+          {/* ✅ ADDED: Sponsor Info (Read-Only) */}
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="font-semibold text-indigo-700">Sponsor ID</label>
+              <input
+                type="text"
+                readOnly
+                value={formData.sponsorId || "N/A"}
+                className="block border rounded px-3 py-1 mt-1 w-full bg-gray-100 text-gray-600 cursor-not-allowed"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="font-semibold text-indigo-700">Sponsor Name</label>
+              <input
+                type="text"
+                readOnly
+                value={formData.sponsorName || "N/A"}
+                className="block border rounded px-3 py-1 mt-1 w-full bg-gray-100 text-gray-600 cursor-not-allowed"
+              />
+            </div>
+          </div>
+
           {/* Normal Text Fields */}
           {["name", "email", "mobile", "country"].map((field) => (
             <div key={field}>
@@ -193,13 +210,14 @@ await api.put(url);
           </div>
 
           {/* Balances & Address */}
+          {/* ✅ UPDATED: Wallet Balance is now Read-Only */}
           <div>
             <label className="font-semibold">Wallet Balance</label>
             <input
               type="number"
+              readOnly
               value={formData.walletBalance || 0}
-              onChange={(e) => handleInputChange("walletBalance", e.target.value)}
-              className="block border rounded px-3 py-1 mt-1 w-full"
+              className="block border rounded px-3 py-1 mt-1 w-full bg-gray-100 text-gray-600 cursor-not-allowed"
             />
           </div>
 
@@ -213,7 +231,7 @@ await api.put(url);
             />
           </div>
 
-          {/* ✅ UPDATED: Deposit Address Field (Read-Only with Copy Button) */}
+          {/* Deposit Address Field (Read-Only with Copy Button) */}
           <div>
             <label className="font-semibold">Deposit Address</label>
             <div className="flex items-center gap-2 mt-1">

@@ -4,7 +4,7 @@ import useAuth from "../../hooks/useAuth";
 
 // Match backend logic precisely
 const RANK_RULES = {
-  1: { reqDirectRank: "-", reqDirectCount: 5, reqTeamSize: 10 },
+  1: { reqDirectRank: 0, reqDirectCount: 5, reqTeamSize: 10 },
   2: { reqDirectRank: 1, reqDirectCount: 2, reqTeamSize: 30 },
   3: { reqDirectRank: 1, reqDirectCount: 5, reqTeamSize: 150 },
   4: { reqDirectRank: 2, reqDirectCount: 2, reqTeamSize: 250 },
@@ -120,19 +120,22 @@ const RewardProgress = () => {
               </div>
 
               {/* Requirement 1: Directs */}
-              <div style={styles.requirementBlock}>
-                <div style={styles.reqHeader}>
-                  <span className="text-sm text-white">
-                    Directs Needed (M {rules.reqDirectRank})
-                  </span>
-                  <span className="text-sm font-bold text-white">
-                    {directsProgress} / {rules.reqDirectCount}
-                  </span>
-                </div>
-                <div style={styles.progressBarBg}>
-                  <div style={{ ...styles.progressBarFill, width: `${directsPercent}%`, backgroundColor: isAchieved ? "#22c55e" : "#3b82f6" }}></div>
-                </div>
-              </div>
+           {/* Requirement 1: Directs */}
+<div style={styles.requirementBlock}>
+  <div style={styles.reqHeader}>
+    <span className="text-sm text-white">
+      {/* 🔥 MAGIC LOGIC: Agar rank 0 hai toh bracket mat dikhao */}
+      Directs Needed {rules.reqDirectRank > 0 ? `(${currentTrack.prefix} ${rules.reqDirectRank})` : ""}
+    </span>
+    <span className="text-sm font-bold text-white">
+      {directsProgress} / {rules.reqDirectCount}
+    </span>
+  </div>
+  
+  <div style={styles.progressBarBg}>
+    <div style={{ ...styles.progressBarFill, width: `${directsPercent}%`, backgroundColor: isAchieved ? "#22c55e" : "#3b82f6" }}></div>
+  </div>
+</div>
 
               {/* Requirement 2: Downline Team Size */}
               <div style={styles.requirementBlock}>

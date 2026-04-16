@@ -461,7 +461,7 @@ const handleWithdraw = async () => {
     
     return (
         <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>
-            Max Withdraw Avail: ${frontendAvailableInThisPlan.toFixed(2)}
+            Withdraw Available Amt: ${frontendAvailableInThisPlan.toFixed(2)}
         </span>
     );
 })()}
