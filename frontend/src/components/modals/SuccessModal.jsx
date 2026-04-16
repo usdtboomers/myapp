@@ -24,8 +24,7 @@ const SuccessModal = ({
 
   const formattedDate = new Date().toLocaleString("en-IN", {
     dateStyle: "medium",
-    timeStyle: "short",
-  });
+   });
 
   // ✅ Package Mapping (For Topup)
   const packageNames = {
@@ -68,7 +67,7 @@ const SuccessModal = ({
 
       {children}
 
-      <p className="text-white text-xs sm:text-sm italic text-center leading-tight mt-2">
+      <p className="text-white text-xs sm:text-xl font-bold italic text-center leading-tight mt-2">
         {formattedDate}
       </p>
     </>
@@ -231,7 +230,7 @@ const SuccessModal = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black   flex items-center justify-center p-4"
       style={{ zIndex }}
     >
       {showConfetti && (

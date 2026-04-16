@@ -530,7 +530,7 @@ const handleWithdraw = async () => {
                                           </div>
                                       </div>
                                    ) : data.isUnlockedPaid ? (
-                                      <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>✅ Unlocked</span>
+                                      <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}></span>
                                    ) : (
                                       <div></div>
                                    )}
