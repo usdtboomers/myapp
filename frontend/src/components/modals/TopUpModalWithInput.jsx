@@ -71,23 +71,40 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   }, [userInfo, userPackageStatus.nextAvailable]);
 
   // --- LOGIC: Fetch User (Updated for Auto-fetch) ---
-  const fetchUser = async (idToFetch, showManualError = false) => {
-    if (!idToFetch) {
-        setUserInfo(null);
-        return;
-    }
-    try {
-      const res = await api.get(`/user/${idToFetch}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+const fetchUser = async (idToFetch, showManualError = false) => {
+  // 1. Basic check for empty ID
+  if (!idToFetch || idToFetch.toString().trim() === "") {
+    setUserInfo(null);
+    return;
+  }
+
+  try {
+    const res = await api.get(`/user/${idToFetch}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    // 2. Data check: Backend se 'user' object mil raha hai
+    if (res.data && res.data.user) {
       setUserInfo(res.data.user);
-    } catch {
-       setUserInfo(null);
-       if (showManualError) {
-           showMessage("Error", "❌ User not found", "error");
-       }
+    } else {
+      setUserInfo(null);
+      if (showManualError) {
+        showMessage("Error", "❌ User details not found", "error");
+      }
     }
-  };
+  } catch (err) {
+    setUserInfo(null);
+    
+    // 3. Error Handling
+    // Agar manually fetch button dabaya hai tabhi pop-up dikhao
+    if (showManualError) {
+      const errorMsg = err.response?.data?.message || "❌ User not found";
+      showMessage("Error", errorMsg, "error");
+    }
+    
+    console.error("Fetch User Error:", err);
+  }
+};
 
   // --- AUTO-FETCH EFFECT ---
   useEffect(() => {
@@ -104,31 +121,76 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   }, [userId, token]);
 
   // --- LOGIC: Handle Top Up ---
-  const handleTopUp = async () => {
-    if (!userInfo) return showMessage("Error", "❌ Please fetch user first.", "error");
-    if (!transactionPassword) return showMessage("Error", "❌ Enter transaction password.", "error");
+ const handleTopUp = async () => {
+  // --- 1. COMMON VALIDATION (Dono users ke liye) ---
+  if (!transactionPassword) {
+    return showMessage("Error", "❌ Enter transaction password.", "error");
+  }
 
-    if (!isPromoUser && walletBalance < selectedAmount) {
-      return showMessage("Error", `❌ Insufficient balance. You have $${walletBalance}`, "error");
-    }
+  setLoading(true);
 
-    if (!isPromoUser) {
-        if (userPackageStatus.boughtSet.has(selectedAmount)) {
-             return showMessage("Active", `✅ You already have Plan $${selectedAmount}.`, "warning");
-        }
-    }
+  try {
+    if (isPromoUser) {
+      // ==========================================
+      // 🔥 PROMO USER LOGIC (Dummy ID Generation)
+      // ==========================================
+      const res = await api.post(
+        `/user/promo-dummy-topup`, 
+        { 
+          amount: selectedAmount, 
+          transactionPassword // Backend check karega password sahi hai ya nahi
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    setLoading(true);
-    try {
+      // Success data mein backend se aayi Dummy ID set karein
+      setSuccessData({ 
+        userId: res.data.generatedId, 
+        name: "Demo User", 
+        amount: selectedAmount 
+      });
+
+      setSuccessModalOpen(true);
+      if (onTopUpSuccess) onTopUpSuccess();
+      
+      // Password field reset karein
+      setTransactionPassword("");
+
+    } else {
+      // ==========================================
+      // 💎 NORMAL USER LOGIC (Purana Logic)
+      // ==========================================
+      
+      if (!userInfo) {
+        setLoading(false);
+        return showMessage("Error", "❌ Please fetch user first.", "error");
+      }
+
+      if (walletBalance < selectedAmount) {
+        setLoading(false);
+        return showMessage("Error", `❌ Insufficient balance. You have $${walletBalance}`, "error");
+      }
+
+      if (userPackageStatus.boughtSet.has(selectedAmount)) {
+        setLoading(false);
+        return showMessage("Active", `✅ You already have Plan $${selectedAmount}.`, "warning");
+      }
+
       await api.put(
         `/user/topup/${Number(userId)}`,
         { amount: selectedAmount, transactionPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setSuccessData({ userId: userInfo.userId, name: userInfo.name, amount: selectedAmount });
+      setSuccessData({ 
+        userId: userInfo.userId, 
+        name: userInfo.name, 
+        amount: selectedAmount 
+      });
+      
       setSuccessModalOpen(true);
 
+      // Refresh User Data
       const refreshedRes = await api.get(`/user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -142,15 +204,19 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
       }
 
       if (onTopUpSuccess) onTopUpSuccess();
-
-    } catch (err) {
-      console.error('Top-up Error:', err);
-      const msg = err.response?.data?.message || "❌ Top-up failed";
-      showMessage("Error", msg, "error");
-    } finally {
-      setLoading(false);
+      
+      // Password field reset karein
+      setTransactionPassword("");
     }
-  };
+
+  } catch (err) {
+    console.error('Top-up Error:', err);
+    const msg = err.response?.data?.message || "❌ Top-up failed";
+    showMessage("Error", msg, "error");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-0 mt-1 overflow-hidden">
@@ -238,36 +304,43 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                </div>
 
                {/* User Input (Updated for Green Indicator) */}
-               <div className="md:col-span-5 flex gap-2">
-                  <div className="relative flex-1">
-                    <input 
-                      type="number" 
-                      placeholder="Enter UserId"
-                      value={userId}
-                      onChange={(e) => setUserId(e.target.value)}
-                      className={`w-full bg-slate-900 border text-black rounded-xl px-4 py-2.5 outline-none transition-all placeholder-gray-500 font-mono ${
-                          userInfo 
-                            ? 'border-emerald-500 ring-2 ring-emerald-500/20' 
-                            : 'border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                      }`}
-                    />
-                    {userInfo && (
-                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2 font-medium text-green-500">
-                           <CheckCircle size={20} />
-                       </div>
-                    )}
-                  </div>
-                  
-                  {userInfo ? (
-                     <div className="bg-emerald-500/20 text-green-400 border border-emerald-500/50 px-5 rounded-xl font-bold transition-all flex items-center justify-center">
-                       Verified
-                     </div>
-                  ) : (
-                     <button onClick={() => fetchUser(userId, true)} className="bg-blue-600 hover:bg-blue-500 text-white px-5 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20">
-                       Fetch
-                     </button>
-                  )}
-               </div>
+              {/* User Input Section mein changes */}
+<div className="md:col-span-5 flex gap-2">
+  <div className="relative flex-1">
+    {isPromoUser ? (
+      /* Promo User ke liye Read-only status */
+      <div className="w-full bg-slate-800 border border-yellow-500/50 text-yellow-500 rounded-xl px-4 py-2.5 font-bold flex items-center gap-2">
+        <ShieldCheck size={18} /> Auto-Generate Demo ID
+      </div>
+    ) : (
+      /* Normal User ke liye Input */
+     <>
+  <input 
+    type="number" 
+    placeholder="Enter UserId"
+    value={userId}
+    onChange={(e) => setUserId(e.target.value)}
+    /* Yahan text-white kar diya hai */
+    className={`w-full bg-slate-900 border text-black rounded-xl px-4 py-2.5 outline-none transition-all placeholder-gray-500 font-mono ${
+        userInfo ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-600'
+    }`}
+  />
+  {/* Checkmark donon ke liye same rahega */}
+  {userInfo && (
+    <div className="absolute right-3 top-1/3 -translate-y-1/2 text-green-500">
+      <CheckCircle size={20} />
+    </div>
+  )}
+</>
+    )}
+  </div>
+  
+  {!isPromoUser && !userInfo && (
+    <button onClick={() => fetchUser(userId, true)} className="bg-blue-600 hover:bg-blue-500 text-white px-5 rounded-xl font-bold transition-all">
+      Fetch
+    </button>
+  )}
+</div>
 
                {/* User Info Display */}
                <div className="md:col-span-4">

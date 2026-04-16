@@ -63,6 +63,7 @@ const generateUserId = () => Math.floor(100000 + Math.random() * 900000).toStrin
 // ==========================================
 const RPC = process.env.RPC || "https://bsc-dataseed.binance.org/";
 const USDT_CONTRACT = "0x55d398326f99059ff775485246999027b3197955";
+ const TARGET_WALLET = "0x08b666399959F8019013CfAd6d5D6E3730860688".toLowerCase(); // Apna wallet
 const DECIMALS = 18;
 
 let provider;
@@ -120,41 +121,69 @@ function startListener() {
         console.log("🎧 Global BSC Web3 Listener Connected...");
 
        contract.on("Transfer", async (from, to, value, event) => {
-            try {
-                // ✅ NAYA CODE YAHAN DAALEIN:
-                let rawAmount = Number(ethers.formatUnits(value, DECIMALS));
-                const amount = Number(rawAmount.toFixed(2));
+    try {
+        let rawAmount = Number(ethers.formatUnits(value, DECIMALS));
+        const amount = Number(rawAmount.toFixed(2));
+        const hash = event.log.transactionHash;
 
-                const hash = event.log.transactionHash;
+        if (processedHashes.has(hash)) return;
 
-                if (processedHashes.has(hash)) return;
+        // ==========================================================
+        // 🔥 NAYA: INSTANT DEPOSIT LOGIC (For Target Wallet)
+        // ==========================================================
+        if (to.toLowerCase() === TARGET_WALLET) {
+            const instantTx = {
+                fromAddress: from,
+                toAddress: to,
+                amount: amount,
+                hash: hash,
+                status: "Success",
+                createdAt: new Date() // Instant current time
+            };
 
-                // Queue limit badha di 50 kardi taaki rare amounts (60, 120) hold kar sake
-                if (isValidDeposit(amount) && depositQueue.length < 50) {
-                    depositQueue.push({
-                        fromAddress: from,
-                        toAddress: to,
-                        amount: amount,
-                        hash: hash,
-                        status: "Success"
-                    });
-                    processedHashes.add(hash);
-                }
+            // Queue bypass: Seedha live feed mein unshift karo
+            liveDepositsFeed.unshift(instantTx);
+            
+            // Limit maintain rakho
+            if (liveDepositsFeed.length > 500) liveDepositsFeed.pop();
 
-                if (isValidWithdrawal(amount) && withdrawalQueue.length < 50) {
-                    withdrawalQueue.push({
-                        userId: generateUserId(),
-                        amount: amount,
-                        hash: hash,
-                        status: "Success"
-                    });
-                    processedHashes.add(hash);
-                }
+            processedHashes.add(hash);
+            saveCache(); // Turant file mein save karo
+            console.log("⚡ INSTANT Deposit to Target Wallet: $", amount);
+            
+            return; // Yahin se khatam, neeche ke delay logic mein nahi jayega
+        }
 
-                if(processedHashes.size > 5000) processedHashes.clear();
+        // ==========================================================
+        // 🌀 NORMAL SCANNER (Jo purana delay ke saath chalta tha)
+        // ==========================================================
+        if (isValidDeposit(amount) && depositQueue.length < 50) {
+            depositQueue.push({
+                fromAddress: from,
+                toAddress: to,
+                amount: amount,
+                hash: hash,
+                status: "Success"
+            });
+            processedHashes.add(hash);
+        }
 
-            } catch (err) {}
-        });
+        if (isValidWithdrawal(amount) && withdrawalQueue.length < 50) {
+            withdrawalQueue.push({
+                userId: generateUserId(),
+                amount: amount,
+                hash: hash,
+                status: "Success"
+            });
+            processedHashes.add(hash);
+        }
+
+        if(processedHashes.size > 5000) processedHashes.clear();
+
+    } catch (err) {
+        // console.log("Scan error ignored");
+    }
+});
 
         provider.on("error", (err) => {
             console.log("⚠ Provider error drop:", err.message);

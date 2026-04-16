@@ -17,7 +17,7 @@ import TopNav from "../../components/navbar/TopNav";
 // ✅ 1. ADDED: PreLaunchPromo Import Kiya
 import PreLaunchPromo from "../../components/PreLaunchPromo"; // Path check kar lijiye agar aapne kahin aur rakha ho
 import TeamPromoPopup from "../../components/TeamPromoPopup"; // Ye nayi line add karni hai
-
+import RewardProgress from "./RewardProgress"; // Path check kar lena agar file same folder mein hai ya nahi
 
 const Dashboard = () => {
   const { user, token, setUser, logout } = useAuth();
@@ -218,6 +218,8 @@ const Dashboard = () => {
                   <ReferralLink link={referralLink} />
                </div>
 
+               
+
                {/* RECENT DEPOSITS & WITHDRAWALS PREVIEW */}
                <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   
@@ -306,6 +308,9 @@ const Dashboard = () => {
                 <DailyROIPlan dailyROI={user.dailyROI || []} onClaim={claimDailyROI} />
             </section>
            
+           <section className="mt-8 bg-slate-800/20 rounded-2xl border border-slate-700/30 overflow-hidden">
+    <RewardProgress />
+</section>
           </div>
 
           {/* General Modals */}

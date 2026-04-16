@@ -9,6 +9,7 @@ const Setting = require('../models/Setting');
 const sanitizeUser = require('../utils/sanitizeUser');
 const sendEmail = require('../utils/sendEmail');
 const checkFeature = require('../middleware/checkFeatureEnabled');
+const DummyUser = require('../models/DummyUser.js'); // 🔥 Ye line check kar lo
 
 const JWT_SECRET = process.env.JWT_SECRET || 'yoursecretkey';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://178.128.20.53';
@@ -19,7 +20,13 @@ const generateUserId = async () => {
   let exists = true;
   while (exists) {
     id = Math.floor(1000000 + Math.random() * 9000000);
-    exists = await User.exists({ userId: id });
+    // 🔥 Dono tables mein check karo ki ID khali hai ya nahi
+    const existsInReal = await User.exists({ userId: id });
+    const existsInDummy = await DummyUser.exists({ userId: id });
+    
+    if (!existsInReal && !existsInDummy) {
+      exists = false;
+    }
   }
   return id;
 };
@@ -36,10 +43,20 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     }
 
     // ✅ CHECK 2: Validate Sponsor ID exists in database
-    const sponsorExists = await User.findOne({ userId: parseInt(sponsorId) });
-    if (!sponsorExists) {
-        return res.status(400).json({ message: 'Invalid Sponsor ID. Sponsor not found in the system.' });
+  // ✅ CHECK 2: Validate Sponsor ID (Real aur Dummy dono check karega)
+let sponsorExists = await User.findOne({ userId: parseInt(sponsorId) });
+
+// Agar real user mein nahi mila, toh DummyUser table mein dhoondo 🔥
+if (!sponsorExists) {
+    if (typeof DummyUser !== 'undefined') {
+        sponsorExists = await DummyUser.findOne({ userId: parseInt(sponsorId) });
     }
+}
+
+// Agar dono jagah nahi mila, tabhi error do
+if (!sponsorExists) {
+    return res.status(400).json({ message: 'Invalid Sponsor ID. Sponsor not found in the system.' });
+}
 
     if (!name || !mobile || !email || !country || !password) {
       return res.status(400).json({ message: 'All fields are required.' });

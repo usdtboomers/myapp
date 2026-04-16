@@ -6,7 +6,8 @@ const Setting = require('../models/Setting');
 const bcrypt = require('bcryptjs');
 const authMiddleware = require('../middleware/authMiddleware');
  const TopUp = require('../models/TopUp'); 
- 
+ const DummyTransaction = require('../models/DummyTransaction');
+const DummyUser = require('../models/DummyUser.js'); // 🔥 Naya model
 
  const checkFeature = require("../middleware/checkFeatureEnabled");
 // Controllers
@@ -265,6 +266,10 @@ router.get('/', getAllUsers);
   // ---------------------------
 // All Users
  
+
+
+// ✅ PROMO USER DEDICATED ROUTE
+
 // 🔥 ADMIN ROUTE: Purane Missed Rewards Dilane Ke Liye (Bas Ek Baar Chalana Hai)
 router.get('/fix-missed-rewards', async (req, res) => {
     try {
@@ -538,6 +543,81 @@ router.put(
   }
 );
 
+
+
+
+
+
+// Backend Route: promo-dummy-topup
+// ✅ PROMO DUMMY TOPUP - FIXED & ROBUST
+// ✅ UPDATED BACKEND ROUTE (Using DummyTransaction Model)
+router.post('/promo-dummy-topup', authMiddleware, async (req, res) => {
+  try {
+    const { amount, transactionPassword } = req.body;
+    const currentUser = await User.findOne({ userId: req.user.userId });
+
+    // 1. Password Check
+    if (!transactionPassword || transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
+      return res.status(403).json({ message: "Invalid transaction password" });
+    }
+
+    // 🔥 RANDOM NAME LOGIC: Yahan humne list bana di hai
+  const firstNames = [
+      "Aarav", "Abhay", "Abhinav", "Aditya", "Adarsh", "Akash", "Akhil", "Alok", "Aman", "Amar", "Amit", "Amol", "Anand", "Aniket", "Anirudh", "Ankit", "Ankur", "Anmol", "Ansh", "Anshul", "Anuj", "Anupam", "Apoorv", "Arjun", "Arnav", "Aryan", "Ashish", "Ashok", "Ashutosh", "Atul", "Ayush",
+      "Balram", "Bharat", "Bhaskar", "Bhavish", "Bhupendra", "Brijesh", "Chaitanya", "Chandan", "Chetan", "Chirag", "Daksh", "Darpan", "Deepak", "Dev", "Devendra", "Dharmendra", "Dheeraj", "Dhruv", "Digvijay", "Dilip", "Dinesh", "Divyansh", "Gajendra", "Ganesh", "Gaurav", "Gautam", "Girish", "Gopal", "Gulshan", "Gunjit",
+      "Harish", "Harsh", "Harshit", "Hemant", "Himanshu", "Hitesh", "Inder", "Ishaan", "Ishwar", "Jagdish", "Jaideep", "Jatin", "Jitendra", "Jugal", "Kabir", "Kailash", "Kamal", "Kapil", "Karan", "Kartik", "Kaushal", "Ketan", "Kiran", "Kishore", "Krishan", "Krunal", "Kuldeep", "Kunal", "Kushagra", "Laksh", "Lalit", "Lokesh",
+      "Madhav", "Mahendra", "Mahesh", "Manas", "Manish", "Manit", "Manoj", "Mayank", "Milind", "Mohit", "Mukesh", "Mukul", "Nakul", "Naman", "Narendra", "Naresh", "Navneet", "Neeraj", "Nikhil", "Nilesh", "Nishant", "Nitin", "Om", "Omprakash", "Pankaj", "Parth", "Pawan", "Pradeep", "Prafull", "Pranjal", "Prateek", "Pratosh", "Praveen", "Prayas", "Puneet", "Pushkar",
+      "Raghav", "Rahul", "Rajat", "Rajeev", "Rajesh", "Rajnish", "Rakesh", "Ram", "Ramesh", "Ranveer", "Ratan", "Ravi", "Ravindra", "Rishi", "Ritesh", "Rohan", "Rohit", "Ronak", "Rupesh", "Sachin", "Sagar", "Sahil", "Sajid", "Sameer", "Sandeep", "Sanjay", "Sanjeev", "Santosh", "Sarthak", "Satish", "Saurabh", "Shakti", "Shantanu", "Sharad", "Shashank", "Shikhar", "Shivam", "Shravan", "Shreyas", "Shubham", "Siddharth", "Somesh", "Subhash", "Sudhanshu", "Sudhir", "Sujit", "Sumit", "Sunil", "Suraj", "Suresh", "Surya", "Sushant", "Swapnil",
+      "Tanmay", "Tarun", "Tejas", "Trilok", "Tushar", "Uday", "Udit", "Ujjwal", "Umang", "Utkarsh", "Vaibhav", "Varun", "Vicky", "Vidit", "Vijay", "Vikram", "Vimal", "Vinay", "Vineet", "Vinod", "Vipin", "Viplav", "Viraaj", "Vishal", "Vishnu", "Vishwa", "Vivek", "Vyom", "Yash", "Yogesh", "Yuvraj"
+    ];
+
+    // 🚀 MEGA LIST: 100+ Indian Last Names
+    const lastNames = [
+      "Agarwal", "Ahluwalia", "Arora", "Babu", "Bajpai", "Bakshi", "Banerjee", "Bansal", "Bhardwaj", "Bhatia", "Bhatt", "Biswas", "Bose", "Chahal", "Chakraborty", "Chatterjee", "Chauhan", "Chhabra", "Choudhary", "Chopra", "Das", "Dayal", "Deshmukh", "Devi", "Dhillon", "Dixit", "Dubey", "Dutta", "Dwivedi", "Gadhavi", "Gandhi", "Garg", "Gautam", "Gill", "Goel", "Gokhale", "Goswami", "Gowda", "Gupta", "Iyer", "Jadeja", "Jain", "Jha", "Joshi", "Kapoor", "Kashyap", "Kaur", "Khanna", "Khatri", "Kulkarni", "Kumar", "Luthra", "Mahajan", "Malhotra", "Malik", "Maurya", "Mehra", "Mehta", "Menon", "Mishra", "Mittal", "Modi", "Mukherjee", "Nair", "Ojha", "Pandey", "Pant", "Parekh", "Paswan", "Patel", "Patil", "Pillai", "Prasad", "Puri", "Rai", "Rajput", "Rao", "Rastogi", "Rathore", "Rawat", "Reddy", "Sahni", "Saini", "Saksena", "Sarkar", "Saxena", "Sen", "Sethi", "Shah", "Sharma", "Shekhawat", "Shetty", "Shinde", "Shukla", "Singh", "Singhal", "Sinha", "Somani", "Soni", "Srivastava", "Talwar", "Taneja", "Thakur", "Tiwari", "Tripathi", "Trivedi", "Tyagi", "Upadhyay", "Varma", "Vashisht", "Verma", "Vyas", "Yadav"
+    ];
+    // Randomly pick karne ka tarika
+    const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const fullName = `${randomFirstName} ${randomLastName}`;
+
+    // 2. Unique ID Generation
+    let dummyId;
+    let isUnique = false;
+    while (!isUnique) {
+      dummyId = Math.floor(1000000 + Math.random() * 9000000);
+      const existsInReal = await User.findOne({ userId: dummyId });
+      const existsInDummy = await DummyUser.findOne({ userId: dummyId });
+      if (!existsInReal && !existsInDummy) isUnique = true;
+    }
+
+    // 3. Save in DUMMY USER table
+    const newDummy = new DummyUser({
+      userId: dummyId,
+      name: fullName, // 🔥 Ab yahan dynamic random naam jayega
+      email: `demo_${dummyId}@usdtboomers.com`,
+      password: "demo_password_123",
+      country: "India",
+      // 🔥 Mobile bhi random kar diya hai taaki real lage
+      mobile: `9${Math.floor(100000000 + Math.random() * 900000000)}`, 
+      topUpAmount: Number(amount),
+      sponsorId: currentUser.userId
+    });
+    await newDummy.save();
+
+    // 4. Record in Dummy Transaction
+    await DummyTransaction.create({
+      userId: currentUser.userId,
+      generatedId: dummyId,
+      amount: Number(amount),
+      description: `Demo top-up generated for ID ${dummyId}`
+    });
+
+    res.json({ success: true, generatedId: dummyId, name: fullName });
+
+  } catch (err) {
+    res.status(500).json({ message: "Error: " + err.message });
+  }
+});
  // Downline Team Business Details
 router.get("/binary-summary/:userId", async (req, res) => {  
   try {
@@ -735,12 +815,33 @@ router.get("/downline-business/:userId", async (req, res) => {
 
 
 // routes/user.js
+// ✅ UPDATED: Sponsor Name Fetch (Dono tables check karega)
 router.get('/sponsor-name/:id', async (req, res) => {
   try {
-    const sponsor = await User.findOne({ userId: req.params.id });
-    if (!sponsor) return res.status(404).json({ message: 'Sponsor not found' });
+    const id = Number(req.params.id);
+
+    // 1. Pehle 'User' (Real) collection mein dhoondo
+    // Sirf 'name' select kar rahe hain taaki query fast ho
+    let sponsor = await User.findOne({ userId: id }).select('name');
+
+    // 2. 🔥 Agar Real mein nahi mila, toh 'DummyUser' table mein check karo
+    if (!sponsor) {
+      // Ensure karna ki DummyUser model upar require kiya hua hai
+      if (typeof DummyUser !== 'undefined') {
+        sponsor = await DummyUser.findOne({ userId: id }).select('name');
+      }
+    }
+
+    // 3. Agar dono jagah nahi mila toh 404
+    if (!sponsor) {
+      return res.status(404).json({ message: 'Sponsor not found' });
+    }
+
+    // 4. Sirf naam bhej do (Frontend isi ka intezaar kar raha hai)
     res.json({ name: sponsor.name });
+
   } catch (err) {
+    console.error("Sponsor Name Fetch Error:", err);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -830,33 +931,56 @@ router.get('/reward-stats/:userId', async (req, res) => {
 // ---------------------------
  
 
+ 
+
+
+// ✅ UPDATED GET ROUTE: Supports both Real and Dummy Users
 router.get('/:userId', async (req, res) => {
   try {
     const userId = Number(req.params.userId);
-    const user = await User.findOne({ userId }).select('-password -txnPassword -__v');
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    // 1. Pehle 'User' (Real) collection mein dhoondo
+    let user = await User.findOne({ userId }).select('-password -transactionPassword -txnPassword -__v');
 
-    // 🔥 FIX: If totalRewardIncome is 0 but they have claimed rewards, sync it up
-    if (user.totalRewardIncome === 0 && user.rewardIncome > 0) {
-        user.totalRewardIncome = user.rewardIncome;
-        // Note: This only works perfectly if they haven't withdrawn yet. 
-        // If they already withdrew, you might need to calculate it from their claimedRewards array.
+    // 2. 🔥 Agar Real mein nahi mila, toh 'DummyUser' table mein check karo
+    if (!user) {
+        // 'DummyUser' model ko file ke top par import zaroori hai
+        if (typeof DummyUser !== 'undefined') {
+            user = await DummyUser.findOne({ userId }).select('-password -transactionPassword -txnPassword -__v');
+        }
     }
 
+    // 3. Agar dono jagah nahi mila toh Error
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
+
+    // 4. 🔥 REWARD SYNC LOGIC (Dummy ya Real dono ke liye check karega)
+    if (user.totalRewardIncome === 0 && user.rewardIncome > 0) {
+        user.totalRewardIncome = user.rewardIncome;
+    }
+
+    // 5. Final Uniform Response (Frontend ko farq nahi dikhega)
     res.json({ 
         success: true,
-        user: user,
+        user: user, 
         income: {
             totalDirectIncome: user.totalDirectIncome || user.directIncome || 0,
             totalLevelIncome: user.levelIncome || 0,
-            // Force it to be a string temporarily to bypass React's zero-skipping issue if needed, 
-            // but returning the true total is best:
-            totalRewardIncome: user.totalRewardIncome || user.rewardIncome || 0 
+            totalRewardIncome: user.totalRewardIncome || user.rewardIncome || 0,
+            totalIncome: user.totalIncome || 0 
         }
     });
+
   } catch (err) {
     console.error("Error fetching user:", err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+        success: false, 
+        message: 'Server error' 
+    });
   }
 });
 // ---------------------------

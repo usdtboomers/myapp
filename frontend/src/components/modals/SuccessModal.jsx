@@ -100,24 +100,25 @@ const SuccessModal = ({
         const valueText = isPlan ? (planNames[source] || source) : source;
 
         return (
-          <SuccessLayout title={titleText}>
-            <p className="text-white text-md sm:text-lg font-bold text-center mt-0.5">
-              Amount :-{" "}
-              <span className="font-extrabold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-transparent bg-clip-text drop-shadow-[0_1px_4px_rgba(255,215,0,0.6)]">
-                ${amount}
-              </span>
-            </p>
+         <SuccessLayout title="Withdrawal Successful ">
+  <div className="flex flex-col items-center justify-center space-y-4 py-4">
+    
+    {/* 1. Label - Gray and Spaced out like the image */}
+   <p className="text-white text-sm sm:text-lg font-extrabold tracking-[0.25em] uppercase opacity-90">
+  Amount
+</p>
 
-            {/* 🔥 Dynamic Section: Plan Name ya Source Name */}
-            {source && (
-            <div>
-  <p className="text-lg font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white to-yellow-300">
-    {labelText}:  <span className="text-yellow-400">{valueText}</span> 
-  </p>
-</div>
+    {/* 2. Main Amount - $ and 5 are now in one line and same size */}
+    <div className="relative">
+      <h2 className="text-5xl sm:text-6xl font-black bg-gradient-to-b from-yellow-200 via-yellow-400 to-yellow-600 text-transparent bg-clip-text drop-shadow-[0_4px_12px_rgba(255,215,0,0.5)]">
+        ${amount}
+      </h2>
+    </div>
 
-            )}
-          </SuccessLayout>
+ 
+
+  </div>
+</SuccessLayout>
         );
 
       case "deposit":

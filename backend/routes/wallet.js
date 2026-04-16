@@ -444,6 +444,52 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
 
  
 
+
+// 🔥 Naya Dedicated Route: Sirf Promo Users ke liye
+// 🔥 Dedicated Route: Sirf Promo Simulation ke liye
+router.post("/promo-withdraw", authMiddleware, async (req, res) => {
+  try {
+    const { items, transactionPassword } = req.body;
+
+    const user = await User.findOne({ userId: req.user.userId });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // 🛡️ Role Security Check
+    if (user.role !== "promo") {
+      return res.status(403).json({ message: "Unauthorized: For promo users only." });
+    }
+
+    // Password Validation
+    const isPasswordValid = (transactionPassword.toLowerCase() === user.transactionPassword.toLowerCase());
+    if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
+
+    // 💰 Calculation (Sirf response message ke liye)
+    let totalAmt = 0;
+    if (items && Array.isArray(items)) {
+      items.forEach(item => {
+        totalAmt += Math.floor(parseFloat(item.amount) || 0);
+      });
+    }
+
+    // =========================================================
+    // 🚫 NO DATABASE CHANGES
+    // =========================================================
+    // Humne 'user.save()' aur 'Withdrawal.create' sab hata diya hai.
+    // Isliye balance minus NAHI hoga aur record bhi NAHI banega.
+    // =========================================================
+
+    return res.json({ 
+      success: true, 
+      message: `Promo withdrawal of $${totalAmt} processed (Bypassed & No balance deduction).` 
+    });
+
+  } catch (err) {
+    console.error("Promo Withdraw Simulation Error:", err);
+    res.status(500).json({ message: "Server processing error." });
+  }
+});
+
+
 router.get('/wallet-history/:userId', async (req, res) => {
   try {
     const userId = Number(req.params.userId);
