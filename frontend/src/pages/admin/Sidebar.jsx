@@ -22,8 +22,8 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
-    navigate('/'); 
-  };
+navigate('/community-access?Key=SuperSuper');
+   };
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 

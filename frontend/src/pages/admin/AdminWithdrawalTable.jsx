@@ -29,7 +29,7 @@ const AdminWithdrawalTable = () => {
   const handleImpersonate = async (userId) => {
     const result = await Swal.fire({
       title: 'Login as User?',
-      text: `Kya aap User ID: ${userId} ke account mein login karna chahte hain?`,
+      text: `Do you want to log in to the account with User ID: ${userId}?`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Yes, Login'
@@ -130,7 +130,7 @@ return Swal.fire('Error', 'MetaMask or Trust Wallet not detected!', 'error');
         headers: { Authorization: `Bearer ${token}` } 
       });
 
-      Swal.fire('Success!', 'Payment successfully bhej di gayi hai.', 'success');
+Swal.fire('Success!', 'Payment has been sent successfully.', 'success');
       fetchWithdrawals();
 
     } catch (err) {
