@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import api from 'api/axios';
+import api from 'api/axios'; // Apne folder path ke hisaab se adjust kar lena
+import { saveAs } from 'file-saver';
+import Papa from 'papaparse';
 
 // 🔹 Helpers for Decimal / number normalization
 const normalizeAmount = (value) => {
@@ -38,6 +40,7 @@ const formatAmount = (value, digits = 2) => {
 const AdminTransactions = () => {
   const [transactions, setTransactions] = useState([]);
   const [filtered, setFiltered] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [viewTransferType, setViewTransferType] = useState('all');
 
   const [filters, setFilters] = useState({
@@ -46,6 +49,10 @@ const AdminTransactions = () => {
     fromDate: '',
     toDate: '',
   });
+
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     fetchTransactions();
@@ -57,6 +64,7 @@ const AdminTransactions = () => {
 
   const fetchTransactions = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('adminToken');
       if (!token) throw new Error('Admin token not found');
 
@@ -68,6 +76,8 @@ const AdminTransactions = () => {
       setFiltered(res.data || []);
     } catch (err) {
       console.error('Error fetching transactions:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -113,76 +123,155 @@ const AdminTransactions = () => {
     }
 
     setFiltered(result);
+    setCurrentPage(1); // Reset to first page when filters change
   };
+
+  // Pagination Logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+  const handleNext = () => {
+    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
+  };
+
+  const handlePrev = () => {
+    if (currentPage > 1) setCurrentPage(prev => prev - 1);
+  };
+
+  const handleEntriesChange = (e) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
+  // Export filtered transactions to CSV
+  const exportToCSV = () => {
+    const csvData = filtered.map(tx => ({
+      UserID: tx.userId,
+      Name: tx.name || '-',
+      Type: tx.type.replace('_', ' ').toUpperCase(),
+      Amount: formatAmount(tx.amount),
+      From: tx.fromUserId || '-',
+      To: tx.toUserId || '-',
+      Date: tx.date ? new Date(tx.date).toLocaleString('en-IN') : (tx.createdAt ? new Date(tx.createdAt).toLocaleString('en-IN') : 'N/A'),
+      Source: tx.source || '-',
+      Description: tx.description || '-'
+    }));
+
+    const csv = Papa.unparse(csvData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    saveAs(blob, 'filtered-transactions.csv');
+  };
+
+  // Copy Function
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    alert(`Copied: ${text}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="p-4 text-center text-gray-600 text-lg">
+        Loading transactions...
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">
-      <h2 className="text-xl font-semibold mb-4 text-indigo-600 text-center">
-        All User Transactions
-      </h2>
+      {/* Top Controls */}
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6">
+        
+        {/* Search, Dates, Filter & Entries Select */}
+        <div className="flex flex-col md:flex-row gap-2 w-full xl:w-auto flex-wrap">
+          <input
+            type="text"
+            className="border border-gray-300 rounded px-3 py-2 w-full md:w-48"
+            placeholder="Search User ID"
+            value={filters.userId}
+            onChange={e => setFilters({ ...filters, userId: e.target.value })}
+          />
+          <input
+            type="date"
+            className="border border-gray-300 rounded px-3 py-2"
+            value={filters.fromDate}
+            onChange={e => setFilters({ ...filters, fromDate: e.target.value })}
+          />
+          <input
+            type="date"
+            className="border border-gray-300 rounded px-3 py-2"
+            value={filters.toDate}
+            onChange={e => setFilters({ ...filters, toDate: e.target.value })}
+          />
 
-      {/* Filters */}
-      <div className="grid md:grid-cols-4 gap-4 mb-4">
-        <input
-          type="text"
-          placeholder="User ID"
-          value={filters.userId}
-          onChange={e => setFilters({ ...filters, userId: e.target.value })}
-          className="border p-2 rounded"
-        />
-        <select
-          value={filters.type}
-          onChange={e => setFilters({ ...filters, type: e.target.value })}
-          className="border p-2 rounded"
-        >
-          <option value="">All Types</option>
-          <option value="deposit">Deposit</option>
-          <option value="withdrawal">Withdrawal</option>
-          <option value="transfer">Transfer</option>
-          <option value="direct_income">Direct Income</option>
-          <option value="level_income">Level Income</option>
-          <option value="roi_income">ROI Income</option>
-           <option value="topup">Top-up</option>
-          <option value="spin_income">Spin Income</option>
-          <option value="buy_spin">Buy Spin</option>
-          <option value="credit_to_wallet">Credit to Wallet</option>
-        </select>
-        <input
-          type="date"
-          value={filters.fromDate}
-          onChange={e => setFilters({ ...filters, fromDate: e.target.value })}
-          className="border p-2 rounded"
-        />
-        <input
-          type="date"
-          value={filters.toDate}
-          onChange={e => setFilters({ ...filters, toDate: e.target.value })}
-          className="border p-2 rounded"
-        />
+          {/* Transaction Type Filter Dropdown */}
+          <select
+            className="border border-gray-300 rounded px-3 py-2 bg-white font-medium text-gray-700"
+            value={filters.type}
+            onChange={e => setFilters({ ...filters, type: e.target.value })}
+          >
+            <option value="">All Types</option>
+            <option value="deposit">Deposit</option>
+            <option value="withdrawal">Withdrawal</option>
+            <option value="transfer">Transfer</option>
+            <option value="direct_income">Direct Income</option>
+            <option value="level_income">Level Income</option>
+            <option value="roi_income">ROI Income</option>
+            <option value="topup">Top-up</option>
+            <option value="spin_income">Spin Income</option>
+            <option value="buy_spin">Buy Spin</option>
+            <option value="credit_to_wallet">Credit to Wallet</option>
+          </select>
+          
+          <select 
+            className="border border-gray-300 rounded px-3 py-2 bg-white"
+            value={itemsPerPage}
+            onChange={handleEntriesChange}
+          >
+            <option value={10}>Show 10</option>
+            <option value={20}>Show 20</option>
+            <option value={50}>Show 50</option>
+            <option value={100}>Show 100</option>
+          </select>
+        </div>
+
+        {/* Export & Count */}
+        <div className="flex gap-2 items-center justify-between md:justify-end">
+          <span className="text-gray-600 text-sm font-medium">
+            Total: {filtered.length}
+          </span>
+          <button
+            onClick={exportToCSV}
+            className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded shadow text-sm"
+          >
+            Export CSV
+          </button>
+        </div>
       </div>
 
-      {/* Transfer Type Toggle */}
+      {/* Transfer Type Toggle (Only visible if Transfer is selected) */}
       {filters.type === 'transfer' && filters.userId && (
         <div className="mb-4 flex gap-2">
           <button
-            className={`px-3 py-1 rounded ${
-              viewTransferType === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-200'
+            className={`px-4 py-1.5 text-sm rounded shadow-sm transition ${
+              viewTransferType === 'all' ? 'bg-indigo-600 text-white font-medium' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
             onClick={() => setViewTransferType('all')}
           >
             All
           </button>
           <button
-            className={`px-3 py-1 rounded ${
-              viewTransferType === 'sent' ? 'bg-indigo-600 text-white' : 'bg-gray-200'
+            className={`px-4 py-1.5 text-sm rounded shadow-sm transition ${
+              viewTransferType === 'sent' ? 'bg-indigo-600 text-white font-medium' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
             onClick={() => setViewTransferType('sent')}
           >
             Sent
           </button>
           <button
-            className={`px-3 py-1 rounded ${
-              viewTransferType === 'received' ? 'bg-indigo-600 text-white' : 'bg-gray-200'
+            className={`px-4 py-1.5 text-sm rounded shadow-sm transition ${
+              viewTransferType === 'received' ? 'bg-indigo-600 text-white font-medium' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
             onClick={() => setViewTransferType('received')}
           >
@@ -191,59 +280,118 @@ const AdminTransactions = () => {
         </div>
       )}
 
-      {/* Transaction Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border rounded shadow text-sm">
-          <thead className="bg-gray-100">
+      {/* Table */}
+      <div className="overflow-auto border rounded shadow">
+        <table className="min-w-full bg-white text-sm text-left">
+          <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
             <tr>
-              <th className="p-2 border">#</th>
-              <th className="p-2 border">User ID</th>
-              <th className="p-2 border">Name</th>
-              <th className="p-2 border">Type</th>
-              <th className="p-2 border">Amount</th>
-              <th className="p-2 border">From</th>
-              <th className="p-2 border">To</th>
-              <th className="p-2 border">Date</th>
-              <th className="p-2 border">Source</th>
-              <th className="p-2 border">Description</th>
+              <th className="px-4 py-3 border">#</th>
+              <th className="px-4 py-3 border">User ID</th>
+              <th className="px-4 py-3 border">Name</th>
+              <th className="px-4 py-3 border">Type</th>
+              <th className="px-4 py-3 border">Amount</th>
+              <th className="px-4 py-3 border">From</th>
+              <th className="px-4 py-3 border">To</th>
+              <th className="px-4 py-3 border">Date</th>
+              <th className="px-4 py-3 border">Source</th>
+              <th className="px-4 py-3 border">Description</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {currentItems.length === 0 ? (
               <tr>
-                <td colSpan="10" className="text-center p-4">
+                <td colSpan="10" className="text-center px-4 py-4 text-gray-500">
                   No transactions found.
                 </td>
               </tr>
             ) : (
-              filtered.map((tx, index) => (
-                <tr key={tx._id} className="text-center">
-                  <td className="border p-2">{index + 1}</td>
-                  <td className="border p-2">{tx.userId}</td>
-                  <td className="border p-2">{tx.name || '-'}</td>
-                  <td className="border p-2 capitalize">
-                    {tx.type.replace('_', ' ')}
+              currentItems.map((tx, index) => (
+                <tr key={tx._id || index} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 border text-gray-600">{indexOfFirstItem + index + 1}</td>
+                  
+                  {/* Copyable User ID */}
+                  <td className="px-4 py-2 border">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-800">{tx.userId}</span>
+                      <button 
+                        onClick={() => handleCopy(tx.userId.toString())}
+                        title="Copy User ID"
+                        className="text-gray-400 hover:text-gray-700 transition"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                      </button>
+                    </div>
                   </td>
-                  <td className="border p-2 text-green-700 font-bold">
+                  
+                  <td className="px-4 py-2 border font-medium text-gray-800">{tx.name || '-'}</td>
+                  <td className="px-4 py-2 border capitalize text-gray-600">
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-semibold whitespace-nowrap">
+                      {tx.type.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 border font-bold text-green-600 whitespace-nowrap">
                     ${formatAmount(tx.amount)}
                   </td>
-                  <td className="border p-2">{tx.fromUserId || '-'}</td>
-                  <td className="border p-2">{tx.toUserId || '-'}</td>
-                  <td className="border p-2">
+                  <td className="px-4 py-2 border text-gray-600">{tx.fromUserId || '-'}</td>
+                  <td className="px-4 py-2 border text-gray-600">{tx.toUserId || '-'}</td>
+                  <td className="px-4 py-2 border text-gray-500 whitespace-nowrap">
                     {tx.date
                       ? new Date(tx.date).toLocaleString('en-IN')
                       : tx.createdAt
                       ? new Date(tx.createdAt).toLocaleString('en-IN')
                       : 'N/A'}
                   </td>
-                  <td className="border p-2">{tx.source || '-'}</td>
-                  <td className="border p-2">{tx.description || '-'}</td>
+                  <td className="px-4 py-2 border text-gray-600">{tx.source || '-'}</td>
+                  <td className="px-4 py-2 border text-gray-600 text-xs truncate max-w-xs" title={tx.description || '-'}>
+                    {tx.description || '-'}
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Footer */}
+      {filtered.length > 0 && (
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-4 text-sm">
+          <span className="text-gray-600">
+            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filtered.length)} of {filtered.length} entries
+          </span>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={handlePrev}
+              disabled={currentPage === 1}
+              className={`px-3 py-1 border rounded transition ${
+                currentPage === 1 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-white hover:bg-gray-50 text-gray-700'
+              }`}
+            >
+              Previous
+            </button>
+            
+            <button className="px-3 py-1 border rounded bg-indigo-600 text-white font-bold">
+              {currentPage}
+            </button>
+
+            <button
+              onClick={handleNext}
+              disabled={currentPage === totalPages}
+              className={`px-3 py-1 border rounded transition ${
+                currentPage === totalPages 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-white hover:bg-gray-50 text-gray-700'
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

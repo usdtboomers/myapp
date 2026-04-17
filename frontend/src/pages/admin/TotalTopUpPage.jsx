@@ -3,7 +3,6 @@ import api from 'api/axios';
 import Papa from 'papaparse';
 import { saveAs } from 'file-saver';
 
-const ITEMS_PER_PAGE = 10;
 // ✅ FIX: Added 10 to the packages array
 const packages = [10, 30, 60, 120, 240, 480, 960];
 
@@ -26,7 +25,10 @@ const TotalTopUpPage = () => {
   const [selectedPlan, setSelectedPlan] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  
+  // ✅ NEW: Pagination States
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // FETCH
   useEffect(() => {
@@ -79,7 +81,7 @@ const TotalTopUpPage = () => {
     });
 
     setFilteredUsers(filtered);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset to page 1 when filters change
   }, [searchId, selectedPlan, fromDate, toDate, topupUsers]);
 
   // STATS
@@ -109,15 +111,17 @@ const TotalTopUpPage = () => {
     ).length;
   });
 
-  // PAGINATION
-  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  // ✅ UPDATED: Dynamic Pagination Logic
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage);
 
-  const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const handleEntriesChange = (e) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
 
-  // ✅ CSV EXPORT
+  // CSV EXPORT
   const exportToCSV = () => {
     const summary = [
       { Metric: 'Total Business', Value: totalBusiness },
@@ -133,7 +137,8 @@ const TotalTopUpPage = () => {
       });
     });
 
-    const table = filteredUsers.map((u) => ({
+    const table = filteredUsers.map((u, i) => ({
+      SNo: i + 1, // Optional: add serial number to CSV
       UserID: u.userId,
       Name: u.name || '',
       Mobile: u.mobile || 'N/A',
@@ -151,19 +156,19 @@ const TotalTopUpPage = () => {
       <h2 className="text-3xl font-bold text-indigo-700 mb-6">💰 Total Top-Up Report</h2>
 
       {/* FILTERS */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex flex-col md:flex-row gap-4 mb-6 flex-wrap">
         <input
           type="text"
           placeholder="Search User ID"
           value={searchId}
           onChange={(e) => setSearchId(e.target.value)}
-          className="px-4 py-2 border rounded w-full md:w-1/4 shadow-sm"
+          className="px-4 py-2 border rounded w-full md:flex-1 shadow-sm"
         />
 
         <select
           value={selectedPlan}
           onChange={(e) => setSelectedPlan(e.target.value)}
-          className="px-4 py-2 border rounded w-full md:w-1/4 shadow-sm"
+          className="px-4 py-2 border rounded w-full md:flex-1 shadow-sm"
         >
           <option value="">All Plans</option>
           {packages.map((p) => (
@@ -175,19 +180,30 @@ const TotalTopUpPage = () => {
           type="date"
           value={fromDate}
           onChange={(e) => setFromDate(e.target.value)}
-          className="px-4 py-2 border rounded w-full md:w-1/4 shadow-sm"
+          className="px-4 py-2 border rounded w-full md:flex-1 shadow-sm"
         />
 
         <input
           type="date"
           value={toDate}
           onChange={(e) => setToDate(e.target.value)}
-          className="px-4 py-2 border rounded w-full md:w-1/4 shadow-sm"
+          className="px-4 py-2 border rounded w-full md:flex-1 shadow-sm"
         />
+
+        {/* ✅ NEW: Entries Per Page Select */}
+        <select 
+          className="px-4 py-2 border rounded w-full md:w-32 shadow-sm bg-white"
+          value={itemsPerPage}
+          onChange={handleEntriesChange}
+        >
+          <option value={10}>Show 10</option>
+          <option value={20}>Show 20</option>
+          <option value={50}>Show 50</option>
+          <option value={100}>Show 100</option>
+        </select>
       </div>
 
       {/* SUMMARY */}
-      {/* ✅ Adjusted grid to fit more cards nicely */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-6">
         <SummaryCard label="Total Business" value={`$${totalBusiness}`} color="bg-green-100" />
         <SummaryCard label="Total IDs" value={totalIds} color="bg-blue-100" />
@@ -201,7 +217,7 @@ const TotalTopUpPage = () => {
 
       {/* EXPORT */}
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500 font-semibold">Showing Page {currentPage} of {totalPages || 1}</p>
+        <p className="text-sm text-gray-500 font-semibold">Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredUsers.length)} of {filteredUsers.length} entries</p>
         <button
           onClick={exportToCSV}
           className="bg-green-600 hover:bg-green-700 transition text-white px-5 py-2 rounded shadow font-semibold"
@@ -218,6 +234,8 @@ const TotalTopUpPage = () => {
           <table className="min-w-full text-sm text-left">
             <thead className="bg-gray-200 border-b">
               <tr>
+                {/* ✅ NEW: Row Number Header */}
+                <th className="px-4 py-3 font-semibold text-gray-700">#</th>
                 <th className="px-4 py-3 font-semibold text-gray-700">User ID</th>
                 <th className="px-4 py-3 font-semibold text-gray-700">Name</th>
                 <th className="px-4 py-3 font-semibold text-gray-700">Mobile</th>
@@ -228,11 +246,14 @@ const TotalTopUpPage = () => {
             <tbody>
               {paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-6 text-gray-500">No records found</td>
+                  <td colSpan="6" className="text-center py-6 text-gray-500">No records found</td>
                 </tr>
               ) : (
                 paginatedUsers.map((u, i) => (
                   <tr key={u._id || i} className="border-b hover:bg-gray-50 transition">
+                    {/* ✅ NEW: Row Number Cell */}
+                    <td className="px-4 py-3 text-gray-600 font-medium">{startIndex + i + 1}</td>
+                    
                     <td className="px-4 py-3 font-bold text-indigo-600">{u.userId}</td>
                     <td className="px-4 py-3 text-gray-800">{u.name}</td>
                     <td className="px-4 py-3 text-gray-600 font-medium">{u.mobile || 'N/A'}</td>
@@ -256,7 +277,7 @@ const TotalTopUpPage = () => {
           >
             Previous
           </button>
-          <span className="flex items-center font-bold text-gray-700">Page {currentPage}</span>
+          <span className="flex items-center font-bold text-gray-700">Page {currentPage} of {totalPages}</span>
           <button 
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}

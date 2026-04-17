@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
-import api from "api/axios";
+import api from "api/axios"; // Apne folder path ke hisaab se check kar lena
+import Papa from "papaparse";
+import { saveAs } from "file-saver";
 
-// 🔹 Helper: Amount Normalizer (Same as before)
+// 🔹 Helper: Amount Normalizer
 const normalizeAmount = (value) => {
   if (value == null) return 0;
   if (typeof value === "number") return Number.isNaN(value) ? 0 : value;
@@ -59,6 +61,7 @@ const AdminWalletHistory = () => {
 
   const fetchAllWalletHistory = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem("adminToken");
       if (!token) {
         setError("Unauthorized. Please login as admin.");
@@ -136,119 +139,160 @@ const AdminWalletHistory = () => {
   const currentItems = filteredTxns.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredTxns.length / itemsPerPage);
 
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
+  const handleNext = () => {
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
   };
 
-  if (loading) return <p style={{ padding: 20 }}>Loading wallet history...</p>;
-  if (error) return <p style={{ padding: 20, color: "red" }}>{error}</p>;
+  const handlePrev = () => {
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
+  };
+
+  const handleEntriesChange = (e) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
+  // 🔹 Copy Function
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    alert(`Copied ID: ${text}`);
+  };
+
+  // 🔹 Export filtered history to CSV
+  const exportToCSV = () => {
+    const csvData = filteredTxns.map((txn, i) => ({
+      SNo: i + 1,
+      UserID: txn.userId,
+      Name: txn.name || "-",
+      Type: (txn.type || "unknown").replace(/_/g, " ").toUpperCase(),
+      Amount: formatAmount(txn.amount),
+      WalletBalance: formatAmount(txn.walletBalance || 0),
+      Description: txn.description || "-",
+      Date: new Date(txn.createdAt).toLocaleDateString("en-GB"),
+      Time: new Date(txn.createdAt).toLocaleTimeString("en-US", { hour12: true }),
+    }));
+
+    const csv = Papa.unparse(csvData);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    saveAs(blob, `admin-wallet-history-${Date.now()}.csv`);
+  };
+
+  if (loading) {
+    return <div className="p-4 text-center text-gray-600 text-lg">Loading wallet history...</div>;
+  }
+
+  if (error) {
+    return <div className="p-4 text-center text-red-600 font-bold">{error}</div>;
+  }
 
   return (
-    <div style={{ padding: "20px", fontFamily: "sans-serif" }}>
-      <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#333" }}>
+    <div className="p-4">
+      <h2 className="text-xl font-semibold mb-6 text-indigo-600">
         📊 Admin Wallet History
       </h2>
 
-      {/* 🔹 Filter Controls Container (Responsive) */}
-      <div
-        style={{
-          backgroundColor: "#f8f9fa",
-          padding: "15px",
-          borderRadius: "8px",
-          marginBottom: "20px",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "15px",
-          alignItems: "center",
-          border: "1px solid #ddd",
-        }}
-      >
-        {/* Search */}
-        <input
-          type="text"
-          placeholder="🔍 Search User ID, Name..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={inputStyle}
-        />
-
-        {/* Type Filter */}
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          style={inputStyle}
-        >
-          {types.map((type) => (
-            <option key={type} value={type}>
-              {type === "all"
-                ? "All Types"
-                : type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-            </option>
-          ))}
-        </select>
-
-        {/* From Date */}
-        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-          <span style={{ fontSize: "14px", color: "#555" }}>From:</span>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            style={inputStyle}
-          />
-        </div>
-
-        {/* To Date */}
-        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-          <span style={{ fontSize: "14px", color: "#555" }}>To:</span>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            style={inputStyle}
-          />
-        </div>
+      {/* Top Controls: Filters & Export */}
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6">
         
-        {/* Reset Button (Optional Helper) */}
-        {(fromDate || toDate) && (
-            <button 
-                onClick={() => { setFromDate(""); setToDate(""); }}
-                style={{ padding: "8px 12px", cursor: "pointer", backgroundColor: "#e74c3c", color: "#fff", border: "none", borderRadius: "4px" }}
+        {/* Search, Dates, Filter & Entries Select */}
+        <div className="flex flex-col md:flex-row gap-2 w-full xl:w-auto flex-wrap">
+          <input
+            type="text"
+            className="border border-gray-300 rounded px-3 py-2 w-full md:w-56 shadow-sm"
+            placeholder="🔍 Search ID, Name, Desc..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+
+          <select
+            className="border border-gray-300 rounded px-3 py-2 bg-white shadow-sm font-medium text-gray-700"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+          >
+            {types.map((type) => (
+              <option key={type} value={type}>
+                {type === "all"
+                  ? "All Types"
+                  : type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+              </option>
+            ))}
+          </select>
+
+          <div className="flex items-center gap-2 border border-gray-300 rounded px-3 py-2 bg-white shadow-sm">
+            <span className="text-sm text-gray-500">From:</span>
+            <input
+              type="date"
+              className="outline-none bg-transparent"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center gap-2 border border-gray-300 rounded px-3 py-2 bg-white shadow-sm">
+            <span className="text-sm text-gray-500">To:</span>
+            <input
+              type="date"
+              className="outline-none bg-transparent"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+            />
+          </div>
+
+          {(fromDate || toDate) && (
+            <button
+              onClick={() => { setFromDate(""); setToDate(""); }}
+              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded shadow-sm text-sm font-medium transition"
             >
-                Clear Dates
+              Clear Dates
             </button>
-        )}
+          )}
+
+          <select
+            className="border border-gray-300 rounded px-3 py-2 bg-white shadow-sm"
+            value={itemsPerPage}
+            onChange={handleEntriesChange}
+          >
+            <option value={10}>Show 10</option>
+            <option value={20}>Show 20</option>
+            <option value={50}>Show 50</option>
+            <option value={100}>Show 100</option>
+          </select>
+        </div>
+
+        {/* Export & Count */}
+        <div className="flex gap-4 items-center justify-between md:justify-end">
+          <span className="text-gray-600 text-sm font-medium">
+            Total: {filteredTxns.length}
+          </span>
+          <button
+            onClick={exportToCSV}
+            className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded shadow transition text-sm"
+          >
+            Export CSV
+          </button>
+        </div>
       </div>
 
-      {/* 🔹 Table Container (Scrollable) */}
-      <div style={{ overflowX: "auto", borderRadius: "8px", border: "1px solid #eee", boxShadow: "0 2px 5px rgba(0,0,0,0.05)" }}>
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: "14px",
-            minWidth: "1000px",
-          }}
-        >
-          <thead>
-            <tr style={{ backgroundColor: "#4A90E2", color: "white", textAlign: "left" }}>
-              <th style={thStyle}>#</th>
-              <th style={thStyle}>User ID</th>
-              <th style={thStyle}>Name</th>
-              <th style={thStyle}>Type</th>
-              <th style={thStyle}>Amount</th>
-              <th style={thStyle}>Wallet Bal</th>
-              <th style={thStyle}>Description</th>
-              <th style={thStyle}>Date</th>
-              <th style={thStyle}>Time</th>
+      {/* Table */}
+      <div className="overflow-auto border rounded-lg shadow-sm">
+        <table className="min-w-full bg-white text-sm text-left">
+          <thead className="bg-gray-100 text-gray-600 uppercase text-xs border-b">
+            <tr>
+              <th className="px-4 py-3 border-r">#</th>
+              <th className="px-4 py-3 border-r">User ID</th>
+              <th className="px-4 py-3 border-r">Name</th>
+              <th className="px-4 py-3 border-r">Type</th>
+              <th className="px-4 py-3 border-r">Amount</th>
+              <th className="px-4 py-3 border-r">Wallet Bal</th>
+              <th className="px-4 py-3 border-r">Description</th>
+              <th className="px-4 py-3 border-r">Date</th>
+              <th className="px-4 py-3">Time</th>
             </tr>
           </thead>
           <tbody>
             {currentItems.length === 0 ? (
               <tr>
-                <td colSpan="9" style={{ textAlign: "center", padding: "30px", color: "#888" }}>
+                <td colSpan="9" className="text-center px-4 py-8 text-gray-500">
                   No transactions found matching your criteria.
                 </td>
               </tr>
@@ -256,44 +300,55 @@ const AdminWalletHistory = () => {
               currentItems.map((txn, idx) => {
                 const createdAt = new Date(txn.createdAt);
                 const isCredit = ["deposit", "credit_to_wallet", "topup"].includes(txn.type);
-                const colorStyle = { color: isCredit ? "green" : "red", fontWeight: "bold" };
-                
-                // Serial Number based on pagination
                 const serialNo = indexOfFirstItem + idx + 1;
 
                 return (
-                  <tr
-                    key={txn._id || idx}
-                    style={{
-                      borderBottom: "1px solid #f1f1f1",
-                      backgroundColor: idx % 2 === 0 ? "#fff" : "#fcfcfc",
-                    }}
-                  >
-                    <td style={tdStyle}>{serialNo}</td>
-                    <td style={tdStyle}>{txn.userId}</td>
-                    <td style={tdStyle}>{txn.name || "-"}</td>
-                    <td style={tdStyle}>
-                      <span
-                        style={{
-                          padding: "4px 8px",
-                          borderRadius: "4px",
-                          backgroundColor: "#f0f2f5",
-                          fontSize: "12px",
-                          fontWeight: "500"
-                        }}
-                      >
-                         {(txn.type || "unknown").replace(/_/g, " ").toUpperCase()}
+                  <tr key={txn._id || idx} className="hover:bg-gray-50 border-b transition">
+                    <td className="px-4 py-3 text-gray-600 border-r">{serialNo}</td>
+                    
+                    {/* Copyable User ID */}
+                    <td className="px-4 py-3 border-r">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-indigo-600">{txn.userId}</span>
+                        <button
+                          onClick={() => handleCopy(txn.userId.toString())}
+                          title="Copy User ID"
+                          className="text-gray-400 hover:text-gray-700 transition"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3 border-r text-gray-800 font-medium">{txn.name || "-"}</td>
+                    
+                    <td className="px-4 py-3 border-r capitalize">
+                      <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-semibold whitespace-nowrap">
+                        {(txn.type || "unknown").replace(/_/g, " ")}
                       </span>
                     </td>
-                    <td style={{ ...tdStyle, ...colorStyle }}>
+
+                    <td className={`px-4 py-3 border-r font-bold whitespace-nowrap ${isCredit ? 'text-green-600' : 'text-red-500'}`}>
                       ${formatAmount(txn.amount)}
                     </td>
-                    <td style={tdStyle}>
+
+                    <td className="px-4 py-3 border-r font-bold text-gray-700 whitespace-nowrap">
                       ${formatAmount(txn.walletBalance || 0)}
                     </td>
-                    <td style={{ ...tdStyle, maxWidth: "200px" }}>{txn.description || "-"}</td>
-                    <td style={tdStyle}>{createdAt.toLocaleDateString("en-GB")}</td>
-                    <td style={tdStyle}>{createdAt.toLocaleTimeString("en-US", { hour12: true })}</td>
+
+                    <td className="px-4 py-3 border-r text-gray-600 text-xs max-w-xs truncate" title={txn.description || "-"}>
+                      {txn.description || "-"}
+                    </td>
+
+                    <td className="px-4 py-3 border-r text-gray-500 whitespace-nowrap">
+                      {createdAt.toLocaleDateString("en-GB")}
+                    </td>
+
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                      {createdAt.toLocaleTimeString("en-US", { hour12: true })}
+                    </td>
                   </tr>
                 );
               })
@@ -302,58 +357,38 @@ const AdminWalletHistory = () => {
         </table>
       </div>
 
-      {/* 🔹 Pagination Footer */}
+      {/* Pagination Footer */}
       {filteredTxns.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: "20px",
-            gap: "15px",
-          }}
-        >
-          {/* Rows Per Page */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ color: "#555", fontSize: "14px" }}>Rows per page:</span>
-            <select
-              value={itemsPerPage}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              style={{
-                padding: "6px",
-                borderRadius: "4px",
-                border: "1px solid #ccc",
-              }}
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-            <span style={{ color: "#777", fontSize: "13px" }}>
-               Showing {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, filteredTxns.length)} of {filteredTxns.length}
-            </span>
-          </div>
-
-          {/* Next/Prev Buttons */}
-          <div style={{ display: "flex", gap: "8px" }}>
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-4 text-sm">
+          <span className="text-gray-600">
+            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredTxns.length)} of {filteredTxns.length} entries
+          </span>
+          
+          <div className="flex gap-2">
             <button
-              onClick={() => handlePageChange(currentPage - 1)}
+              onClick={handlePrev}
               disabled={currentPage === 1}
-              style={{ ...btnStyle, opacity: currentPage === 1 ? 0.5 : 1 }}
+              className={`px-3 py-1 border rounded transition ${
+                currentPage === 1 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-white hover:bg-gray-50 text-gray-700'
+              }`}
             >
               Previous
             </button>
             
-            <span style={{ display: "flex", alignItems: "center", padding: "0 10px", fontWeight: "bold" }}>
-              Page {currentPage} of {totalPages}
-            </span>
+            <button className="px-3 py-1 border rounded bg-indigo-600 text-white font-bold">
+              {currentPage}
+            </button>
 
             <button
-              onClick={() => handlePageChange(currentPage + 1)}
+              onClick={handleNext}
               disabled={currentPage === totalPages}
-              style={{ ...btnStyle, opacity: currentPage === totalPages ? 0.5 : 1 }}
+              className={`px-3 py-1 border rounded transition ${
+                currentPage === totalPages 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-white hover:bg-gray-50 text-gray-700'
+              }`}
             >
               Next
             </button>
@@ -362,38 +397,6 @@ const AdminWalletHistory = () => {
       )}
     </div>
   );
-};
-
-// 🔹 Styles for Clean UI
-const inputStyle = {
-  padding: "10px",
-  border: "1px solid #ccc",
-  borderRadius: "6px",
-  minWidth: "150px",
-  flex: "1", // Makes it responsive
-};
-
-const thStyle = {
-  padding: "12px 15px",
-  fontWeight: "600",
-  borderBottom: "2px solid #ddd",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "10px 15px",
-  color: "#333",
-  verticalAlign: "middle",
-};
-
-const btnStyle = {
-  padding: "8px 16px",
-  backgroundColor: "#4A90E2",
-  color: "white",
-  border: "none",
-  borderRadius: "4px",
-  cursor: "pointer",
-  fontSize: "14px",
 };
 
 export default AdminWalletHistory;

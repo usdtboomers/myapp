@@ -538,7 +538,7 @@ router.post(
       const dPool = parseFloat(deductPool) || 0;
       const dDirect = parseFloat(deductDirect) || 0; // ✅ FIX (missing tha)
 
-      // ✅ Total
+      // ✅ Total Calculation
       const totalAmount = dReward + dPool + dDirect;
 
       // 🛑 Validation
@@ -549,6 +549,10 @@ router.post(
       if (totalAmount % 1 !== 0) {
         return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
       }
+
+      // 🔥 10% Deduction Logic
+      const fee = totalAmount * 0.10; // 10% katega
+      const netAmount = totalAmount - fee; // Wallet mein bacha hua 90% add hoga
 
       // 🔥 Source detect
       let activeSources = [];
@@ -566,9 +570,9 @@ router.post(
       if (!user) return res.status(404).json({ message: "User not found" });
 
       // 🔐 Password check
-     if (transactionPassword.toLowerCase() !== user.transactionPassword.toLowerCase()) {
-  return res.status(400).json({ message: "Invalid transaction password" });
-}
+      if (transactionPassword.toLowerCase() !== user.transactionPassword.toLowerCase()) {
+        return res.status(400).json({ message: "Invalid transaction password" });
+      }
 
       const settings = await Setting.findOne({});
       if (!settings?.allowTopUps) {
@@ -614,17 +618,17 @@ router.post(
       // 🔥 EXECUTION
       // =========================
 
-      // Reward deduct
+      // Reward deduct (Gross amount katega)
       if (dReward > 0) {
         user.rewardIncome -= dReward;
       }
 
-      // Direct deduct ✅
+      // Direct deduct ✅ (Gross amount katega)
       if (dDirect > 0) {
         user.directIncome -= dDirect;
       }
 
-      // Pool deduct
+      // Pool deduct (Gross amount katega)
       if (dPool > 0) {
         let remaining = dPool;
         user.pendingWithdrawals = user.pendingWithdrawals || {};
@@ -640,28 +644,30 @@ router.post(
         }
       }
 
-      // Wallet add
-      user.walletBalance += totalAmount;
+      // Wallet add (Sirf Net Amount add hoga 10% katne ke baad)
+      user.walletBalance += netAmount;
 
       await user.save();
 
       // Transaction log
+    // Transaction log
       const txn = await Transaction.create({
         userId: user.userId,
         type: "credit_to_wallet",
         source: finalSource,
-        amount: totalAmount,
-        grossAmount: totalAmount,
-        netAmount: totalAmount,
-        fee: 0,
-        description: `Credited $${totalAmount} (${activeSources.join(" + ")})`,
+        amount: netAmount,         // ✅ FIX 1: Ab history mein 10% katne ke baad wala amount ($4.50) aayega
+        grossAmount: totalAmount,  
+        netAmount: netAmount,      
+        fee: fee,                  
+        walletBalance: user.walletBalance, // ✅ FIX 2: Exact updated wallet balance database me save hoga taaki aakhiri column sahi aaye
+        description: `Credited $${netAmount} after 10% fee (${activeSources.join(" + ")})`,
         status: "completed",
         date: new Date(),
       });
 
       res.json({
         success: true,
-        message: `Successfully credited $${totalAmount}`,
+        message: `Successfully credited $${netAmount} after 10% deduction`,
         walletBalance: user.walletBalance,
         transaction: txn,
       });

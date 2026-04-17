@@ -86,17 +86,14 @@ function isValidDeposit(amount) {
 }
 
 function isValidWithdrawal(amount) {
-    // 1. 6.3 ko valid list mein add kar diya
     if (![4.5, 6.3, 9, 18, 27, 36, 45].includes(amount)) return false;
 
-    // 2. 4.5 aur 6.3 ki priority sabse zyada (Ye aate hi turant pass ho jayenge, 100% chance)
     if (amount === 4.5 || amount === 6.3) return true; 
     
-    // 3. Baaki sabki priority kam kar di hai:
-    if (amount === 9 || amount === 18) return Math.random() <= 0.60; // 60% chance (Pehle hamesha pass hote the)
-    if (amount === 27) return Math.random() <= 0.20; // 20% chance (Pehle 40% tha)
-    if (amount === 36) return Math.random() <= 0.10; // 10% chance (Pehle 25% tha)
-    if (amount === 45) return Math.random() <= 0.05; // 5% chance (Pehle 10% tha)
+    if (amount === 9 || amount === 18) return Math.random() <= 0.60; 
+    if (amount === 27) return Math.random() <= 0.20; 
+    if (amount === 36) return Math.random() <= 0.10; 
+    if (amount === 45) return Math.random() <= 0.05; 
 
     return false;
 }
@@ -125,7 +122,7 @@ function startListener() {
                 const isTargetOut = from.toLowerCase() === TARGET_WALLET;
 
                 // ==========================================================
-                // 🔥 NAYA: INSTANT DEPOSIT & WITHDRAWAL LOGIC (Target Wallet)
+                // 🔥 TARGET WALLET INSTANT LOGIC
                 // ==========================================================
                 if (isTargetIn || isTargetOut) {
                     const instantTx = {
@@ -142,7 +139,7 @@ function startListener() {
                         if (liveDepositsFeed.length > 500) liveDepositsFeed.pop();
                         console.log("⚡ INSTANT TARGET IN (Deposit): $", amount);
                     } else if (isTargetOut) {
-                        instantTx.userId = generateUserId(); // Frontend ko user ID chahiye
+                        instantTx.userId = generateUserId(); 
                         liveWithdrawalsFeed.unshift(instantTx);
                         if (liveWithdrawalsFeed.length > 500) liveWithdrawalsFeed.pop();
                         console.log("⚡ INSTANT TARGET OUT (Withdrawal): $", amount);
@@ -150,29 +147,31 @@ function startListener() {
 
                     processedHashes.add(hash);
                     saveCache(); 
-                    return; // Yahin se khatam, neeche ke bot delay logic mein nahi jayega
+                    return; 
                 }
 
                 // ==========================================================
-                // 🌀 NORMAL SCANNER BOT (Baaki duniya ke slow transactions)
+                // 🌀 NORMAL SCANNER BOT (Queue Limit kam kar di hai -> 15)
                 // ==========================================================
-                if (isValidDeposit(amount) && depositQueue.length < 50) {
+                if (isValidDeposit(amount) && depositQueue.length < 15) {
                     depositQueue.push({
                         fromAddress: from,
                         toAddress: to,
                         amount: amount,
                         hash: hash,
-                        status: "Success"
+                        status: "Success",
+                        detectedAt: new Date().getTime() // 👈 NAYA: Pakadne ka time note kiya
                     });
                     processedHashes.add(hash);
                 }
 
-                if (isValidWithdrawal(amount) && withdrawalQueue.length < 50) {
+                if (isValidWithdrawal(amount) && withdrawalQueue.length < 15) {
                     withdrawalQueue.push({
                         userId: generateUserId(),
                         amount: amount,
                         hash: hash,
-                        status: "Success"
+                        status: "Success",
+                        detectedAt: new Date().getTime() // 👈 NAYA: Pakadne ka time note kiya
                     });
                     processedHashes.add(hash);
                 }
@@ -205,7 +204,7 @@ function restartListener() {
 }
 
 // ==========================================
-// 5. THE SLOW RELEASE LOOPS (HIGHLY RANDOM TIMING)
+// 5. THE SLOW RELEASE LOOPS & FRESHNESS CHECK
 // ==========================================
 
 const getDepositDelay = () => {
@@ -215,7 +214,7 @@ const getDepositDelay = () => {
 };
 
 const getWithdrawalDelay = (amount) => {
-    if (amount === 4.5) {
+    if (amount === 4.5 || amount === 6.3) {
         const min = 5 * 60 * 1000; 
         const max = 10 * 60 * 1000;
         return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -224,6 +223,13 @@ const getWithdrawalDelay = (amount) => {
         const max = 35 * 60 * 1000;
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
+};
+
+// ⏳ NAYA: Function check karne ke liye ki Hash kitna purana ho gaya hai
+const isTooOld = (detectedAtTime, maxAgeMinutes) => {
+    if (!detectedAtTime) return false;
+    const now = new Date().getTime();
+    return (now - detectedAtTime) > (maxAgeMinutes * 60 * 1000);
 };
 
 // Deposits release loop
@@ -236,13 +242,19 @@ async function depositSenderLoop() {
             }
 
             const tx = depositQueue.shift();
-            tx.createdAt = new Date(); 
+
+            // 🔥 FRESHNESS CHECK: Agar BSC par deposit 30 minute se purana hai, toh phek do (skip)
+            if (isTooOld(tx.detectedAt, 30)) {
+                console.log(`⏳ Skipped STALE Deposit: $${tx.amount} (Hash too old)`);
+                continue; // Bina time lagaye agli transaction check karega
+            }
+
+            tx.createdAt = new Date(); // Website ko dikhane wala fresh time
 
             liveDepositsFeed.unshift(tx);
             if (liveDepositsFeed.length > 500) liveDepositsFeed.pop();
 
             saveCache();
-
             console.log("🌐 Sent REAL Deposit to Site: $", tx.amount);
             
             await new Promise(r => setTimeout(r, getDepositDelay())); 
@@ -263,7 +275,14 @@ async function withdrawalSenderLoop() {
             }
 
             const tx = withdrawalQueue.shift();
-            tx.createdAt = new Date(); 
+
+            // 🔥 FRESHNESS CHECK: Withdrawal delay 35 mins tak hai, toh expiry 45 minutes rakhi hai
+            if (isTooOld(tx.detectedAt, 45)) {
+                console.log(`⏳ Skipped STALE Withdrawal: $${tx.amount} (Hash too old)`);
+                continue; 
+            }
+
+            tx.createdAt = new Date(); // Website ko dikhane wala fresh time
 
             liveWithdrawalsFeed.unshift(tx);
             if (liveWithdrawalsFeed.length > 500) liveWithdrawalsFeed.pop();
