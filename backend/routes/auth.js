@@ -12,7 +12,6 @@ const checkFeature = require('../middleware/checkFeatureEnabled');
 const DummyUser = require('../models/DummyUser.js'); // 🔥 Ye line check kar lo
 // 1️⃣ SABSE UPAR FILE MEIN YEH IMPORT ADD KARNA (Agar pehle se nahi kiya hai toh)
 const LoginHistory = require('../models/LoginHistory'); 
-const { bot } = require('../utils/telegramBot');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'yoursecretkey';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://178.128.20.53';
@@ -237,31 +236,6 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '15m' });
 
-
- 
-    // ==========================================
-    // 🛡️ NAYA CODE: LOGIN PAR TELEGRAM MEMBERSHIP CHECK
-    // ==========================================
-    if (user.isTelegramJoined && user.telegramId) {
-        try {
-            // Bot instance import karein (path check kar lena apne hisab se)
-            const { bot } = require('../utils/telegramBot'); 
-            const channelUsername = "@usdt_boomers"; // Aapka official channel
-
-            const memberStatus = await bot.telegram.getChatMember(channelUsername, user.telegramId);
-            const isActive = ['member', 'administrator', 'creator'].includes(memberStatus.status);
-
-            if (!isActive) {
-                // User ne channel leave kar diya hai, status reset karo
-                user.isTelegramJoined = false;
-                await user.save();
-                console.log(`⚠️ User ${user.userId} left channel. Status reset to False.`);
-            }
-        } catch (tgErr) {
-            // Agar bot block hai ya koi API error hai, toh login mat roko
-            console.error('Telegram Login Check Failed:', tgErr.message);
-        }
-    }
     // ==========================================
     // 🔥 NAYA CODE: LOGIN HISTORY SAVE KARNE KE LIYE
     // ==========================================
