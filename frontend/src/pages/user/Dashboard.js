@@ -181,16 +181,68 @@ const Dashboard = () => {
         <main className="flex-1 w-full max-w-full overflow-y-auto pb-20 custom-scroll rounded-2xl bg-slate-900/40 backdrop-blur-md p-2 md:p-6 shadow-[0_0_40px_rgba(0,0,0,0.5)] lg:mt-2">
           
           {/* Welcome Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">
-                Welcome {" "}
-                <span className="text-yellow-500 font-bold">
-                  {user?.name || "User"}
-                </span>
-              </h1>
-            </div>
-          </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+  <div>
+    <div className="flex items-center gap-2 flex-wrap">
+      <h1 className="text-2xl md:text-3xl font-bold text-white">
+        Welcome{" "}
+        <span className="text-yellow-500 font-bold">
+          {user?.name || "User"}
+        </span>
+      </h1>
+
+      {/* 🛡️ Chota aur Clean Status Badge */}
+      {user?.isTelegramJoined ? (
+       <div 
+  className="flex items-center gap-1 bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/40 shadow-lg shadow-green-500/20 transition-all duration-500 hover:scale-105"
+  style={{ 
+    height: 'fit-content',
+    animation: 'softGlow 3s infinite ease-in-out', // Subtle Glow Animation
+    backdropFilter: 'blur(4px)'
+  }}
+>
+  {/* Inline Styles for the Animation */}
+  <style>{`
+    @keyframes softGlow {
+      0%, 100% { box-shadow: 0 0 5px rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.3); }
+      50% { box-shadow: 0 0 15px rgba(34, 197, 94, 0.5); border-color: rgba(34, 197, 94, 0.6); }
+    }
+  `}</style>
+
+  {/* SVG with a small rotation entry */}
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width="12" 
+    height="12" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="4" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    className="animate-bounce-short"
+  >
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+
+  <span className="text-[10px] font-bold tracking-wider uppercase antialiased">
+    Telegram Verified
+  </span>
+</div>
+      ) : (
+        <div className="flex items-center gap-1 bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30 animate-pulse" style={{ height: 'fit-content' }}>
+          <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+          <span className="text-[10px] font-bold tracking-wider uppercase">Unverified</span>
+        </div>
+      )}
+    </div>
+    
+    {/* Choti help line */}
+    {!user?.isTelegramJoined && (
+        <p className="text-gray-500 text-[11px] mt-1 ml-1 italic font-medium">Link Telegram to unlock withdrawals</p>
+    )}
+  </div>
+</div>
 
           <div className="space-y-8">
             {/* Wallet Balance */}

@@ -5,7 +5,7 @@ module.exports = function sanitizeUser(user) {
     name: user.name,
     email: user.email,
     walletBalance: user.walletBalance,
-    
+    isTelegramJoined: user.isTelegramJoined, // ✅ Ye line hona compulsory hai
     isToppedUp: user.isToppedUp,
     topUpAmount: user.topUpAmount,
     sponsorId: user.sponsorId,

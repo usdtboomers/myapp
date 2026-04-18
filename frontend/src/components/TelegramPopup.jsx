@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
-import { CheckCircle, XCircle, Send, ShieldCheck, LogOut, Loader2 } from 'lucide-react'; // Icons ke liye
+import { CheckCircle, XCircle, Send, ShieldCheck, LogOut, Loader2, X } from 'lucide-react'; 
 
 const TelegramPopup = ({ currentUser }) => {
     const [isVerified, setIsVerified] = useState(true);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [status, setStatus] = useState({ type: '', msg: '' }); // 'success' ya 'error' store karne ke liye
+    const [status, setStatus] = useState({ type: '', msg: '' }); 
 
     useEffect(() => {
         if (currentUser && typeof currentUser.isTelegramJoined !== 'undefined') {
@@ -15,7 +15,6 @@ const TelegramPopup = ({ currentUser }) => {
         }
     }, [currentUser]);
 
-    // Auto-stop polling jab verify ho jaye
     useEffect(() => {
         if (!isDataLoaded || isVerified) return;
 
@@ -35,14 +34,13 @@ const TelegramPopup = ({ currentUser }) => {
 
     const handleManualCheck = async () => {
         setLoading(true);
-        setStatus({ type: '', msg: '' }); // Purana message clear karo
+        setStatus({ type: '', msg: '' }); 
         try {
             const idToCheck = currentUser?._id || currentUser?.userId;
             const res = await api.get(`/user/${idToCheck}`);
 
             if (res.data.user.isTelegramJoined) {
                 setStatus({ type: 'success', msg: 'Account Verified Successfully! ✅' });
-                // 2 second baad popup gayab ho jaye
                 setTimeout(() => setIsVerified(true), 2000);
             } else {
                 setStatus({ type: 'error', msg: "Verification failed! Please join channel and start the bot first. ❌" });
@@ -55,7 +53,7 @@ const TelegramPopup = ({ currentUser }) => {
     };
 
     const handleJoinClick = (e) => {
-        e.preventDefault();
+        if(e) e.preventDefault();
         window.location.href = "tg://resolve?domain=usdt_boomers";
         setTimeout(() => { window.open("https://t.me/usdt_boomers", '_blank'); }, 500);
     };
@@ -76,31 +74,45 @@ const TelegramPopup = ({ currentUser }) => {
     return (
         <div style={overlayStyle}>
             <div style={modalStyle}>
+                {/* Cross/Close Button (Redirects to Telegram Channel) */}
+                <button onClick={handleJoinClick} style={closeButtonStyle}>
+                    <X size={22} color="#64748b" />
+                </button>
+
                 {/* Header Section */}
                 <div style={headerStyle}>
-                    <ShieldCheck size={40} color="#229ED9" />
+                    <ShieldCheck size={44} color="#229ED9" style={{ marginBottom: '10px' }} />
                     <h2 style={titleStyle}>Telegram Verification</h2>
-                    <p style={subtitleStyle}>Join our community to unlock your Earnings </p>
+                    <div style={mandatoryAlertStyle}>
+                        ⚠️ Joining the Telegram Channel is <strong>mandatory for withdrawals.</strong>
+                    </div>
                 </div>
 
-                {/* Steps Section */}
+                {/* Buttons Section */}
                 <div style={stepsContainer}>
-                    <button onClick={handleJoinClick} style={stepButtonStyle}>
+                    <button onClick={handleJoinClick} style={telegramButtonStyle}>
                         <span style={stepNumber}>1</span>
                         <span style={stepText}>Join Official Channel</span>
-                        <Send size={18} />
+                        <Send size={18} color="#ffffff" />
                     </button>
 
-                    <button onClick={handleVerifyClick} style={stepButtonStyle}>
+                    <button onClick={handleVerifyClick} style={telegramButtonStyle}>
                         <span style={stepNumber}>2</span>
                         <span style={stepText}>Start Verification Bot</span>
-                        <ShieldCheck size={18} />
+                        <ShieldCheck size={18} color="#ffffff" />
                     </button>
+                </div>
+
+                {/* Small Steps Instructions */}
+                <div style={smallStepsStyle}>
+                    <p><strong>Step 1:</strong> Click on Join and join the channel.</p>
+                    <p><strong>Step 2:</strong> Start the bot.</p>
+                    <p><strong>Step 3:</strong> Click on Verify My Account.</p>
                 </div>
 
                 <div style={dividerStyle}></div>
 
-                {/* Status Messages (No more window.alerts!) */}
+                {/* Status Messages */}
                 {status.msg && (
                     <div style={{
                         ...messageBoxStyle,
@@ -119,12 +131,10 @@ const TelegramPopup = ({ currentUser }) => {
                     disabled={loading}
                     style={{...verifyButtonStyle, opacity: loading ? 0.7 : 1}}
                 >
-                    {loading ? <Loader2 className="animate-spin" size={20} /> : "Verify My Status ✅"}
+                    {loading ? <Loader2 className="animate-spin" size={20} color="#fff" /> : "Verify My Account ✅"}
                 </button>
 
-                <button onClick={handleLogout} style={logoutButtonStyle}>
-                    <LogOut size={14} /> Logout and try later
-                </button>
+               
             </div>
         </div>
     );
@@ -139,40 +149,58 @@ const overlayStyle = {
 };
 
 const modalStyle = {
-    backgroundColor: '#ffffff', padding: '40px 30px', borderRadius: '24px',
-    textAlign: 'center', maxWidth: '400px', width: '100%',
+    backgroundColor: '#ffffff', padding: '35px 25px', borderRadius: '24px',
+    textAlign: 'center', maxWidth: '420px', width: '100%',
     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
     border: '1px solid #e2e8f0', position: 'relative'
 };
 
+const closeButtonStyle = {
+    position: 'absolute', top: '15px', right: '15px',
+    background: 'none', border: 'none', cursor: 'pointer',
+    padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'opacity 0.2s', opacity: 0.7
+};
+
 const headerStyle = {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '25px'
+    display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px', marginTop: '10px'
 };
 
 const titleStyle = {
-    fontSize: '24px', fontWeight: '850', color: '#0f172a', margin: '15px 0 5px'
+    fontSize: '22px', fontWeight: '850', color: '#0f172a', margin: '5px 0 15px'
 };
 
-const subtitleStyle = {
-    fontSize: '14px', color: '#64748b', lineHeight: '1.5'
+const mandatoryAlertStyle = {
+    backgroundColor: '#fff1f2', color: '#e11d48', padding: '10px 15px',
+    borderRadius: '8px', fontSize: '13px', fontWeight: '500',
+    border: '1px solid #fecdd3', lineHeight: '1.4', width: '100%'
 };
 
 const stepsContainer = {
-    display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px'
+    display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '15px'
 };
 
-const stepButtonStyle = {
-    display: 'flex', alignItems: 'center', gap: '15px', padding: '12px 20px',
-    backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px',
-    cursor: 'pointer', transition: 'all 0.2s ease', color: '#334155', fontWeight: '600'
+const telegramButtonStyle = {
+    display: 'flex', alignItems: 'center', gap: '15px', padding: '14px 20px',
+    backgroundColor: '#229ED9', 
+    border: 'none', borderRadius: '14px',
+    cursor: 'pointer', transition: 'all 0.2s ease', color: '#ffffff', fontWeight: '600',
+    boxShadow: '0 4px 6px -1px rgba(34, 158, 217, 0.2)'
 };
 
 const stepNumber = {
-    backgroundColor: '#229ED9', color: '#fff', width: '24px', height: '24px',
-    borderRadius: '50%', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+    backgroundColor: '#ffffff', color: '#229ED9', width: '26px', height: '26px',
+    borderRadius: '50%', fontSize: '13px', display: 'flex', alignItems: 'center', 
+    justifyContent: 'center', fontWeight: 'bold'
 };
 
 const stepText = { flex: 1, textAlign: 'left', fontSize: '14px' };
+
+const smallStepsStyle = {
+    fontSize: '12.5px', color: '#64748b', textAlign: 'left', 
+    backgroundColor: '#f8fafc', padding: '10px 15px', borderRadius: '8px',
+    lineHeight: '1.6', margin: '0 auto'
+};
 
 const dividerStyle = { height: '1px', backgroundColor: '#f1f5f9', margin: '20px 0' };
 
@@ -184,7 +212,7 @@ const messageBoxStyle = {
 
 const verifyButtonStyle = {
     width: '100%', padding: '16px', backgroundColor: '#16a34a', color: '#fff',
-    border: 'none', borderRadius: '16px', fontWeight: 'bold', fontSize: '16px',
+    border: 'none', borderRadius: '16px', fontWeight: 'bold', fontSize: '15px',
     cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(22, 163, 74, 0.4)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
 };

@@ -13,34 +13,33 @@ const TeamPromoPopup = () => {
   const [isOpen, setIsOpen] = useState(false); 
   const [copied, setCopied] = useState(false);
 
-  // LOGIC 1: Agar user login karte hi pehle se active hai, toh isko direct dikhao
-  // !window.isTopupInProgress ensure karta hai ki Free Topup process ke beech me ye na aaye
+  // ✅ LOGIC 1: Telegram Verified hona chahiye + ID Active honi chahiye
   useEffect(() => {
-    if (user && user.topUpAmount > 0 && !window.isTopupInProgress) {
+    if (user && user.topUpAmount > 0 && user.isTelegramJoined && !window.isTopupInProgress) {
       setIsOpen(true);
     }
   }, [user]);
 
-  // LOGIC 2: Free ID claim karne ke baad jab Success Modal close hoga, tab ye trigger hoga
+  // ✅ LOGIC 2: Free ID claim ke baad trigger (Sirf agar verified hai)
   useEffect(() => {
     const handleTrigger = () => {
-      // Thoda sa delay diya hai taaki pichla modal smoothly close ho jaye
-      setTimeout(() => {
-        setIsOpen(true);
-      }, 400); 
+      if (user && user.isTelegramJoined) {
+        setTimeout(() => {
+          setIsOpen(true);
+        }, 400); 
+      }
     };
 
     window.addEventListener('showTeamPromo', handleTrigger);
-    
-    // Cleanup listener
     return () => window.removeEventListener('showTeamPromo', handleTrigger);
-  }, []);
+  }, [user]);
 
   const closePopup = () => {
     setIsOpen(false);
   };
 
-  if (!isOpen || !user) return null;
+  // 🛡️ SECURITY: Agar Verified nahi hai ya User data nahi hai, toh kuch mat dikhao
+  if (!isOpen || !user || !user.isTelegramJoined) return null;
 
   const referralLink = `${window.location.origin}/register?ref=${user.userId}`;
 
@@ -55,7 +54,7 @@ const TeamPromoPopup = () => {
       <style>{`
         .tp-overlay {
           position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-          z-index: 99999; display: flex; align-items: center; justify-content: center;
+          z-index: 99998; display: flex; align-items: center; justify-content: center;
           background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px);
           padding: 16px; font-family: system-ui, -apple-system, sans-serif;
         }
