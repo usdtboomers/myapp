@@ -9,6 +9,9 @@ const allRoutes = require('./routes');
  const startSweeper = require('./cron/sweepJob');
 const { startCron } = require('./roiCron');
 
+
+const { setupTelegramBot } = require('./utils/telegramBot');
+
 const app = express();
 
 // Middleware
@@ -38,9 +41,19 @@ mongoose.connect(process.env.MONGO_URI)
       await startCron(); 
       console.log('✅ ROI Cron Scheduler Started');
       
+
+      // 4. 🤖 TELEGRAM VERIFICATION BOT
+      // 👈 NAYA CODE YAHAN HAI: Database connect hone ke baad bot start kar dein
+      setupTelegramBot(); 
+      console.log('✅ Telegram Verification Bot Started');
+
     } catch (error) {
       console.error('⚠️ Error starting Cron Jobs:', error);
     }
+
+    
+
+    
     // 🚀 Start Express Server
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {

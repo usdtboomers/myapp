@@ -18,6 +18,7 @@ import TopNav from "../../components/navbar/TopNav";
 import PreLaunchPromo from "../../components/PreLaunchPromo"; // Path check kar lijiye agar aapne kahin aur rakha ho
 import TeamPromoPopup from "../../components/TeamPromoPopup"; // Ye nayi line add karni hai
 import RewardProgress from "./RewardProgress"; // Path check kar lena agar file same folder mein hai ya nahi
+import TelegramPopup from "../../components/TelegramPopup";
 
 const Dashboard = () => {
   const { user, token, setUser, logout } = useAuth();
@@ -157,6 +158,7 @@ const Dashboard = () => {
 
       {loading && <SpinnerOverlay />}
       
+
       {/* ✅ 2. ADDED: Free Topup Popup (Agar ID inactive hai toh ye aage aayega) */}
       <PreLaunchPromo />
 
@@ -165,6 +167,10 @@ const Dashboard = () => {
       {/* TopNav - Fixed at top */}
       <TopNav onHamburgerClick={() => setShowSidebar(true)} />
 
+{/* TopNav ko popup se bhi upar rakhein */}
+<div className="relative z-[100000000]"> 
+  <TopNav onHamburgerClick={() => setShowSidebar(true)} />
+</div>
       {/* Main Layout Container */}
       <div className="pt-1 p-2 md:p-0 flex gap-1 h-screen box-border bg-pattern">
         
@@ -353,8 +359,15 @@ const Dashboard = () => {
           )}
 
         </main>
+
+        
       </div>
+
+{!loading && user && <TelegramPopup currentUser={user} />}
+      
     </div>
+
+    
   );
 };
 

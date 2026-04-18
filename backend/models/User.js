@@ -19,6 +19,13 @@ const userSchema = new mongoose.Schema({
   sponsorId: { type: Number, default: null },
   packageId: { type: mongoose.Schema.Types.ObjectId, ref: "Package" },
 
+
+
+telegramId: { type: String, default: null },
+  isTelegramJoined: { type: Boolean, default: false },
+
+
+
   depositAddress: {
     type: String,
     unique: true,

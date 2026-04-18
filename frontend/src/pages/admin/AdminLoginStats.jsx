@@ -9,9 +9,13 @@ const AdminLoginStats = () => {
   const [summary, setSummary] = useState({ totalLoginAttempts: 0, uniqueUsers: 0 });
   const [loading, setLoading] = useState(true);
 
+  // Default to today for both from and to
+  const todayStr = new Date().toISOString().split('T')[0];
+
   const [filters, setFilters] = useState({
     userId: '',
-    date: new Date().toISOString().split('T')[0], // Default today
+    fromDate: todayStr,
+    toDate: todayStr,
     countFilter: 'all'
   });
 
@@ -21,7 +25,7 @@ const AdminLoginStats = () => {
 
   useEffect(() => {
     fetchStats();
-  }, [filters.date]); // Re-fetch from backend when date changes
+  }, [filters.fromDate, filters.toDate]); // Re-fetch from backend when any date changes
 
   useEffect(() => {
     applyFilters();
@@ -33,7 +37,8 @@ const AdminLoginStats = () => {
       const token = localStorage.getItem('adminToken');
       if (!token) throw new Error('Admin token not found');
 
-      const res = await api.get(`/admin/login-stats?date=${filters.date}`, {
+      // API call ab dono dates bhej rahi hai
+      const res = await api.get(`/admin/login-stats?fromDate=${filters.fromDate}&toDate=${filters.toDate}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -103,7 +108,7 @@ const AdminLoginStats = () => {
 
     const csv = Papa.unparse(csvData);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    saveAs(blob, `login-stats-${filters.date}.csv`);
+    saveAs(blob, `login-stats-${filters.fromDate}-to-${filters.toDate}.csv`);
   };
 
   // Copy Function
@@ -126,7 +131,7 @@ const AdminLoginStats = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mt-14 mb-6 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-indigo-700">📈 User Login Analytics</h2>
-          <p className="text-gray-600 text-sm">Track daily user logins, frequency, and activity.</p>
+          <p className="text-gray-600 text-sm">Track user logins, frequency, and activity within a date range.</p>
         </div>
         <div className="flex gap-4">
           <div className="bg-white px-4 py-2 border rounded shadow-sm text-center">
@@ -143,6 +148,7 @@ const AdminLoginStats = () => {
       {/* Top Controls (Filters) */}
       <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6">
         <div className="flex flex-col md:flex-row gap-2 w-full xl:w-auto flex-wrap">
+          
           <input
             type="text"
             className="border border-gray-300 rounded px-3 py-2 w-full md:w-48"
@@ -150,13 +156,28 @@ const AdminLoginStats = () => {
             value={filters.userId}
             onChange={e => setFilters({ ...filters, userId: e.target.value })}
           />
-          <input
-            type="date"
-            className="border border-gray-300 rounded px-3 py-2"
-            value={filters.date}
-            onChange={e => setFilters({ ...filters, date: e.target.value })}
-            title="Select Date"
-          />
+          
+          {/* NAYA: From Date aur To Date */}
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-gray-500 font-medium ml-1">From:</span>
+            <input
+              type="date"
+              className="border border-gray-300 rounded px-3 py-2"
+              value={filters.fromDate}
+              onChange={e => setFilters({ ...filters, fromDate: e.target.value })}
+            />
+          </div>
+
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-gray-500 font-medium ml-1">To:</span>
+            <input
+              type="date"
+              className="border border-gray-300 rounded px-3 py-2"
+              value={filters.toDate}
+              onChange={e => setFilters({ ...filters, toDate: e.target.value })}
+            />
+          </div>
+
           <select
             className="border border-gray-300 rounded px-3 py-2 bg-white font-medium text-gray-700"
             value={filters.countFilter}

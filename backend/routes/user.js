@@ -8,6 +8,7 @@ const authMiddleware = require('../middleware/authMiddleware');
  const TopUp = require('../models/TopUp'); 
  const DummyTransaction = require('../models/DummyTransaction');
 const DummyUser = require('../models/DummyUser.js'); // 🔥 Naya model
+const { bot } = require('../utils/telegramBot');
 
  const checkFeature = require("../middleware/checkFeatureEnabled");
 // Controllers
@@ -935,35 +936,50 @@ router.get('/reward-stats/:userId', async (req, res) => {
 
 
 // ✅ UPDATED GET ROUTE: Supports both Real and Dummy Users
+// Is file ke top par 'bot' import hona chahiye (jahan aapne bot setup kiya hai)
+// const { bot } = require('../utils/telegramBot'); 
+
+const mongoose = require('mongoose');
+
 router.get('/:userId', async (req, res) => {
   try {
-    const userId = Number(req.params.userId);
+    const rawUserId = req.params.userId;
+
+    // 🛡️ 1. Validation
+    if (!rawUserId || rawUserId === "undefined") {
+      return res.status(400).json({ success: false, message: 'User ID is missing' });
+    }
+
+    let query = {};
     
-    // 1. Pehle 'User' (Real) collection mein dhoondo
-    let user = await User.findOne({ userId }).select('-password -transactionPassword -txnPassword -__v');
-
-    // 2. 🔥 Agar Real mein nahi mila, toh 'DummyUser' table mein check karo
-    if (!user) {
-        // 'DummyUser' model ko file ke top par import zaroori hai
-        if (typeof DummyUser !== 'undefined') {
-            user = await DummyUser.findOne({ userId }).select('-password -transactionPassword -txnPassword -__v');
-        }
+    // 💡 2. Smart Detection: Check if it's a MongoDB _id or a Numerical userId
+    if (mongoose.Types.ObjectId.isValid(rawUserId) && rawUserId.length === 24) {
+      // Agar 24 character ki string hai, toh _id se dhoondo
+      query = { _id: rawUserId };
+    } else if (!isNaN(Number(rawUserId))) {
+      // Agar number hai, toh userId field se dhoondo
+      query = { userId: Number(rawUserId) };
+    } else {
+      // Agar dono nahi hai, toh bad request
+      return res.status(400).json({ success: false, message: 'Invalid ID format' });
     }
 
-    // 3. Agar dono jagah nahi mila toh Error
-    if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'User not found' 
-      });
+    // 3. Search User
+    let user = await User.findOne(query).select('-password -transactionPassword -resetToken -__v');
+    
+    if (!user && typeof DummyUser !== 'undefined') {
+        user = await DummyUser.findOne(query).select('-password -transactionPassword -resetToken -__v');
     }
 
-    // 4. 🔥 REWARD SYNC LOGIC (Dummy ya Real dono ke liye check karega)
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // 🏆 4. Sync Logic
     if (user.totalRewardIncome === 0 && user.rewardIncome > 0) {
         user.totalRewardIncome = user.rewardIncome;
+        await user.save();
     }
 
-    // 5. Final Uniform Response (Frontend ko farq nahi dikhega)
+    // 💰 5. Response
     res.json({ 
         success: true,
         user: user, 
@@ -971,16 +987,13 @@ router.get('/:userId', async (req, res) => {
             totalDirectIncome: user.totalDirectIncome || user.directIncome || 0,
             totalLevelIncome: user.levelIncome || 0,
             totalRewardIncome: user.totalRewardIncome || user.rewardIncome || 0,
-            totalIncome: user.totalIncome || 0 
+            totalIncome: (user.totalDirectIncome || 0) + (user.levelIncome || 0) + (user.totalRewardIncome || 0)
         }
     });
 
   } catch (err) {
-    console.error("Error fetching user:", err);
-    res.status(500).json({ 
-        success: false, 
-        message: 'Server error' 
-    });
+    console.error("Error fetching user profile:", err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 // ---------------------------

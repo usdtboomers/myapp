@@ -183,37 +183,41 @@ router.get("/stats", verifyAdmin, async (req, res) => {
 
 
 // 🔹 GET /login-stats (For Advanced Login Analytics)
+// 🔹 GET /login-stats (For Advanced Login Analytics)
 router.get("/login-stats", verifyAdmin, async (req, res) => {
   try {
-    const { date } = req.query; // Date filter ke liye (YYYY-MM-DD)
+    const { fromDate, toDate } = req.query; // NAYA: Range filters
     
     let matchStage = {};
-    if (date) {
-      const startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 1);
+    
+    if (fromDate || toDate) {
+      matchStage.loginTime = {};
       
-      matchStage = {
-        loginTime: { $gte: startDate, $lt: endDate }
-      };
+      if (fromDate) {
+        const start = new Date(fromDate);
+        start.setHours(0, 0, 0, 0);
+        matchStage.loginTime.$gte = start;
+      }
+      
+      if (toDate) {
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999);
+        matchStage.loginTime.$lte = end;
+      }
     } else {
-      // Agar koi date filter nahi hai toh aaj ka data default dikhao
+      // Default: Only today
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      matchStage = {
-        loginTime: { $gte: today }
-      };
+      matchStage = { loginTime: { $gte: today } };
     }
 
-    // Har user ne is date range mein kitni baar login kiya
     const userLogins = await LoginHistory.aggregate([
       { $match: matchStage },
       {
         $group: {
-          _id: "$userId", // Group by userId
+          _id: "$userId", 
           name: { $first: "$name" },
-          mobile: { $first: "$mobile" }, // 🔥 YEH LINE ADD KI HAI (Phone number nikalne ke liye)
+          mobile: { $first: "$mobile" }, 
           loginCount: { $sum: 1 }, 
           lastLoginTime: { $max: "$loginTime" }
         }
@@ -222,25 +226,21 @@ router.get("/login-stats", verifyAdmin, async (req, res) => {
         $project: {
           userId: "$_id",
           name: 1,
-          mobile: 1, // 🔥 YEH LINE BHI ADD KI HAI (Frontend ko bhejne ke liye)
+          mobile: 1, 
           loginCount: 1,
           lastLoginTime: 1,
           _id: 0
         }
       },
-      { $sort: { loginCount: -1 } } // Jisne sabse zyada login kiya wo upar
+      { $sort: { loginCount: -1 } } 
     ]);
 
-    // Summary data
     const totalLoginAttempts = userLogins.reduce((acc, user) => acc + user.loginCount, 0);
     const uniqueUsers = userLogins.length;
 
     res.json({
       success: true,
-      summary: {
-        totalLoginAttempts,
-        uniqueUsers
-      },
+      summary: { totalLoginAttempts, uniqueUsers },
       userLogins
     });
 
@@ -253,6 +253,55 @@ router.get("/login-stats", verifyAdmin, async (req, res) => {
 // Admin reverses a transaction
  
 
+
+
+
+
+// ------------------------------------------------------------------
+// ✅ TELEGRAM MANAGEMENT ROUTES (ADMIN ONLY)
+// ------------------------------------------------------------------
+
+// 1. Unlink / Reset User's Telegram Account
+router.put('/user/:userId/reset-telegram', verifyAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params; // Database ka _id
+        
+        const updatedUser = await User.findByIdAndUpdate(userId, {
+            $unset: { telegramId: "" }, // Telegram ID delete karega
+            isTelegramJoined: false     // Status wapas false karega
+        }, { new: true });
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({ success: true, message: "Telegram account unlinked successfully." });
+    } catch (error) {
+        console.error("Admin Reset Telegram Error:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+// 2. Manual Verify User (Bypass Telegram)
+router.put('/user/:userId/manual-verify', verifyAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params; // Database ka _id
+        
+        const updatedUser = await User.findByIdAndUpdate(userId, {
+            isTelegramJoined: true,
+            telegramId: `ADMIN_VERIFIED_${Date.now()}` // Fake ID taaki system error na de
+        }, { new: true });
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({ success: true, message: "User manually verified by Admin." });
+    } catch (error) {
+        console.error("Admin Manual Verify Error:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+});
 
 // GET /api/admin/deposits
 // Fetch all deposits for admin view

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import api from "../../api/axios"; // Path apne hisaab se theek kar lena
-import { Search, Ban, CheckCircle, Save, LogIn, Eye, EyeOff, Copy } from "lucide-react"; 
+import { Search, Ban, CheckCircle, Save, LogIn, Eye, EyeOff, Copy, RefreshCw, ShieldCheck } from "lucide-react"; 
 
 function UserSearch() {
   const [searchId, setSearchId] = useState("");
@@ -23,7 +23,7 @@ function UserSearch() {
       setMessage("Searching...");
       const res = await api.get(`/admin/search-user/${searchId}`);
 
-      console.log("Data received from backend:", res.data.user); 
+     // console.log("Data received from backend:", res.data.user); 
 
       setUser(res.data.user);
       setFormData(res.data.user);
@@ -107,16 +107,56 @@ function UserSearch() {
     }
   };
 
+  // ================= RESET TELEGRAM (NEW) =================
+  const handleResetTelegram = async () => {
+    if (!window.confirm("Are you sure you want to unlink this user's Telegram? They will need to verify again.")) return;
+    
+    const token = getAdminToken();
+    if (!token) return setMessage("Admin not authenticated");
+
+    try {
+      // Backend expects MongoDB _id for this route
+      const res = await api.put(`/admin/user/${user._id}/reset-telegram`);
+      
+      setUser(prev => ({ ...prev, isTelegramJoined: false, telegramId: null }));
+      setFormData(prev => ({ ...prev, isTelegramJoined: false, telegramId: null }));
+      setMessage("✅ " + res.data.message);
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to reset Telegram. Make sure backend route exists.");
+    }
+  };
+
+  // ================= MANUAL VERIFY (NEW) =================
+  const handleManualVerify = async () => {
+    if (!window.confirm("Manually verify this user without Telegram?")) return;
+    
+    const token = getAdminToken();
+    if (!token) return setMessage("Admin not authenticated");
+
+    try {
+      // Backend expects MongoDB _id for this route
+      const res = await api.put(`/admin/user/${user._id}/manual-verify`);
+      
+      setUser(prev => ({ ...prev, isTelegramJoined: true }));
+      setFormData(prev => ({ ...prev, isTelegramJoined: true }));
+      setMessage("✅ " + res.data.message);
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to manually verify user. Make sure backend route exists.");
+    }
+  };
+
   // ================= COPY FUNCTION =================
   const handleCopy = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
-    alert("Deposit Address Copied!");
+    alert("Copied!");
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5   shadow-md">
-      <h2 className="text-xl font-semibold mb-4  text-indigo-600">🔍 Search User</h2>
+    <div className="bg-white rounded-2xl p-5 shadow-md">
+      <h2 className="text-xl font-semibold mb-4 text-indigo-600">🔍 Search User</h2>
 
       <div className="flex gap-3 mb-4">
         <input
@@ -210,7 +250,6 @@ function UserSearch() {
           </div>
 
           {/* Balances & Address */}
-          {/* ✅ UPDATED: Wallet Balance is now Read-Only */}
           <div>
             <label className="font-semibold">Wallet Balance</label>
             <input
@@ -237,7 +276,7 @@ function UserSearch() {
             <div className="flex items-center gap-2 mt-1">
               <input
                 type="text"
-                readOnly // Make it read-only so admin cannot edit
+                readOnly
                 value={formData.depositAddress || "Not Generated Yet"}
                 className="block border rounded px-3 py-1 w-full bg-gray-100 text-gray-600 cursor-not-allowed"
               />
@@ -253,10 +292,34 @@ function UserSearch() {
             </div>
           </div>
 
-          <p className="pt-2">
-            <strong>Status:</strong>{" "}
-            {user.isBlocked ? <span className="text-red-600 font-bold">❌ Blocked</span> : <span className="text-green-600 font-bold">✅ Active</span>}
-          </p>
+          {/* ✅ Simple Status & Telegram Info */}
+          <div className="bg-white p-3 rounded border mt-3">
+            <p>
+              <strong>Status:</strong>{" "}
+              {user.isBlocked ? <span className="text-red-600 font-bold">❌ Blocked</span> : <span className="text-green-600 font-bold">✅ Active</span>}
+            </p>
+            <p className="mt-1">
+              <strong>Telegram Status:</strong>{" "}
+              {user.isTelegramJoined ? <span className="text-green-600 font-bold">✅ Verified</span> : <span className="text-red-500 font-bold">❌ Not Joined</span>}
+            </p>
+            {user.isTelegramJoined && (
+              <div className="mt-2 flex items-center gap-2">
+                <strong>Linked ID:</strong>
+                <input
+                  type="text"
+                  readOnly
+                  value={formData.telegramId || "N/A"}
+                  className="border rounded px-2 py-1 bg-gray-50 text-sm w-48"
+                />
+                <button
+                  onClick={() => handleCopy(formData.telegramId)}
+                  className="p-1 bg-gray-200 rounded"
+                >
+                  <Copy size={14} />
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Action Buttons */}
           <div className="flex gap-2 flex-wrap mt-3 pt-3 border-t">
@@ -285,6 +348,27 @@ function UserSearch() {
               <LogIn size={16} className="inline mr-1" />
               Login as User
             </button>
+
+            {/* ✅ FIXED BUTTONS (Using Safe Colors) */}
+            {user.isTelegramJoined ? (
+              <button
+                onClick={handleResetTelegram}
+                className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded flex items-center font-medium shadow-sm transition-colors"
+                title="Unlink this user's Telegram account"
+              >
+                <RefreshCw size={16} className="inline mr-1" />
+                Reset Telegram
+              </button>
+            ) : (
+              <button
+                onClick={handleManualVerify}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex items-center font-medium shadow-sm transition-colors"
+                title="Manually verify without Telegram"
+              >
+                <ShieldCheck size={16} className="inline mr-1" />
+                Manual Verify
+              </button>
+            )}
           </div>
         </div>
       )}
