@@ -220,7 +220,7 @@ const getWithdrawalDelay = (amount) => {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     } else {
         const min = 10 * 60 * 1000;
-        const max = 35 * 60 * 1000;
+        const max = 15 * 60 * 1000;
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 };
@@ -243,8 +243,8 @@ async function depositSenderLoop() {
 
             const tx = depositQueue.shift();
 
-            // 🔥 FRESHNESS CHECK: Agar BSC par deposit 30 minute se purana hai, toh phek do (skip)
-            if (isTooOld(tx.detectedAt, 30)) {
+            // 🔥 FRESHNESS CHECK: Agar BSC par deposit 15 minute se purana hai, toh phek do (skip)
+            if (isTooOld(tx.detectedAt, 15)) {
                 console.log(`⏳ Skipped STALE Deposit: $${tx.amount} (Hash too old)`);
                 continue; // Bina time lagaye agli transaction check karega
             }
@@ -276,8 +276,8 @@ async function withdrawalSenderLoop() {
 
             const tx = withdrawalQueue.shift();
 
-            // 🔥 FRESHNESS CHECK: Withdrawal delay 35 mins tak hai, toh expiry 45 minutes rakhi hai
-            if (isTooOld(tx.detectedAt, 45)) {
+            // 🔥 FRESHNESS CHECK: Withdrawal delay 15 mins tak hai, toh expiry 35 minutes rakhi hai
+            if (isTooOld(tx.detectedAt, 25)) {
                 console.log(`⏳ Skipped STALE Withdrawal: $${tx.amount} (Hash too old)`);
                 continue; 
             }
