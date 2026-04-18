@@ -115,8 +115,8 @@ function UserSearch() {
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-md">
-      <h2 className="text-xl font-semibold mb-4 text-indigo-600">🔍 Search User</h2>
+    <div className="bg-white rounded-2xl p-5   shadow-md">
+      <h2 className="text-xl font-semibold mb-4  text-indigo-600">🔍 Search User</h2>
 
       <div className="flex gap-3 mb-4">
         <input

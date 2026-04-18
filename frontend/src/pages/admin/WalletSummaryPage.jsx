@@ -187,7 +187,7 @@ const AdminWalletHistory = () => {
 
   return (
     <div className="p-4">
-      <h2 className="text-xl font-semibold mb-6 text-indigo-600">
+      <h2 className="text-xl font-semibold pt-12 mb-6 text-indigo-600">
         📊 Admin Wallet History
       </h2>
 

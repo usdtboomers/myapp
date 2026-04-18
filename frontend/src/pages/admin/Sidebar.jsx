@@ -4,7 +4,7 @@ import {
   FaHome, FaUsers, FaMoneyBill, FaWallet, FaListAlt, FaCog, FaSignOutAlt,
   FaSitemap, FaProjectDiagram, FaExchangeAlt, FaFileAlt, FaUserPlus,
   FaArrowCircleUp, FaArrowCircleDown, FaBell, FaClipboardList, FaCoins,
-  FaUserSlash, FaBars, FaTimes
+  FaUserSlash, FaBars, FaTimes, FaHistory // 🔥 NAYA ICON ADD KIYA: FaHistory
 } from 'react-icons/fa';
 
 const Sidebar = () => {
@@ -22,8 +22,8 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
-navigate('/community-access?Key=SuperSuper');
-   };
+    navigate('/community-access?Key=SuperSuper');
+  };
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
@@ -87,6 +87,11 @@ navigate('/community-access?Key=SuperSuper');
               <FaUserSlash className="inline-block mr-2" /> Blocked Users
             </NavLink>
 
+            {/* 🔥 NAYA LINK YAHAN ADD KIYA HAI 🔥 */}
+            <NavLink to={`${BASE_PATH}/login-stats`} className={linkClass} onClick={toggleSidebar}>
+              <FaHistory className="inline-block mr-2" /> Login Analytics
+            </NavLink>
+
             <NavLink to={`${BASE_PATH}/notifications`} className={linkClass} onClick={toggleSidebar}>
               <FaBell className="inline-block mr-2" /> Notifications
             </NavLink>
@@ -103,8 +108,6 @@ navigate('/community-access?Key=SuperSuper');
             <NavLink to={`${BASE_PATH}/withdrawals/all`} className={linkClass} onClick={toggleSidebar}>
               <FaClipboardList className="inline-block mr-2" /> All Withdrawals
             </NavLink>
-
-            
 
             <NavLink to={`${BASE_PATH}/manual-deposit`} className={linkClass} onClick={toggleSidebar}>
               <FaCoins className="inline-block mr-2" /> Manual Deposit

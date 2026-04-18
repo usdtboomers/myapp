@@ -181,7 +181,7 @@ const AdminTransactions = () => {
   return (
     <div className="p-4">
       {/* Top Controls */}
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6">
+      <div className="flex flex-col pt-12 xl:flex-row xl:items-center xl:justify-between gap-4 mb-6">
         
         {/* Search, Dates, Filter & Entries Select */}
         <div className="flex flex-col md:flex-row gap-2 w-full xl:w-auto flex-wrap">
@@ -216,12 +216,8 @@ const AdminTransactions = () => {
             <option value="withdrawal">Withdrawal</option>
             <option value="transfer">Transfer</option>
             <option value="direct_income">Direct Income</option>
-            <option value="level_income">Level Income</option>
-            <option value="roi_income">ROI Income</option>
-            <option value="topup">Top-up</option>
-            <option value="spin_income">Spin Income</option>
-            <option value="buy_spin">Buy Spin</option>
-            <option value="credit_to_wallet">Credit to Wallet</option>
+              <option value="topup">Top-up</option>
+              <option value="credit_to_wallet">Credit to Wallet</option>
           </select>
           
           <select 

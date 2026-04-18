@@ -10,6 +10,8 @@ const sanitizeUser = require('../utils/sanitizeUser');
 const sendEmail = require('../utils/sendEmail');
 const checkFeature = require('../middleware/checkFeatureEnabled');
 const DummyUser = require('../models/DummyUser.js'); // 🔥 Ye line check kar lo
+// 1️⃣ SABSE UPAR FILE MEIN YEH IMPORT ADD KARNA (Agar pehle se nahi kiya hai toh)
+const LoginHistory = require('../models/LoginHistory'); 
 
 const JWT_SECRET = process.env.JWT_SECRET || 'yoursecretkey';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://178.128.20.53';
@@ -187,6 +189,10 @@ if (!sponsorExists) {
 
 
 // ====================== LOGIN ======================
+
+
+
+// 2️⃣ YEH TUMHARA UPDATED LOGIN ROUTE HAI
 router.post('/login', async (req, res) => {
   try {
     const { userId, password } = req.body;
@@ -218,8 +224,6 @@ router.post('/login', async (req, res) => {
     }
 
     // ✅ Normal Text Password Comparison
-   
-
     if (password.toLowerCase() !== user.password.toLowerCase()) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -231,6 +235,22 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '15m' });
+
+    // ==========================================
+    // 🔥 NAYA CODE: LOGIN HISTORY SAVE KARNE KE LIYE
+    // ==========================================
+    try {
+       await LoginHistory.create({
+    userId: user.userId,
+    name: user.name || "Unknown",
+    mobile: user.mobile || "N/A" // 🔥 NAYA ADD KIYA
+});
+    } catch (historyErr) {
+        console.error('Failed to save login history:', historyErr.message);
+        // Hum yahan return nahi kar rahe taaki agar history save hone me error aaye,
+        // tab bhi user ka login na ruke.
+    }
+    // ==========================================
 
     res.json({ message: 'Login successful', token, user: sanitizeUser(user) });
   } catch (err) {

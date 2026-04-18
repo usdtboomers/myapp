@@ -65,7 +65,7 @@ import AddUser from './pages/admin/AddUser';
 import AdminNotifications from './pages/admin/AdminCreateNotification.jsx';
 import AdminSupport from "./pages/admin/AdminSupport";
 import ManualDeposit from './pages/admin/ManualDeposit';
- 
+ import AdminLoginStats from './pages/admin/AdminLoginStats'; // Apne folder ke hisab se path likhna
 // 📜 Scroll Restoration
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -200,7 +200,7 @@ function AppContent() {
             <Route path="transactions" element={<AdminTransactions />} />
             <Route path="settings" element={<AdminSettingsPage />} />
             <Route path="transactions/reverse" element={<ReverseTransaction />} />
-            
+            <Route path="login-stats" element={<AdminLoginStats />} />
             <Route path="add-user" element={<AddUser />} />
             <Route path="manual-deposit" element={<ManualDeposit />} />
             <Route path="support" element={<AdminSupport />} />

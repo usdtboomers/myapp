@@ -102,7 +102,7 @@ const AdminSupport = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">User Support Requests</h1>
+      <h1 className="text-2xl pt-12 font-bold mb-4">User Support Requests</h1>
 
       {selectedIds.length > 0 && (
         <div className="mb-4 space-x-2">

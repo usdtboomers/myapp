@@ -154,9 +154,9 @@ const UserListTable = () => {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 ">
       {/* Top Controls */}
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6">
+      <div className="flex flex-col pt-12 xl:flex-row xl:items-center xl:justify-between gap-4 mb-6">
         
         {/* Search, Dates, Filter & Entries Select */}
         <div className="flex flex-col md:flex-row gap-2 w-full xl:w-auto flex-wrap">

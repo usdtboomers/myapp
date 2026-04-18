@@ -9,7 +9,8 @@ const Withdrawal = require('../models/Withdrawal');
 const Transaction = require('../models/Transaction');
 const Deposit = require('../models/Deposit');
 const verifyAdmin = require('../middleware/adminAuth');
- 
+ const LoginHistory = require('../models/LoginHistory');
+
 const { ethers } = require('ethers');
 require('dotenv').config();
 
@@ -178,6 +179,76 @@ router.get("/stats", verifyAdmin, async (req, res) => {
 });
 
 
+
+
+
+// 🔹 GET /login-stats (For Advanced Login Analytics)
+router.get("/login-stats", verifyAdmin, async (req, res) => {
+  try {
+    const { date } = req.query; // Date filter ke liye (YYYY-MM-DD)
+    
+    let matchStage = {};
+    if (date) {
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1);
+      
+      matchStage = {
+        loginTime: { $gte: startDate, $lt: endDate }
+      };
+    } else {
+      // Agar koi date filter nahi hai toh aaj ka data default dikhao
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      matchStage = {
+        loginTime: { $gte: today }
+      };
+    }
+
+    // Har user ne is date range mein kitni baar login kiya
+    const userLogins = await LoginHistory.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: "$userId", // Group by userId
+          name: { $first: "$name" },
+          mobile: { $first: "$mobile" }, // 🔥 YEH LINE ADD KI HAI (Phone number nikalne ke liye)
+          loginCount: { $sum: 1 }, 
+          lastLoginTime: { $max: "$loginTime" }
+        }
+      },
+      {
+        $project: {
+          userId: "$_id",
+          name: 1,
+          mobile: 1, // 🔥 YEH LINE BHI ADD KI HAI (Frontend ko bhejne ke liye)
+          loginCount: 1,
+          lastLoginTime: 1,
+          _id: 0
+        }
+      },
+      { $sort: { loginCount: -1 } } // Jisne sabse zyada login kiya wo upar
+    ]);
+
+    // Summary data
+    const totalLoginAttempts = userLogins.reduce((acc, user) => acc + user.loginCount, 0);
+    const uniqueUsers = userLogins.length;
+
+    res.json({
+      success: true,
+      summary: {
+        totalLoginAttempts,
+        uniqueUsers
+      },
+      userLogins
+    });
+
+  } catch (error) {
+    console.error("Error in /login-stats:", error);
+    res.status(500).json({ success: false, message: "Error fetching login stats" });
+  }
+});
 
 // Admin reverses a transaction
  
