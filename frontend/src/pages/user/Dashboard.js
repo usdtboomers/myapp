@@ -203,122 +203,86 @@ const Dashboard = () => {
           {/* ========================================== */}
           {/* 1. HEADER SECTION (Welcome & Badge) */}
           {/* ========================================== */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-            <div>
-              <div className="flex flex-col items-start gap-1.5">
-  <h1 className="text-2xl md:text-3xl font-bold text-white">
-    Welcome{" "}
-    <span className="text-yellow-500 font-bold">
-      {user?.name || "User"}
-    </span>
-  </h1>
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+  <div>
+    <div className="flex flex-col items-start gap-1.5">
+      <h1 className="text-2xl md:text-3xl font-bold text-white">
+        Welcome{" "}
+        <span className="text-yellow-500 font-bold">
+          {user?.name || "User"}
+        </span>
+      </h1>
 
-  {/* 🛡️ Status Badge (Ab ye naam ke theek niche aayega) */}
-  {user?.isTelegramJoined ? (
-    <div className="flex items-center gap-1 bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/40 shadow-lg shadow-green-500/20" style={{ height: 'fit-content' }}>
-      <CheckCircle size={12} />
-      <span className="text-[10px] font-bold tracking-wider uppercase">Telegram Verified</span>
+      {/* 🛡️ Status Badge (ABHI KE LIYE HIDE KIYA HAI) */}
+      {/* {user?.isTelegramJoined ? (
+        <div className="flex items-center gap-1 bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/40 shadow-lg shadow-green-500/20" style={{ height: 'fit-content' }}>
+          <CheckCircle size={12} />
+          <span className="text-[10px] font-bold tracking-wider uppercase">Telegram Verified</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1 bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30 animate-pulse" style={{ height: 'fit-content' }}>
+          <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+          <span className="text-[10px] font-bold tracking-wider uppercase">Unverified</span>
+        </div>
+      )}
+      */}
     </div>
-  ) : (
-    <div className="flex items-center gap-1 bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30 animate-pulse" style={{ height: 'fit-content' }}>
-      <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-      <span className="text-[10px] font-bold tracking-wider uppercase">Unverified</span>
-    </div>
-  )}
-</div>
-            </div>
-          </div>
-
-          {/* ========================================== */}
-          {/* 2. 🔥 COMPACT TELEGRAM VERIFICATION BANNER 🔥 */}
-          {/* ========================================== */}
-          {!user?.isTelegramJoined && (
-            <div className="bg-[#0f172a] border border-red-500/30 rounded-xl p-4 mb-8 relative overflow-hidden shadow-lg shadow-red-500/5">
-              <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
-              
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-               <div className="pl-2">
-  <h3 className="text-red-400 font-bold text-sm flex items-center gap-2">
-    ⚠️ Action Required: Verify Telegram
-  </h3>
-  
-  <div className="mt-2.5 space-y-1.5 text-xs text-gray-300">
-    <p className="flex items-start gap-2">
-      <span className="font-bold text-red-300 whitespace-nowrap">Step 1:</span> 
-      <span>Click and Join the official Telegram Channel.</span>
-    </p>
-    <p className="flex items-start gap-2">
-      <span className="font-bold text-red-300 whitespace-nowrap">Step 2:</span> 
-      <span>Start the bot.</span>
-    </p>
-    <p className="flex items-start gap-2">
-      <span className="font-bold text-red-300 whitespace-nowrap">Step 3:</span> 
-      <span>Click on "Verify Now" button to complete process.</span>
-    </p>
   </div>
 </div>
 
-               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
-  
-  {/* Step 1: Join Channel */}
-  <button 
-    onClick={() => window.open('https://t.me/usdt_boomers', '_blank')} 
-    style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-      backgroundColor: '#229ED9', color: '#ffffff',
-      padding: '8px 16px', borderRadius: '6px',
-      fontSize: '13px', fontWeight: 'bold',
-      border: 'none', cursor: 'pointer',
-      boxShadow: '0 2px 5px rgba(34, 158, 217, 0.4)'
-    }}
-  >
-    <Send size={15} /> 1. Join Channel
-  </button>
+{/* ========================================== */}
+{/* 2. 🔥 COMPACT TELEGRAM VERIFICATION BANNER (ABHI KE LIYE HIDE KIYA HAI) 🔥 */}
+{/* ========================================== */}
+{/* {!user?.isTelegramJoined && (
+  <div className="bg-[#0f172a] border border-red-500/30 rounded-xl p-4 mb-8 relative overflow-hidden shadow-lg shadow-red-500/5">
+    <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+    
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="pl-2">
+        <h3 className="text-red-400 font-bold text-sm flex items-center gap-2">
+          ⚠️ Action Required: Verify Telegram
+        </h3>
+        
+        <div className="mt-2.5 space-y-1.5 text-xs text-gray-300">
+          <p className="flex items-start gap-2">
+            <span className="font-bold text-red-300 whitespace-nowrap">Step 1:</span> 
+            <span>Click and Join the official Telegram Channel.</span>
+          </p>
+          <p className="flex items-start gap-2">
+            <span className="font-bold text-red-300 whitespace-nowrap">Step 2:</span> 
+            <span>Start the bot.</span>
+          </p>
+          <p className="flex items-start gap-2">
+            <span className="font-bold text-red-300 whitespace-nowrap">Step 3:</span> 
+            <span>Click on "Verify Now" button to complete process.</span>
+          </p>
+        </div>
+      </div>
 
-  {/* Step 2: Start Bot */}
-  <button 
-    onClick={() => window.open(`https://t.me/Usdt_Boomers_Bot?start=${user?.userId || user?._id}`, '_blank')} 
-    style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-      backgroundColor: '#229ED9', color: '#ffffff',
-      padding: '8px 16px', borderRadius: '6px',
-      fontSize: '13px', fontWeight: 'bold',
-      border: 'none', cursor: 'pointer',
-      boxShadow: '0 2px 5px rgba(34, 158, 217, 0.4)'
-    }}
-  >
-    <ShieldCheck size={15} /> 2. Start Bot
-  </button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+        <button onClick={() => window.open('https://t.me/usdt_boomers', '_blank')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: '#229ED9', color: '#ffffff', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 2px 5px rgba(34, 158, 217, 0.4)' }}>
+          <Send size={15} /> 1. Join Channel
+        </button>
 
-  {/* Step 3: Verify Button */}
-  <button 
-    onClick={handleManualCheck} 
-    disabled={verifyLoading} 
-    style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-      backgroundColor: '#16a34a', color: '#ffffff', // Solid Green
-      padding: '8px 16px', borderRadius: '6px',
-      fontSize: '13px', fontWeight: 'bold',
-      border: 'none', cursor: verifyLoading ? 'not-allowed' : 'pointer',
-      opacity: verifyLoading ? 0.7 : 1,
-      boxShadow: '0 2px 5px rgba(22, 163, 74, 0.4)'
-    }}
-  >
-    {verifyLoading ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
-    Verify Now
-  </button>
+        <button onClick={() => window.open(`https://t.me/Usdt_Boomers_Bot?start=${user?.userId || user?._id}`, '_blank')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: '#229ED9', color: '#ffffff', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 2px 5px rgba(34, 158, 217, 0.4)' }}>
+          <ShieldCheck size={15} /> 2. Start Bot
+        </button>
 
-</div>
-              </div>
+        <button onClick={handleManualCheck} disabled={verifyLoading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: '#16a34a', color: '#ffffff', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', border: 'none', cursor: verifyLoading ? 'not-allowed' : 'pointer', opacity: verifyLoading ? 0.7 : 1, boxShadow: '0 2px 5px rgba(22, 163, 74, 0.4)' }}>
+          {verifyLoading ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
+          Verify Now
+        </button>
+      </div>
+    </div>
 
-              {/* Status Message */}
-              {verifyStatus.msg && (
-                <div className={`mt-3 pl-2 text-xs font-medium flex items-center gap-1 ${verifyStatus.type === 'error' ? 'text-red-400' : 'text-green-400'}`}>
-                  {verifyStatus.msg}
-                </div>
-              )}
-            </div>
-          )}
+    {verifyStatus.msg && (
+      <div className={`mt-3 pl-2 text-xs font-medium flex items-center gap-1 ${verifyStatus.type === 'error' ? 'text-red-400' : 'text-green-400'}`}>
+        {verifyStatus.msg}
+      </div>
+    )}
+  </div>
+)} 
+*/}
 
           <div className="space-y-8">
             {/* Wallet Balance */}
