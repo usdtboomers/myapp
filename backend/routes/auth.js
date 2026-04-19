@@ -135,14 +135,19 @@ router.post('/login', async (req, res) => {
     // 🛡️ LOGIN LIMIT CHECK (Except Admin)
     if (user.role !== 'admin') {
         // Check how many UNIQUE users have logged in from this IP
-        const uniqueUsersOnThisIP = await LoginHistory.distinct('userId', { ipAddress: userIP });
+//         const uniqueUsersOnThisIP = await LoginHistory.distinct('userId', { ipAddress: userIP });
         
-        // Agar ye user naya hai is IP ke liye aur 5 unique users pehle se hain, toh block karo
-        if (uniqueUsersOnThisIP.length >= 5 && !uniqueUsersOnThisIP.includes(user.userId)) {
-return res.status(403).json({ 
-    message: 'Access Denied: Login limit exceeded. Only 5 unique accounts are allowed per IP address.' 
-});        }
-    }
+//         // Agar ye user naya hai is IP ke liye aur 5 unique users pehle se hain, toh block karo
+//         if (uniqueUsersOnThisIP.length >= 5 && !uniqueUsersOnThisIP.includes(user.userId)) {
+// return res.status(403).json({ 
+//     message: 'Access Denied: Login limit exceeded. Only 5 unique accounts are allowed per IP address.' 
+// });        }
+   }
+   
+console.log(`-----------------------------------------`);
+console.log(`User Logging In: ${user.email}`);
+console.log(`Detected IP: ${userIP}`);
+console.log(`-----------------------------------------`);
 
     // Maintenance & Security Checks
     const settings = await Setting.findOne();
