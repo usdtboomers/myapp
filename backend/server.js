@@ -10,12 +10,34 @@ const allRoutes = require('./routes');
 const { startCron } = require('./roiCron');
 
 
-const { setupTelegramBot } = require('./utils/telegramBot');
+// const { setupTelegramBot } = require('./utils/telegramBot');
 
 const app = express();
 
 // Middleware
-app.use(cors());
+// Middleware
+const allowedOrigins = [
+  'http://localhost:3000',      // Local React app (is port ko apne hisaab se change kar lena agar 5173 hai toh)
+  'http://good.localhost:3000', // Local Admin Subdomain
+  'https://usdtboomers.com',     // DHYAN DEIN: Yahan apna live domain dalna
+  'https://good.usdtboomers.com' // DHYAN DEIN: Yahan apna live admin subdomain dalna
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Agar origin allowed list mein hai ya fir origin nahi hai (jaise Postman se testing), toh allow karo
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
+app.use(express.json());
+
+
 app.use(express.json());
 
 // Routes setup
@@ -44,8 +66,8 @@ mongoose.connect(process.env.MONGO_URI)
 
       // 4. 🤖 TELEGRAM VERIFICATION BOT
       // 👈 NAYA CODE YAHAN HAI: Database connect hone ke baad bot start kar dein
-      setupTelegramBot(); 
-      console.log('✅ Telegram Verification Bot Started');
+    //  setupTelegramBot(); 
+    //  console.log('✅ Telegram Verification Bot Started');
 
     } catch (error) {
       console.error('⚠️ Error starting Cron Jobs:', error);

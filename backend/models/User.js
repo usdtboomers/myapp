@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema({
 telegramId: { type: String, default: null },
   isTelegramJoined: { type: Boolean, default: false },
 
-
+ipAddress: { type: String}, // IP save karne ke liye field
 
   depositAddress: {
     type: String,

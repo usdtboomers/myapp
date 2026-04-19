@@ -98,8 +98,7 @@ router.get('/direct-team/:userId', async (req, res) => {
           connectFromField: "userId",
           connectToField: "sponsorId",
           as: "fullDownline",
-          maxDepth: 10 // Kitne level deep tak jana hai
-        }
+         }
       },
 
       // Step C: Result ko format karna aur counts banana
@@ -141,9 +140,8 @@ router.get('/direct-team/:userId', async (req, res) => {
           startWith: "$userId",
           connectFromField: "userId",
           connectToField: "sponsorId",
-          as: "myDownline",
-          maxDepth: 10
-        }
+          as: "myDownline"
+         }
       },
       { $project: { totalMyTeam: { $size: "$myDownline" } } }
     ]);

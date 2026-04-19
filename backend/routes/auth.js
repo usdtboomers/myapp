@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const router = express.Router();
-// bcryptjs hata diya hai kyunki ab normal password chahiye
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
@@ -9,13 +8,17 @@ const Setting = require('../models/Setting');
 const sanitizeUser = require('../utils/sanitizeUser');
 const sendEmail = require('../utils/sendEmail');
 const checkFeature = require('../middleware/checkFeatureEnabled');
-const DummyUser = require('../models/DummyUser.js'); // 🔥 Ye line check kar lo
-// 1️⃣ SABSE UPAR FILE MEIN YEH IMPORT ADD KARNA (Agar pehle se nahi kiya hai toh)
+const DummyUser = require('../models/DummyUser.js');
 const LoginHistory = require('../models/LoginHistory'); 
 const { bot } = require('../utils/telegramBot');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'yoursecretkey';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://178.128.20.53';
+
+// 📌 Helper: Get Real IP Address
+const getClientIP = (req) => {
+    return req.headers['x-forwarded-for'] ? req.headers['x-forwarded-for'].split(',')[0] : req.socket.remoteAddress;
+};
 
 // 📌 Generate Unique User ID
 const generateUserId = async () => {
@@ -23,10 +26,8 @@ const generateUserId = async () => {
   let exists = true;
   while (exists) {
     id = Math.floor(1000000 + Math.random() * 9000000);
-    // 🔥 Dono tables mein check karo ki ID khali hai ya nahi
     const existsInReal = await User.exists({ userId: id });
     const existsInDummy = await DummyUser.exists({ userId: id });
-    
     if (!existsInReal && !existsInDummy) {
       exists = false;
     }
@@ -35,256 +36,159 @@ const generateUserId = async () => {
 };
 
 // ====================== REGISTER ======================
-// ====================== REGISTER ======================
 router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
   try {
     const { name, mobile, email, country, password, sponsorId } = req.body;
+    const userIP = getClientIP(req);
 
-    // ✅ CHECK 1: Sponsor ID is mandatory
-    if (!sponsorId) {
-      return res.status(400).json({ message: 'Sponsor ID is compulsory to register.' });
+    // 🔥 DEBUGGING LOGS: Inhe yahan paste karo
+    console.log("-----------------------------------------");
+    console.log("User IP Detected:", userIP); 
+    const count = await User.countDocuments({ ipAddress: userIP });
+    console.log("Total Users with this IP in DB:", count);
+    console.log("-----------------------------------------");
+
+    // 🛡️ ADMIN BYPASS CHECK
+    let isAdmin = false;
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+        try {
+            const token = authHeader.split(' ')[1];
+            const decoded = jwt.verify(token, JWT_SECRET);
+            const requestor = await User.findById(decoded.id);
+            if (requestor && requestor.role === 'admin') isAdmin = true;
+        } catch (e) { /* Guest registration */ }
     }
 
-    // ✅ CHECK 2: Validate Sponsor ID exists in database
-  // ✅ CHECK 2: Validate Sponsor ID (Real aur Dummy dono check karega)
-let sponsorExists = await User.findOne({ userId: parseInt(sponsorId) });
+    // 🛑 REGISTRATION LIMIT: Ek IP se max 5 IDs
+  if (!isAdmin) {
+      // Ye query sirf unhe ginegi jinka IP match karta ho aur jo khali (null) na hon
+      const totalRegisteredFromIP = await User.countDocuments({ 
+        ipAddress: { $exists: true, $ne: null, $eq: userIP } 
+      });
 
-// Agar real user mein nahi mila, toh DummyUser table mein dhoondo 🔥
-if (!sponsorExists) {
-    if (typeof DummyUser !== 'undefined') {
+      if (totalRegisteredFromIP >= 5) {
+        return res.status(403).json({ 
+message: `Access Denied: Maximum registration limit reached. Only 5 accounts are allowed per device/IP (${userIP}).`        });
+      }
+    }
+
+    if (!email || !email.toLowerCase().endsWith('@gmail.com')) {
+        return res.status(400).json({ message: 'Registration failed: Only @gmail.com emails are accepted.' });
+    }
+
+    if (!sponsorId) return res.status(400).json({ message: 'Sponsor ID is compulsory to register.' });
+
+    let sponsorExists = await User.findOne({ userId: parseInt(sponsorId) });
+    if (!sponsorExists && typeof DummyUser !== 'undefined') {
         sponsorExists = await DummyUser.findOne({ userId: parseInt(sponsorId) });
     }
-}
-
-// Agar dono jagah nahi mila, tabhi error do
-if (!sponsorExists) {
-    return res.status(400).json({ message: 'Invalid Sponsor ID. Sponsor not found in the system.' });
-}
+    if (!sponsorExists) return res.status(400).json({ message: 'Invalid Sponsor ID.' });
 
     if (!name || !mobile || !email || !country || !password) {
       return res.status(400).json({ message: 'All fields are required.' });
     }
 
-    if (password === '123456') {
-      return res.status(400).json({ message: 'Password is too weak. Please choose a stronger password.' });
-    }
-
-    // ✅ CHECK 3: Pre-check for duplicate Email or Mobile to give clear message
     const existingUser = await User.findOne({ $or: [{ email: email }, { mobile: mobile }] });
     if (existingUser) {
-        if (existingUser.mobile === mobile) {
-            return res.status(400).json({ message: 'This mobile number is already registered.' });
-        }
-        if (existingUser.email === email) {
-            return res.status(400).json({ message: 'This email is already registered.' });
-        }
+        return res.status(400).json({ message: existingUser.mobile === mobile ? 'Mobile already registered.' : 'Email already registered.' });
     }
 
     const userId = await generateUserId();
     
-    // ✅ Seedha normal password save kar rahe hain bina hash kiye
     const user = new User({
-      userId,
-      name,
-      mobile,
-      email,
-      country,
-      password: password, // Plain text
-      transactionPassword: password, // Plain text
+      userId, name, mobile, email, country,
+      password, transactionPassword: password,
       sponsorId: parseInt(sponsorId),
       role: 'user',
+      ipAddress: userIP // IP Save ho raha hai
     });
 
     await user.save();
 
-    // ==========================================
-    // ✅ NEW: WELCOME EMAIL SENDING LOGIC
-    // ==========================================
- try {
-  await sendEmail({
-    email: user.email,
-    subject: '🎉 Welcome to USDBoomer!',
-    message: `Welcome ${user.name}, your account has been created successfully.`,
-    html: `
-    <div style="font-family: 'Segoe UI', Arial, sans-serif; background:#f4f6f9; padding:20px;">
-      
-      <div style="max-width:600px; margin:auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
-        
-        <!-- Header -->
-        <div style="background:linear-gradient(135deg,#0f2027,#203a43,#2c5364); padding:30px; text-align:center;">
-          <h1 style="color:#fff; margin:0; font-size:26px;">🚀 Welcome to USDT Boomers</h1>
-          <p style="color:#ddd; margin-top:8px;">Your journey starts here</p>
-        </div>
+    // Welcome Email Logic
+    try {
+        await sendEmail({
+            email: user.email,
+            subject: '🎉 Welcome to USDBoomer!',
+            html: `<h3>Welcome ${user.name}</h3><p>User ID: ${user.userId}<br>Password: ${password}</p>`
+        });
+    } catch (emailErr) { console.error("Email failed"); }
 
-        <!-- Body -->
-        <div style="padding:30px;">
-          <p style="font-size:16px;">Hello <strong>${user.name}</strong>,</p>
+    res.status(201).json({ message: 'User registered successfully.', userId: user.userId, name: user.name, password: user.password });
 
-          <p style="font-size:15px; color:#555;">
-            Congratulations! Your account has been successfully created. Please find your login details below.
-          </p>
-
-          <!-- Info Box -->
-          <div style="background:#f8fafc; padding:20px; border-radius:10px; margin:20px 0;">
-            <p style="margin:8px 0; font-size:16px;">
-              👤 <strong>User ID:</strong> ${user.userId}
-            </p>
-
-            <p style="margin:8px 0; font-size:16px;">
-              🔑 <strong>Password:</strong> ${password}
-            </p>
-            <p style="margin:8px 0; font-size:16px;">
-              🔑 <strong>Transaction Password:</strong> ${password}
-            </p>
-          </div>
-
-          <!-- Button -->
-          <div style="text-align:center; margin:30px 0;">
-         <a href="https://usdtboomers.com/login"
-   style="background:#1e88e5; color:#fff; padding:14px 30px; text-decoration:none; border-radius:6px; font-size:16px; font-weight:bold; display:inline-block; white-space:nowrap;">
-   🔐 Login to Dashboard
-</a>
-          </div>
-
-          <!-- Warning -->
-          <p style="font-size:13px; color:#d32f2f;">
-            ⚠️ Please do not share your login details with anyone for security reasons.
-          </p>
-        </div>
-
-        <!-- Footer -->
-        <div style="background:#111; color:#bbb; text-align:center; padding:15px; font-size:12px;">
-          © ${new Date().getFullYear()} USDBoomer. All rights reserved.
-        </div>
-
-      </div>
-    </div>
-    `,
-  });
-
-  console.log("✅ Welcome email sent to", user.email);
-
-} catch (emailErr) {
-  console.error("❌ Email failed:", emailErr);
-}
-    // ==========================================
-
-// ✅ FIX: Frontend ko naam aur password bhi bhej rahe hain taaki Modal (Popup) mein show ho sake
-    res.status(201).json({ 
-      message: 'User registered successfully. Details sent to email.', 
-      userId: user.userId,
-      name: user.name,
-      password: user.password 
-    });  } catch (err) {
+  } catch (err) {
     console.error('Register error:', err);
-
-    // 🛑 Duplicate Key Error Handler (Mongo E11000) fail-safe
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyValue)[0]; // Ye 'mobile' ya 'email' batayega
-      return res.status(400).json({ message: `The ${field} is already registered. Please use another ${field}.` });
-    }
-
-    res.status(500).json({ message: 'Server error. Please try again.' });
+    res.status(500).json({ message: 'Server error.' });
   }
 });
 
-
 // ====================== LOGIN ======================
-
-
-
-// 2️⃣ YEH TUMHARA UPDATED LOGIN ROUTE HAI
 router.post('/login', async (req, res) => {
   try {
     const { userId, password } = req.body;
-
-    const settings = await Setting.findOne();
-    if (!settings) {
-      return res.status(500).json({ message: 'Settings not found' });
-    }
+    const userIP = getClientIP(req);
 
     const user = await User.findOne({ userId });
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
-    // Maintenance check
-    if (settings.maintenanceMode) {
-      const whitelist = (settings.maintenanceWhitelist || []).map(String);
-      const userIdStr = String(user.userId);
-      if (!whitelist.includes(userIdStr) && user.role !== 'admin') {
-        return res.status(503).json({
-          message: 'Site is under maintenance. Please try later.',
-        });
-      }
+    // 🛡️ LOGIN LIMIT CHECK (Except Admin)
+    if (user.role !== 'admin') {
+        // Check how many UNIQUE users have logged in from this IP
+        const uniqueUsersOnThisIP = await LoginHistory.distinct('userId', { ipAddress: userIP });
+        
+        // Agar ye user naya hai is IP ke liye aur 5 unique users pehle se hain, toh block karo
+        if (uniqueUsersOnThisIP.length >= 5 && !uniqueUsersOnThisIP.includes(user.userId)) {
+return res.status(403).json({ 
+    message: 'Access Denied: Login limit exceeded. Only 5 unique accounts are allowed per IP address.' 
+});        }
     }
 
-    // Allow Login OFF check
-    if (!settings.allowLogin && user.role !== 'admin') {
-      return res.status(403).json({
-        message: 'Login is temporarily disabled in the System.',
-      });
+    // Maintenance & Security Checks
+    const settings = await Setting.findOne();
+    if (settings) {
+        if (settings.maintenanceMode && user.role !== 'admin') {
+            const whitelist = (settings.maintenanceWhitelist || []).map(String);
+            if (!whitelist.includes(String(user.userId))) return res.status(503).json({ message: 'Maintenance Mode.' });
+        }
+        if (!settings.allowLogin && user.role !== 'admin') return res.status(403).json({ message: 'Login is disabled.' });
     }
 
-    // ✅ Normal Text Password Comparison
-    if (password.toLowerCase() !== user.password.toLowerCase()) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
+    if (password.toLowerCase() !== user.password.toLowerCase()) return res.status(401).json({ message: 'Invalid credentials' });
+    if (user.isBlocked) return res.status(403).json({ message: 'Account blocked.' });
 
-    if (user.isBlocked) {
-      return res.status(403).json({
-        message: 'This account has been temporarily restricted due to policy violations.',
-      });
-    }
+
+    if (!user.ipAddress) {
+    // Agar purana user hai jiska IP save nahi hai, toh ab save kar lo
+    user.ipAddress = userIP; 
+    await user.save();
+    console.log(`✅ Purane User ${user.userId} ka IP update ho gaya.`);
+}
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '15m' });
 
-
- 
-    // ==========================================
-    // 🛡️ NAYA CODE: LOGIN PAR TELEGRAM MEMBERSHIP CHECK
-    // ==========================================
-    // if (user.isTelegramJoined && user.telegramId) {
-    //     try {
-    //         // Bot instance import karein (path check kar lena apne hisab se)
-    //         const { bot } = require('../utils/telegramBot'); 
-    //         const channelUsername = "@usdt_boomers"; // Aapka official channel
-
-    //         const memberStatus = await bot.telegram.getChatMember(channelUsername, user.telegramId);
-    //         const isActive = ['member', 'administrator', 'creator'].includes(memberStatus.status);
-
-    //         if (!isActive) {
-    //             // User ne channel leave kar diya hai, status reset karo
-    //             user.isTelegramJoined = false;
-    //             await user.save();
-    //             console.log(`⚠️ User ${user.userId} left channel. Status reset to False.`);
-    //         }
-    //     } catch (tgErr) {
-    //         // Agar bot block hai ya koi API error hai, toh login mat roko
-    //         console.error('Telegram Login Check Failed:', tgErr.message);
-    //     }
-    // }
-    // ==========================================
-    // 🔥 NAYA CODE: LOGIN HISTORY SAVE KARNE KE LIYE
-    // ==========================================
+    // Save Login History with IP
     try {
        await LoginHistory.create({
-    userId: user.userId,
-    name: user.name || "Unknown",
-    mobile: user.mobile || "N/A" // 🔥 NAYA ADD KIYA
-});
-    } catch (historyErr) {
-        console.error('Failed to save login history:', historyErr.message);
-        // Hum yahan return nahi kar rahe taaki agar history save hone me error aaye,
-        // tab bhi user ka login na ruke.
-    }
-    // ==========================================
+          userId: user.userId,
+          name: user.name,
+          mobile: user.mobile,
+          ipAddress: userIP // Iske liye LoginHistory model mein ipAddress field hona chahiye
+       });
+    } catch (hErr) { console.error('History failed'); }
 
     res.json({ message: 'Login successful', token, user: sanitizeUser(user) });
+
   } catch (err) {
-    console.error('Login error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
+// ====================== FORGOT/RESET PASSWORD ======================
+// (Aapka purana forgot-password aur reset-password logic yahan rahega...)
+// ...
+
+ 
 // ====================== FORGOT PASSWORD ======================
 router.post('/forgot-password', checkFeature(), async (req, res) => {
   const { userId } = req.body;

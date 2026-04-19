@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from 'api/axios';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { User, Lock, ArrowRight, Eye, EyeOff, Check } from 'lucide-react';
 import TelegramButton from '../../components/TelegramButton';
 // ----------------------------------------------------------------------
@@ -23,8 +23,35 @@ const UserLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation(); // 👈 Ye naya add kiya hai
   const { login } = useAuth();
   const inputRef = useRef(null);
+
+
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const urlToken = queryParams.get('token');
+    const urlUser = queryParams.get('user');
+
+    if (urlToken && urlUser) {
+      try {
+        const userData = JSON.parse(decodeURIComponent(urlUser));
+        
+        // LocalStorage mein save karein
+        localStorage.setItem('token', urlToken);
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        // Context/App ko batayein ki login ho gaya hai
+        login(userData, urlToken);
+        
+        // Turant dashboard par bhej dein
+        window.location.href = '/dashboard';
+      } catch (err) {
+        console.error("Auto-login data parsing failed", err);
+      }
+    }
+  }, [location, login]);
 
   // --- LOGIC: Load Saved Users ---
   useEffect(() => {
@@ -93,7 +120,7 @@ const UserLogin = () => {
       // Simulate API delay
       setTimeout(() => {
         setLoading(false);
-        navigate('/dashboard');
+navigate('/dashboard', { replace: true });
       }, 1500);
 
     } catch (err) {

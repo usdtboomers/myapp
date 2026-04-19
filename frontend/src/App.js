@@ -82,9 +82,11 @@ function AppContent() {
 
   const isAdmin = !!localStorage.getItem('adminToken');
   
-  // 🔥 UPDATE 1: Logic me 'super-panal' kar diya taaki maintenance me access mile
+  // 🔥 Subdomain Check (Ye naya logic hai)
+  const hostname = window.location.hostname;
+  const isGoodSubdomain = hostname.startsWith('good.');
+
   const isAdminPath = path.startsWith('/admin') || path.startsWith('/super-panal') || path === '/community-access';
-  
   const isPublicPath = ['/', '/login', '/register'].includes(path);
 
   useEffect(() => {
@@ -101,10 +103,7 @@ function AppContent() {
       .finally(() => setChecked(true));
   }, []);
 
-  // ✅ Current logged-in user ID
   const currentUserId = JSON.parse(localStorage.getItem('user'))?.userId;
-
-  // ✅ Check if user is allowed during maintenance
   const isAllowed = !maintenance || isPublicPath || isAdmin || isAdminPath || whitelist.includes(currentUserId);
 
   if (!checked) return (
@@ -135,80 +134,86 @@ function AppContent() {
 
       <div className="bg-pattern min-h-screen">
         <ScrollToTop />
-        <Routes>
-          {/* 🌐 Public Routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/maintenance" element={<MaintenancePage />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />  {/* 👈 Yeh line add karein */}
-
-          {/* 🔐 User Routes */}
-          <Route path="/dashboard" element={<RequireUserAuth><UserLayout><Dashboard /></UserLayout></RequireUserAuth>} />
-          <Route path="/dashboard/:userId" element={<RequireUserAuth><UserLayout><Dashboard /></UserLayout></RequireUserAuth>} />
-           <Route path="/profile" element={<RequireUserAuth><UserLayout><UserProfile /></UserLayout></RequireUserAuth>} />
-          <Route path="/withdrawals" element={<RequireUserAuth><UserLayout><UserWithdrawalHistory /></UserLayout></RequireUserAuth>} />
-          <Route path="/notifications" element={<RequireUserAuth><UserLayout><Notifications/></UserLayout></RequireUserAuth>} />
-          <Route path="/wallet-history" element={<RequireUserAuth><UserLayout><WalletHistory /></UserLayout></RequireUserAuth>} />
-          <Route path="/direct-team" element={<RequireUserAuth><UserLayout><DirectTeamPage /></UserLayout></RequireUserAuth>} />
-          <Route path="/all-team" element={<RequireUserAuth><UserLayout><AllTeamPage /></UserLayout></RequireUserAuth>} />
-         <Route 
-  path="/reward-progress" 
-  element={
-    <RequireUserAuth>
-      <UserLayout>
-        <RewardProgress />
-      </UserLayout>
-    </RequireUserAuth>
-  } 
-/> 
-           <Route path="/team-tree" element={<RequireUserAuth><UserLayout><AllTeamTreePage /></UserLayout></RequireUserAuth>} />
-          <Route path="/direct-income" element={<RequireUserAuth><UserLayout><DirectIncome /></UserLayout></RequireUserAuth>} />
-          <Route path="/level-income" element={<RequireUserAuth><UserLayout><LevelIncome /></UserLayout></RequireUserAuth>} />
-          <Route path="/daily-roi" element={<RequireUserAuth><UserLayout><DailyROIIncome /></UserLayout></RequireUserAuth>} />
-          <Route path="/my-transfers" element={<RequireUserAuth><UserLayout><MyTransfers /></UserLayout></RequireUserAuth>} />
-          <Route path="/deposit-history" element={<RequireUserAuth><UserLayout><DepositHistory /></UserLayout></RequireUserAuth>} />
-          <Route path="/topup-details" element={<RequireUserAuth><UserLayout><TopupDetails /></UserLayout></RequireUserAuth>} />
-          <Route path="/support" element={<RequireUserAuth><UserLayout><Support /></UserLayout></RequireUserAuth>} />
-           <Route path="/transaction-details" element={<RequireUserAuth><UserLayout><TransactionDetails /></UserLayout></RequireUserAuth>} />
-          <Route path="/downline-business" element={<RequireUserAuth><UserLayout><DownlineBusiness /></UserLayout></RequireUserAuth>} />
-          <Route path="/credit-to-wallet" element={<RequireUserAuth><UserLayout><CreditToWallet /></UserLayout></RequireUserAuth>} />
-<Route path="/system-deposit-history" element={<SystemDepositHistory />} />
-<Route path="/system-withdrawal-history" element={<SystemWithdrawalHistory />} />
-
-          {/* 🔐 Admin Routes */}
-          
-          {/* Login Path */}
-          <Route path="/community-access" element={<AdminLogin />} />
-
-           {/* 🔥 UPDATE 2: Route path ko '/super-panal' kar diya */}
-           <Route path="/super-panal" element={<RequireAdminAuth><AdminLayout /></RequireAdminAuth>}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="users" element={<UserListTable />} />
-            <Route path="topups" element={<TotalTopUpPage />} />
-            <Route path="deposits" element={<DepositTable />} />
-            <Route path="withdrawals/request" element={<RequestWithdrawalPage />} />
-            <Route path="withdrawals/all" element={<AllWithdrawalsPage />} />
-            <Route path="direct-income" element={<DirectIncomePage />} />
+        
+        {/* 🚀 SUBDOMAIN ROUTING LOGIC STARTS HERE */}
+        {isGoodSubdomain ? (
+          /* =========================================
+             👑 ADMIN ROUTES (Only for 'good.' subdomain)
+             ========================================= */
+          <Routes>
+            {/* Direct subdomain pe aane par login pe bhej do */}
+            <Route path="/" element={<Navigate to="/community-access" />} />
             
-            <Route path="notifications" element={<AdminNotifications />} />
-            <Route path="level-income" element={<LevelIncomePage />} />
-            <Route path="wallet-summary" element={<WalletSummaryPage />} />
-             <Route path="credit-to-wallet" element={<CreditToWalletPage />} />
-            <Route path="blocked-users" element={<BlockedUsers />} />
-            <Route path="transactions" element={<AdminTransactions />} />
-            <Route path="settings" element={<AdminSettingsPage />} />
-            <Route path="transactions/reverse" element={<ReverseTransaction />} />
-            <Route path="login-stats" element={<AdminLoginStats />} />
-            <Route path="add-user" element={<AddUser />} />
-            <Route path="manual-deposit" element={<ManualDeposit />} />
-            <Route path="support" element={<AdminSupport />} />
-          </Route>
+            {/* Admin Login Path */}
+            <Route path="/community-access" element={<AdminLogin />} />
 
-          {/* 🚧 Fallback */}
-          <Route path="*" element={<Navigate to={maintenance ? '/maintenance' : '/'} />} />
-        </Routes>
+            {/* Admin Dashboard & Other Routes */}
+            <Route path="/super-panal" element={<RequireAdminAuth><AdminLayout /></RequireAdminAuth>}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<UserListTable />} />
+              <Route path="topups" element={<TotalTopUpPage />} />
+              <Route path="deposits" element={<DepositTable />} />
+              <Route path="withdrawals/request" element={<RequestWithdrawalPage />} />
+              <Route path="withdrawals/all" element={<AllWithdrawalsPage />} />
+              <Route path="direct-income" element={<DirectIncomePage />} />
+              <Route path="notifications" element={<AdminNotifications />} />
+              <Route path="level-income" element={<LevelIncomePage />} />
+              <Route path="wallet-summary" element={<WalletSummaryPage />} />
+              <Route path="credit-to-wallet" element={<CreditToWalletPage />} />
+              <Route path="blocked-users" element={<BlockedUsers />} />
+              <Route path="transactions" element={<AdminTransactions />} />
+              <Route path="settings" element={<AdminSettingsPage />} />
+              <Route path="transactions/reverse" element={<ReverseTransaction />} />
+              <Route path="login-stats" element={<AdminLoginStats />} />
+              <Route path="add-user" element={<AddUser />} />
+              <Route path="manual-deposit" element={<ManualDeposit />} />
+              <Route path="support" element={<AdminSupport />} />
+            </Route>
+
+            {/* Subdomain par koi galat URL dale toh wapas login par bhej do */}
+            <Route path="*" element={<Navigate to="/community-access" />} />
+          </Routes>
+        ) : (
+          /* =========================================
+             👤 USER & PUBLIC ROUTES (For Normal Domain)
+             ========================================= */
+          <Routes>
+            {/* 🌐 Public Routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/maintenance" element={<MaintenancePage />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
+
+            {/* 🔐 User Routes */}
+            <Route path="/dashboard" element={<RequireUserAuth><UserLayout><Dashboard /></UserLayout></RequireUserAuth>} />
+            <Route path="/dashboard/:userId" element={<RequireUserAuth><UserLayout><Dashboard /></UserLayout></RequireUserAuth>} />
+            <Route path="/profile" element={<RequireUserAuth><UserLayout><UserProfile /></UserLayout></RequireUserAuth>} />
+            <Route path="/withdrawals" element={<RequireUserAuth><UserLayout><UserWithdrawalHistory /></UserLayout></RequireUserAuth>} />
+            <Route path="/notifications" element={<RequireUserAuth><UserLayout><Notifications/></UserLayout></RequireUserAuth>} />
+            <Route path="/wallet-history" element={<RequireUserAuth><UserLayout><WalletHistory /></UserLayout></RequireUserAuth>} />
+            <Route path="/direct-team" element={<RequireUserAuth><UserLayout><DirectTeamPage /></UserLayout></RequireUserAuth>} />
+            <Route path="/all-team" element={<RequireUserAuth><UserLayout><AllTeamPage /></UserLayout></RequireUserAuth>} />
+            <Route path="/reward-progress" element={<RequireUserAuth><UserLayout><RewardProgress /></UserLayout></RequireUserAuth>} /> 
+            <Route path="/team-tree" element={<RequireUserAuth><UserLayout><AllTeamTreePage /></UserLayout></RequireUserAuth>} />
+            <Route path="/direct-income" element={<RequireUserAuth><UserLayout><DirectIncome /></UserLayout></RequireUserAuth>} />
+            <Route path="/level-income" element={<RequireUserAuth><UserLayout><LevelIncome /></UserLayout></RequireUserAuth>} />
+            <Route path="/daily-roi" element={<RequireUserAuth><UserLayout><DailyROIIncome /></UserLayout></RequireUserAuth>} />
+            <Route path="/my-transfers" element={<RequireUserAuth><UserLayout><MyTransfers /></UserLayout></RequireUserAuth>} />
+            <Route path="/deposit-history" element={<RequireUserAuth><UserLayout><DepositHistory /></UserLayout></RequireUserAuth>} />
+            <Route path="/topup-details" element={<RequireUserAuth><UserLayout><TopupDetails /></UserLayout></RequireUserAuth>} />
+            <Route path="/support" element={<RequireUserAuth><UserLayout><Support /></UserLayout></RequireUserAuth>} />
+            <Route path="/transaction-details" element={<RequireUserAuth><UserLayout><TransactionDetails /></UserLayout></RequireUserAuth>} />
+            <Route path="/downline-business" element={<RequireUserAuth><UserLayout><DownlineBusiness /></UserLayout></RequireUserAuth>} />
+            <Route path="/credit-to-wallet" element={<RequireUserAuth><UserLayout><CreditToWallet /></UserLayout></RequireUserAuth>} />
+            <Route path="/system-deposit-history" element={<SystemDepositHistory />} />
+            <Route path="/system-withdrawal-history" element={<SystemWithdrawalHistory />} />
+
+            {/* Main website par koi galat URL dale toh */}
+            <Route path="*" element={<Navigate to={maintenance ? '/maintenance' : '/'} />} />
+          </Routes>
+        )}
       </div>
     </div>
   );

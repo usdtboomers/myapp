@@ -97,17 +97,18 @@ const UserListTable = () => {
     setCurrentPage(1);
   };
 
-  // ✅ Export filtered users to CSV
+  // ✅ Export filtered users to CSV (Time added here)
   const exportToCSV = () => {
     const csvData = filteredUsers.map(user => ({
       UserID: user.userId,
       Name: user.name,
       Email: user.email,
       Mobile: user.mobile, 
-      DepositAddress: user.depositAddress || "N/A", // ✅ Added Deposit Address to CSV
+      DepositAddress: user.depositAddress || "N/A", 
       WalletBalance: user.walletBalance?.toFixed(2) || 0,
       TopUpAmount: user.topUpAmount || 0,
-      Joined: new Date(user.createdAt).toLocaleDateString(),
+      // 👉 YAHAN CHANGE KIYA: toLocaleString()
+      Joined: new Date(user.createdAt).toLocaleString(), 
     }));
 
     const csv = Papa.unparse(csvData);
@@ -115,7 +116,8 @@ const UserListTable = () => {
     saveAs(blob, 'filtered-user-list.csv');
   };
 
-  // ✅ NEW: Handle Login As User (Impersonation)
+  // ✅ Handle Login As User (Impersonation)
+// ✅ Handle Login As User (Impersonation)
   const handleLoginAsUser = async (targetUserId) => {
     try {
       const adminToken = localStorage.getItem('adminToken');
@@ -126,12 +128,17 @@ const UserListTable = () => {
         headers: { Authorization: `Bearer ${adminToken}` }
       });
 
-      // Save normal user token & details
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
+      // 🔴 Purana LocalStorage wala code yahan se hata diya gaya hai
 
-      // Open dashboard in a new tab
-      window.open('/dashboard', '_blank');
+      const { token: userToken, user: impersonatedUser } = res.data;
+      const userDataStr = JSON.stringify(impersonatedUser);
+      
+      // ✅ NAYA TARIQA: Data ko URL mein pack karke Main Website ke Login Page par bhejo
+      // Dhyan Dein: Live hone par http://localhost:3000 ko https://aapkidomain.com kar dena
+      const mainWebsiteUrl = `http://localhost:3000/login?token=${userToken}&user=${encodeURIComponent(userDataStr)}`;
+
+      // Main website ko naye tab mein kholo
+      window.open(mainWebsiteUrl, '_blank', 'noopener,noreferrer');
       
     } catch (err) {
       console.error("Impersonation failed:", err);
@@ -142,7 +149,7 @@ const UserListTable = () => {
   // ✅ Copy Function
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
-    alert(`Copied ID: ${text}`); // Small alert to confirm copy
+    alert(`Copied ID: ${text}`); 
   };
 
   if (loading) {
@@ -232,7 +239,6 @@ const UserListTable = () => {
               <th className="px-4 py-3 border">Name</th>
               <th className="px-4 py-3 border">Email</th>
               <th className="px-4 py-3 border">Mobile</th>
-              {/* ✅ NEW COLUMN FOR DEPOSIT ADDRESS */}
               <th className="px-4 py-3 border">Deposit Address</th>
               <th className="px-4 py-3 border">Wallet</th>
               <th className="px-4 py-3 border">Top-Up</th>
@@ -250,7 +256,6 @@ const UserListTable = () => {
               currentItems.map((user, idx) => (
                 <tr key={idx} className="hover:bg-gray-50">
                   
-                  {/* ✅ UPDATED CLICKABLE USER ID + COPY OPTION */}
                   <td className="px-4 py-2 border">
                     <div className="flex items-center gap-2">
                       <button 
@@ -276,7 +281,6 @@ const UserListTable = () => {
                   <td className="px-4 py-2 border text-gray-600">{user.email}</td>
                   <td className="px-4 py-2 border text-gray-600">{user.mobile}</td>
                   
-                  {/* ✅ DEPOSIT ADDRESS DISPLAY */}
                   <td className="px-4 py-2 border text-gray-600 text-xs font-mono break-all max-w-[150px] overflow-hidden text-ellipsis">
                     {user.depositAddress ? (
                       <div className="flex items-center justify-between gap-1">
@@ -311,7 +315,8 @@ const UserListTable = () => {
                     )}
                   </td>
                   <td className="px-4 py-2 border text-gray-500 whitespace-nowrap">
-                    {new Date(user.createdAt).toLocaleDateString()}
+                    {/* 👉 YAHAN CHANGE KIYA: toLocaleString() */}
+                    {new Date(user.createdAt).toLocaleString()}
                   </td>
                 </tr>
               ))

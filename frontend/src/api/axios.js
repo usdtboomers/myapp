@@ -5,11 +5,13 @@ import 'nprogress/nprogress.css';
 // Loading bar ki setting
 NProgress.configure({ showSpinner: false, speed: 400, minimum: 0.2 });
 
-// Automatically switch between Local and Live
-const isLocal = window.location.hostname === "localhost";
+// ✅ UPDATE 1: Ab ye 'localhost' aur 'good.localhost' dono ko Local manega
+const isLocal = window.location.hostname.includes("localhost");
 
 const api = axios.create({
-  baseURL: isLocal ? 'http://localhost:5000/api' : '/api', 
+  // Local par seedha port 5000 hit karega. 
+  // LIVE ke liye 'https://yourdomain.com/api' daalna best hai taki subdomain se API cross-origin fail na ho
+  baseURL: isLocal ? 'http://localhost:5000/api' : 'https://usdtboomers.com/api', // 👈 'yourdomain.com' ko apne asli domain se badal lein
 });
 
 // ✅ 1. EKLAUTA SMART REQUEST INTERCEPTOR 
@@ -21,9 +23,9 @@ api.interceptors.request.use((config) => {
     return config;
   }
 
-  // Pata karo ki route admin ka hai YA user admin panel mein hai
+  // ✅ UPDATE 2: Pata karo ki route admin ka hai YA user admin SUBDOMAIN ('good.') par hai
   const isAdminRoute = config.url && config.url.startsWith('/admin');
-  const isAdminPanel = window.location.pathname.startsWith('/super-panal'); 
+  const isAdminPanel = window.location.hostname.startsWith('good.'); // 👈 Ab ye path ki jagah subdomain check karega
 
   if (isAdminRoute || isAdminPanel) {
     // Agar admin page par hai, toh sirf adminToken bhejo

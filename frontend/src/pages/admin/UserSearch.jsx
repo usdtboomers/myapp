@@ -85,6 +85,8 @@ function UserSearch() {
   };
 
   // ================= IMPERSONATE USER =================
+ // ================= IMPERSONATE USER =================
+ // ================= IMPERSONATE USER =================
   const handleImpersonate = async () => {
     const token = getAdminToken();
     if (!token) return setMessage("Admin not authenticated");
@@ -96,11 +98,15 @@ function UserSearch() {
 
       const { token: userToken, user: impersonatedUser } = res.data;
 
-      localStorage.setItem("token", userToken);
-      localStorage.setItem("user", JSON.stringify(impersonatedUser));
-      localStorage.setItem("isImpersonating", "true");
+      // ✅ BINA NAYA PAGE BANAYE: Seedha aapke purane Login page par URL ke sath data bhejein
+      const userDataStr = JSON.stringify(impersonatedUser);
+      
+      // Dhyan Dein: Live hone par http://localhost:3000 ko https://aapkidomain.com kar dena
+      const mainWebsiteUrl = `http://localhost:3000/login?token=${userToken}&user=${encodeURIComponent(userDataStr)}`;
 
-      window.open("/dashboard", "_blank", "noopener,noreferrer");
+      // Main website ke login page ko naye tab mein kholo
+      window.open(mainWebsiteUrl, "_blank", "noopener,noreferrer");
+
     } catch (err) {
       console.error(err);
       setMessage(err.response?.data?.message || "Failed to impersonate user");
