@@ -116,23 +116,21 @@ router.post('/login', async (req, res) => {
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
     // 🛡️ SMART LOGIN LIMIT (Bina purana data udaye)
-    if (user.role !== 'admin') {
-        const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
+   // 🛡️ SMART LOGIN LIMIT
+if (user.role !== 'admin') {
+    const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
 
-        if (!isLocalIP) {
-            // Sirf "Asli IPs" ki ginti karo jo database mein hain
-            const uniqueUsersOnThisIP = await LoginHistory.distinct('userId', { 
-                ipAddress: userIP,
-                ipAddress: { $ne: null, $nin: ["127.0.0.1", "::1"] } 
+    if (!isLocalIP) {
+        // Sirf us REAL IP par kitne unique User IDs hain unhe gino
+        const uniqueUsersOnThisIP = await LoginHistory.distinct('userId', { ipAddress: userIP });
+
+        if (uniqueUsersOnThisIP.length >= 5 && !uniqueUsersOnThisIP.includes(user.userId)) {
+            return res.status(403).json({ 
+                message: `Access Denied: Is Device/Network par 5 accounts ki limit poori ho gayi hai.` 
             });
-
-            if (uniqueUsersOnThisIP.length >= 5 && !uniqueUsersOnThisIP.includes(user.userId)) {
-                return res.status(403).json({ 
-                    message: `Access Denied: Is Device/Network par 5 accounts ki limit poori ho gayi hai.` 
-                });
-            }
         }
     }
+}
 
     console.log(`User Logging In: ${user.email} | IP: ${userIP}`);
 
