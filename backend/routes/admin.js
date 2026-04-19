@@ -316,19 +316,35 @@ router.post('/toggle-sponsor', async (req, res) => {
 
 
 // 📊 5. GET LIVE IP & LOGIN STATS
+// 📊 5. GET LIVE IP & LOGIN STATS (Unique Users Only)
 router.get('/live-ip-stats', async (req, res) => {
     try {
         const LoginHistory = require('../models/LoginHistory');
         const User = require('../models/User');
 
-        // Sabse latest 15 logins uthao
-        const recentLogins = await LoginHistory.find().sort({ createdAt: -1 }).limit(15).lean();
+        // 🔥 SMART FIX: Ek ID ek hi baar aayegi, aur uska sabse latest time dikhega
+        const recentLogins = await LoginHistory.aggregate([
+            { $sort: { createdAt: -1 } }, // 1. Sabse naye records upar laao
+            { 
+                $group: { 
+                    _id: "$userId", // 2. User ID ke hisaab se Group banao (Duplicate hatao)
+                    name: { $first: "$name" }, // Uska naam lo
+                    ipAddress: { $first: "$ipAddress" }, // Latest IP lo
+                    createdAt: { $first: "$createdAt" } // Latest Time lo
+                } 
+            },
+            { $sort: { createdAt: -1 } }, // 3. Group banne ke baad fir se Naye Time ke hisaab se arrange karo
+            { $limit: 15 } // 4. Sirf top 15 "Unique" log dikhao
+        ]);
 
         // Har login ke IP par total kitne accounts hain, wo count karo
         const enrichedData = await Promise.all(recentLogins.map(async (log) => {
             const count = await User.countDocuments({ ipAddress: log.ipAddress });
             return {
-                ...log,
+                userId: log._id, // MongoDB grouping mein ID '_id' ban jati hai, humne isey wapas userId kar diya
+                name: log.name,
+                ipAddress: log.ipAddress,
+                createdAt: log.createdAt,
                 totalAccountsOnIp: count
             };
         }));
