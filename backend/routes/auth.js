@@ -42,6 +42,7 @@ const generateUserId = async () => {
 // ====================== REGISTER ======================
 router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
   try {
+    
     const { name, mobile, email, country, password, sponsorId } = req.body;
     const userIP = getClientIP(req);
 
@@ -109,6 +110,8 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
 // ====================== LOGIN ======================
 router.post('/login', async (req, res) => {
   try {
+    // login route ke andar ekdum upar daal do
+console.log("DEBUG: All Headers:", JSON.stringify(req.headers, null, 2));
     const { userId, password } = req.body;
     const userIP = getClientIP(req);
 
