@@ -3,18 +3,18 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const listEndpoints = require('express-list-endpoints');
+const path = require('path'); // 👈 NAYA: Path module add kiya hai
 
 // 📦 Imports
 const allRoutes = require('./routes'); 
- const startSweeper = require('./cron/sweepJob');
+const startSweeper = require('./cron/sweepJob');
 const { startCron } = require('./roiCron');
-
 
 // const { setupTelegramBot } = require('./utils/telegramBot');
 
 const app = express();
 app.set('trust proxy', true); // 🔥 YE SABSE ZAROORI HAI NGINX KE LIYE
-// Middleware
+
 // Middleware
 const allowedOrigins = [
   'http://localhost:3000',
@@ -29,7 +29,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Agar origin allowed list mein hai ya fir origin nahi hai (jaise Postman se testing), toh allow karo
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -41,14 +40,23 @@ app.use(cors({
 
 app.use(express.json());
 
-
-app.use(express.json());
-
 // Routes setup
 app.use('/api', allRoutes);
 
-// Debugging: API list print (Ise comment kiya hai taaki terminal clear rahe, zaroorat ho toh hata lena)
+// 👇 ============================================================== 👇
+// 👇 NAYA CODE: Ye React app ki routing ko handle karega 👇
+// Dhyan dein: Agar aapke frontend ke build folder ka naam 'dist' hai toh 'build' ki jagah 'dist' likh dein.
+app.use(express.static(path.join(__dirname, '../frontend/build')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+});
+// 👆 NAYA CODE YAHAN KHATAM HAI 👆
+// 👆 ============================================================== 👆
+
+// Debugging: API list print (Ise comment kiya hai taaki terminal clear rahe)
 // console.log(listEndpoints(app)); 
+
 mongoose.connect(process.env.MONGO_URI) 
   .then(async () => { 
     console.log('✅ MongoDB connected successfully');
@@ -56,10 +64,8 @@ mongoose.connect(process.env.MONGO_URI)
     try {
       // 1. 🔥 LIVE LISTENER (Primary)
       // Ise pehle chalu karein taaki live deposits turant dikhein
-    
-
+      
       //2. 🛡️ AUTO SWEEPER (Backup)
-     // Agar aapka WSS stable nahi hai, toh isey 5-10 minute ke gap par rakhein
       startSweeper(); // <--- Testing ke liye isey abhi COMMENT (//) kar do
       console.log('✅ Sweeper Cron Started (Backup Mode)');
 
@@ -67,19 +73,14 @@ mongoose.connect(process.env.MONGO_URI)
       await startCron(); 
       console.log('✅ ROI Cron Scheduler Started');
       
-
       // 4. 🤖 TELEGRAM VERIFICATION BOT
-      // 👈 NAYA CODE YAHAN HAI: Database connect hone ke baad bot start kar dein
-    //  setupTelegramBot(); 
-    //  console.log('✅ Telegram Verification Bot Started');
+      // setupTelegramBot(); 
+      // console.log('✅ Telegram Verification Bot Started');
 
     } catch (error) {
       console.error('⚠️ Error starting Cron Jobs:', error);
     }
 
-    
-
-    
     // 🚀 Start Express Server
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
