@@ -3,10 +3,8 @@ const mongoose = require('mongoose');
 const loginHistorySchema = new mongoose.Schema({
   userId: { type: Number, required: true },
   name: { type: String },
-  mobile: { type: String }, // 🔥 YEH LINE HONI CHAHIYE
-  loginTime: { type: Date, default: Date.now },
-  ipAddress: { type: String}, // IP save karne ke liye field
-
-});
+  mobile: { type: String }, 
+  ipAddress: { type: String }
+}, { timestamps: true }); // 🔥 YE LINE DATE AUR TIME AUTO-SAVE KAREGI (createdAt)
 
 module.exports = mongoose.model('LoginHistory', loginHistorySchema);

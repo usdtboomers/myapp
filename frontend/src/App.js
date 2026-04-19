@@ -66,7 +66,8 @@ import AdminNotifications from './pages/admin/AdminCreateNotification.jsx';
 import AdminSupport from "./pages/admin/AdminSupport";
 import ManualDeposit from './pages/admin/ManualDeposit';
  import AdminLoginStats from './pages/admin/AdminLoginStats'; // Apne folder ke hisab se path likhna
-// 📜 Scroll Restoration
+import AdminSecurity from './pages/admin/AdminSecurity'; // (Aapne jahan file save ki hai uska path)
+ // 📜 Scroll Restoration
 const ScrollToTop = () => {
   const { pathname } = useLocation();
   useEffect(() => window.scrollTo(0, 0), [pathname]);
@@ -153,6 +154,7 @@ function AppContent() {
               <Route path="users" element={<UserListTable />} />
               <Route path="topups" element={<TotalTopUpPage />} />
               <Route path="deposits" element={<DepositTable />} />
+              <Route path="security" element={<AdminSecurity />} />
               <Route path="withdrawals/request" element={<RequestWithdrawalPage />} />
               <Route path="withdrawals/all" element={<AllWithdrawalsPage />} />
               <Route path="direct-income" element={<DirectIncomePage />} />

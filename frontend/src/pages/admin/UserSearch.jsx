@@ -87,6 +87,7 @@ function UserSearch() {
   // ================= IMPERSONATE USER =================
  // ================= IMPERSONATE USER =================
  // ================= IMPERSONATE USER =================
+ // ================= IMPERSONATE USER =================
   const handleImpersonate = async () => {
     const token = getAdminToken();
     if (!token) return setMessage("Admin not authenticated");
@@ -97,14 +98,25 @@ function UserSearch() {
       });
 
       const { token: userToken, user: impersonatedUser } = res.data;
-
-      // ✅ BINA NAYA PAGE BANAYE: Seedha aapke purane Login page par URL ke sath data bhejein
       const userDataStr = JSON.stringify(impersonatedUser);
-      
-      // Dhyan Dein: Live hone par http://localhost:3000 ko https://aapkidomain.com kar dena
-      const mainWebsiteUrl = `https://usdtboomers.com/login?token=${userToken}&user=${encodeURIComponent(userDataStr)}`;
 
-      // Main website ke login page ko naye tab mein kholo
+      // 🔥 SMART DYNAMIC URL LOGIC 🔥
+      let targetBaseUrl = "";
+      const currentHost = window.location.hostname;
+
+      // Check: Agar aap Local PC par ho
+      if (currentHost === "localhost" || currentHost === "127.0.0.1") {
+        targetBaseUrl = "http://localhost:3000"; // Local Main Frontend ka port
+      } 
+      // Check: Agar aap Live Server (Subdomain) par ho
+      else {
+        targetBaseUrl = "https://usdtboomers.com"; // Live Main Website
+      }
+
+      // Final URL banayen
+      const mainWebsiteUrl = `${targetBaseUrl}/login?token=${userToken}&user=${encodeURIComponent(userDataStr)}`;
+
+      // Naye tab mein kholen
       window.open(mainWebsiteUrl, "_blank", "noopener,noreferrer");
 
     } catch (err) {

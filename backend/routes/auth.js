@@ -10,6 +10,7 @@ const sendEmail = require('../utils/sendEmail');
 const checkFeature = require('../middleware/checkFeatureEnabled');
 const DummyUser = require('../models/DummyUser.js');
 const LoginHistory = require('../models/LoginHistory'); 
+const IpRule = require('../models/IpRule'); // 🚀 NEW: IP Rules Model Import
 const { bot } = require('../utils/telegramBot');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'yoursecretkey';
@@ -46,21 +47,6 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     const { name, mobile, email, country, password, sponsorId } = req.body;
     const userIP = getClientIP(req);
 
-    // 🛡️ SMART REGISTRATION LIMIT
-  // 🛡️ SMART REGISTRATION LIMIT
-const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
-
-if (!isLocalIP) {
-    // Ab ye query sirf us bande ke REAL IP ko count karegi
-    const totalRegisteredFromIP = await User.countDocuments({ ipAddress: userIP });
-
-    if (totalRegisteredFromIP >= 5) {
-        return res.status(403).json({ 
-            message: `Access Denied: You have reached the maximum limit of 5 accounts per device or network.` 
-        });
-    }
-}
-
     if (!email || !email.toLowerCase().endsWith('@gmail.com')) {
         return res.status(400).json({ message: 'Registration failed: Only @gmail.com emails are accepted.' });
     }
@@ -73,9 +59,38 @@ if (!isLocalIP) {
     }
     if (!sponsorExists) return res.status(400).json({ message: 'Invalid Sponsor ID.' });
 
+    // 🚀 NEW: SPONSOR DEACTIVATION CHECK
+    if (sponsorExists.isSponsorDeactivated) {
+return res.status(403).json({
+  message: 'Policy violation: The provided sponsor link is invalid or deactivated.'
+});    }
+
     const existingUser = await User.findOne({ $or: [{ email: email }, { mobile: mobile }] });
     if (existingUser) {
         return res.status(400).json({ message: existingUser.mobile === mobile ? 'Mobile already registered.' : 'Email already registered.' });
+    }
+
+    // 🛡️ SMART REGISTRATION LIMIT (With Admin Controls)
+    const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
+
+    if (!isLocalIP) {
+        // Fetch Admin Rules for this IP
+        const rule = await IpRule.findOne({ ipAddress: userIP });
+        
+        // 1. Is this IP completely blocked?
+        if (rule && rule.isBlocked) {
+            return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
+        }
+
+        // 2. What is the limit for this IP? (Default 5)
+        const allowedLimit = rule ? rule.limit : 5;
+        const totalRegisteredFromIP = await User.countDocuments({ ipAddress: userIP });
+
+        if (totalRegisteredFromIP >= allowedLimit) {
+            return res.status(403).json({ 
+                message: `Access Denied: You have reached the maximum limit of ${allowedLimit} accounts per device or network.` 
+            });
+        }
     }
 
     const userId = await generateUserId();
@@ -108,29 +123,36 @@ if (!isLocalIP) {
 // ====================== LOGIN ======================
 router.post('/login', async (req, res) => {
   try {
-    // login route ke andar ekdum upar daal do
-     const { userId, password } = req.body;
+    const { userId, password } = req.body;
     const userIP = getClientIP(req);
 
     const user = await User.findOne({ userId });
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
-    // 🛡️ SMART LOGIN LIMIT (Bina purana data udaye)
-   // 🛡️ SMART LOGIN LIMIT
-if (user.role !== 'admin') {
-    const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
+    // 🛡️ SMART LOGIN LIMIT (With Admin Controls)
+    if (user.role !== 'admin') {
+        const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
 
-    if (!isLocalIP) {
-        // Sirf us REAL IP par kitne unique User IDs hain unhe gino
-        const uniqueUsersOnThisIP = await LoginHistory.distinct('userId', { ipAddress: userIP });
+        if (!isLocalIP) {
+            // Fetch Admin Rules for this IP
+            const rule = await IpRule.findOne({ ipAddress: userIP });
+            
+            // 1. Check if IP is Blocked
+            if (rule && rule.isBlocked) {
+                return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
+            }
 
-        if (uniqueUsersOnThisIP.length >= 5 && !uniqueUsersOnThisIP.includes(user.userId)) {
-            return res.status(403).json({ 
-                message: `"Access Denied: You have reached the maximum limit of 5 accounts per device or network."` 
-            });
+            // 2. Check Custom Limit (Default 5)
+            const allowedLimit = rule ? rule.limit : 5;
+            const uniqueUsersOnThisIP = await LoginHistory.distinct('userId', { ipAddress: userIP });
+
+            if (uniqueUsersOnThisIP.length >= allowedLimit && !uniqueUsersOnThisIP.includes(user.userId)) {
+                return res.status(403).json({ 
+                    message: `Access Denied: You have reached the maximum limit of ${allowedLimit} accounts per device or network.` 
+                });
+            }
         }
     }
-}
 
     console.log(`User Logging In: ${user.email} | IP: ${userIP}`);
 
@@ -156,10 +178,10 @@ if (user.role !== 'admin') {
     // ✅ Save History with Real IP
     try {
        await LoginHistory.create({
-          userId: user.userId,
-          name: user.name,
-          mobile: user.mobile,
-          ipAddress: userIP 
+         userId: user.userId,
+         name: user.name,
+         mobile: user.mobile,
+         ipAddress: userIP 
        });
     } catch (hErr) { console.error('History failed'); }
 
@@ -170,9 +192,7 @@ if (user.role !== 'admin') {
   }
 });
 
- 
 
- 
 // ====================== FORGOT PASSWORD ======================
 router.post('/forgot-password', checkFeature(), async (req, res) => {
   const { userId } = req.body;

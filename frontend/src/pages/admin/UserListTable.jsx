@@ -67,7 +67,7 @@ const UserListTable = () => {
       } else if (topUpFilter === 'paid') {
         topUpMatch = amount > 0;
       } else if (topUpFilter !== 'all') {
-        // Specific amount (30, 60, 120, etc.)
+        // Specific amount (10, 30, 60, 120, etc.)
         topUpMatch = amount === Number(topUpFilter);
       }
 
@@ -97,7 +97,7 @@ const UserListTable = () => {
     setCurrentPage(1);
   };
 
-  // ✅ Export filtered users to CSV (Time added here)
+  // ✅ Export filtered users to CSV
   const exportToCSV = () => {
     const csvData = filteredUsers.map(user => ({
       UserID: user.userId,
@@ -107,7 +107,6 @@ const UserListTable = () => {
       DepositAddress: user.depositAddress || "N/A", 
       WalletBalance: user.walletBalance?.toFixed(2) || 0,
       TopUpAmount: user.topUpAmount || 0,
-      // 👉 YAHAN CHANGE KIYA: toLocaleString()
       Joined: new Date(user.createdAt).toLocaleString(), 
     }));
 
@@ -116,8 +115,7 @@ const UserListTable = () => {
     saveAs(blob, 'filtered-user-list.csv');
   };
 
-  // ✅ Handle Login As User (Impersonation)
-// ✅ Handle Login As User (Impersonation)
+  // ✅ Handle Login As User (Impersonation) - SMART DYNAMIC URL
   const handleLoginAsUser = async (targetUserId) => {
     try {
       const adminToken = localStorage.getItem('adminToken');
@@ -128,14 +126,20 @@ const UserListTable = () => {
         headers: { Authorization: `Bearer ${adminToken}` }
       });
 
-      // 🔴 Purana LocalStorage wala code yahan se hata diya gaya hai
-
       const { token: userToken, user: impersonatedUser } = res.data;
       const userDataStr = JSON.stringify(impersonatedUser);
       
-      // ✅ NAYA TARIQA: Data ko URL mein pack karke Main Website ke Login Page par bhejo
-      // Dhyan Dein: Live hone par http://localhost:3000 ko https://aapkidomain.com kar dena
-      const mainWebsiteUrl = `https://usdtboomers.com/login?token=${userToken}&user=${encodeURIComponent(userDataStr)}`;
+      // 🔥 SMART DYNAMIC URL LOGIC 🔥
+      let targetBaseUrl = "";
+      const currentHost = window.location.hostname;
+
+      if (currentHost === "localhost" || currentHost === "127.0.0.1") {
+        targetBaseUrl = "http://localhost:3000"; // Local Main Frontend
+      } else {
+        targetBaseUrl = "https://usdtboomers.com"; // Live Main Website
+      }
+
+      const mainWebsiteUrl = `${targetBaseUrl}/login?token=${userToken}&user=${encodeURIComponent(userDataStr)}`;
 
       // Main website ko naye tab mein kholo
       window.open(mainWebsiteUrl, '_blank', 'noopener,noreferrer');
@@ -196,6 +200,7 @@ const UserListTable = () => {
             <option value="all">All Users</option>
             <option value="unpaid">Registered (No Top-Up)</option>
             <option value="paid">All Paid Users</option>
+            <option value="10">$10 Package</option> {/* 🔥 NAYA OPTION ADDED YAHAN */}
             <option value="30">$30 Package</option>
             <option value="60">$60 Package</option>
             <option value="120">$120 Package</option>
@@ -315,7 +320,6 @@ const UserListTable = () => {
                     )}
                   </td>
                   <td className="px-4 py-2 border text-gray-500 whitespace-nowrap">
-                    {/* 👉 YAHAN CHANGE KIYA: toLocaleString() */}
                     {new Date(user.createdAt).toLocaleString()}
                   </td>
                 </tr>

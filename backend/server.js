@@ -2,26 +2,27 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const listEndpoints = require('express-list-endpoints');
-const path = require('path'); // 👈 NAYA: Path module add kiya hai
+const path = require('path');
 
 // 📦 Imports
 const allRoutes = require('./routes'); 
 const startSweeper = require('./cron/sweepJob');
 const { startCron } = require('./roiCron');
 
-// const { setupTelegramBot } = require('./utils/telegramBot');
-
 const app = express();
-app.set('trust proxy', true); // 🔥 YE SABSE ZAROORI HAI NGINX KE LIYE
+app.set('trust proxy', true); // 🔥 NGINX & REAL IP KE LIYE ZAROORI
 
-// Middleware
+// ====================== 1. CORS SETUP ======================
+// ====================== 1. CORS SETUP ======================
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://127.0.0.1:3000',
   'http://good.localhost:3000',
+  'http://localhost:5000',       // 🔥 NAYA: Aapke error ke hisaab se isey allow karna zaroori hai
+  'http://127.0.0.1:5000',       // 🔥 NAYA
   'https://usdtboomers.com',
-  'http://usdtboomers.com',       // 👈 Bina SSL wala allow karo
-  'https://www.usdtboomers.com',   // 👈 www wala allow karo
+  'http://usdtboomers.com',
+  'https://www.usdtboomers.com',
   'http://www.usdtboomers.com',
   'https://good.usdtboomers.com',
   'http://good.usdtboomers.com'
@@ -29,9 +30,17 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Agar Postman/Server se request aaye toh pass karo
+    if (!origin) return callback(null, true);
+
+    // 🔥 SMART FIX: Agar origin ke aakhri mein slash (/) aa raha hai, toh usay hata do taaki exact match ho
+    const cleanOrigin = origin.replace(/\/$/, "");
+
+    // Ab check karo allowed list mein
+    if (allowedOrigins.includes(cleanOrigin)) {
       callback(null, true);
     } else {
+      console.log("Blocked by CORS:", origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -40,42 +49,44 @@ app.use(cors({
 
 app.use(express.json());
 
-// Routes setup
+// ====================== 2. API ROUTES ======================
 app.use('/api', allRoutes);
 
-// 👇 ============================================================== 👇
-// 👇 NAYA CODE: Ye React app ki routing ko handle karega 👇
-// Dhyan dein: Agar aapke frontend ke build folder ka naam 'dist' hai toh 'build' ki jagah 'dist' likh dein.
-app.use(express.static(path.join(__dirname, '../frontend/build')));
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+// 🛡️ API 404 HANDLER (Ye bahut zaroori hai)
+// Agar koi /api/xyz galat type karega toh HTML nahi, JSON error aayega
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ message: "API Route Not Found!" });
 });
-// 👆 NAYA CODE YAHAN KHATAM HAI 👆
-// 👆 ============================================================== 👆
 
-// Debugging: API list print (Ise comment kiya hai taaki terminal clear rahe)
-// console.log(listEndpoints(app)); 
 
+// ====================== 3. FRONTEND SERVING ======================
+// Agar aap frontend aur backend ek hi server (Node) se chala rahe ho
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+  });
+} else {
+  // Local development mein jab aap React alag chalate ho (npm start)
+  app.get('/', (req, res) => {
+    res.send('API is running locally... Use React Dev Server for UI.');
+  });
+}
+
+// ====================== 4. DATABASE & SERVER ======================
 mongoose.connect(process.env.MONGO_URI) 
   .then(async () => { 
     console.log('✅ MongoDB connected successfully');
 
     try {
-      // 1. 🔥 LIVE LISTENER (Primary)
-      // Ise pehle chalu karein taaki live deposits turant dikhein
-      
-      //2. 🛡️ AUTO SWEEPER (Backup)
-      startSweeper(); // <--- Testing ke liye isey abhi COMMENT (//) kar do
-      console.log('✅ Sweeper Cron Started (Backup Mode)');
+      // 1. Auto Sweeper (Backup)
+      startSweeper(); 
+      console.log('✅ Sweeper Cron Started');
 
-      // 3. ROI Cron
+      // 2. ROI Cron
       await startCron(); 
       console.log('✅ ROI Cron Scheduler Started');
-      
-      // 4. 🤖 TELEGRAM VERIFICATION BOT
-      // setupTelegramBot(); 
-      // console.log('✅ Telegram Verification Bot Started');
 
     } catch (error) {
       console.error('⚠️ Error starting Cron Jobs:', error);
@@ -89,5 +100,5 @@ mongoose.connect(process.env.MONGO_URI)
   })
   .catch((err) => {
     console.error('❌ MongoDB connection error:', err);
-    process.exit(1); // Agar database connect na ho, toh app ko band kar do (safe fail)
+    process.exit(1);
   });

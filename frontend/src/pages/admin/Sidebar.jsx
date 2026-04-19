@@ -4,7 +4,7 @@ import {
   FaHome, FaUsers, FaMoneyBill, FaWallet, FaListAlt, FaCog, FaSignOutAlt,
   FaSitemap, FaProjectDiagram, FaExchangeAlt, FaFileAlt, FaUserPlus,
   FaArrowCircleUp, FaArrowCircleDown, FaBell, FaClipboardList, FaCoins,
-  FaUserSlash, FaBars, FaTimes, FaHistory // 🔥 NAYA ICON ADD KIYA: FaHistory
+  FaUserSlash, FaBars, FaTimes, FaHistory, FaShieldAlt // 🔥 NAYA ICON ADD KIYA: FaShieldAlt
 } from 'react-icons/fa';
 
 const Sidebar = () => {
@@ -87,7 +87,11 @@ const Sidebar = () => {
               <FaUserSlash className="inline-block mr-2" /> Blocked Users
             </NavLink>
 
-            {/* 🔥 NAYA LINK YAHAN ADD KIYA HAI 🔥 */}
+            {/* 🔥 NAYA LINK: SECURITY & IP MANAGER 🔥 */}
+            <NavLink to={`${BASE_PATH}/security`} className={linkClass} onClick={toggleSidebar}>
+              <FaShieldAlt className="inline-block mr-2 text-red-500" /> Security & IPs
+            </NavLink>
+
             <NavLink to={`${BASE_PATH}/login-stats`} className={linkClass} onClick={toggleSidebar}>
               <FaHistory className="inline-block mr-2" /> Login Analytics
             </NavLink>

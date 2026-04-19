@@ -10,6 +10,7 @@ const Transaction = require('../models/Transaction');
 const Deposit = require('../models/Deposit');
 const verifyAdmin = require('../middleware/adminAuth');
  const LoginHistory = require('../models/LoginHistory');
+const IpRule = require('../models/IpRule');
 
 const { ethers } = require('ethers');
 require('dotenv').config();
@@ -256,6 +257,88 @@ router.get("/login-stats", verifyAdmin, async (req, res) => {
 
 
 
+// 1. 🔍 USER SEARCH (ID daalo, Details aur IP paao)
+router.post('/search-user', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const user = await User.findOne({ userId });
+        if (!user) return res.status(404).json({ message: "User not found!" });
+
+        // Is user ke IP par aur kitne log hain?
+        const usersOnSameIp = await User.find({ ipAddress: user.ipAddress }).select('userId name email');
+        
+        res.json({ user, usersOnSameIp });
+    } catch (err) { res.status(500).json({ message: "Server error" }); }
+});
+
+// 2. 🔍 IP SEARCH (IP daalo, uski limit aur logged users paao)
+router.post('/search-ip', async (req, res) => {
+    try {
+        const { ipAddress } = req.body;
+        const users = await User.find({ ipAddress }).select('userId name email isBlocked');
+        let rule = await IpRule.findOne({ ipAddress });
+        
+        if (!rule) rule = { ipAddress, limit: 5, isBlocked: false }; // Default
+
+        res.json({ users, rule });
+    } catch (err) { res.status(500).json({ message: "Server error" }); }
+});
+
+// 3. ⚙️ UPDATE IP RULE (Limit badhana ya IP Block karna)
+router.post('/update-ip-rule', async (req, res) => {
+    try {
+        const { ipAddress, limit, isBlocked } = req.body;
+        let rule = await IpRule.findOne({ ipAddress });
+
+        if (rule) {
+            rule.limit = limit;
+            rule.isBlocked = isBlocked;
+            await rule.save();
+        } else {
+            await IpRule.create({ ipAddress, limit, isBlocked });
+        }
+        res.json({ message: "IP Rules Updated Successfully!" });
+    } catch (err) { res.status(500).json({ message: "Server error" }); }
+});
+
+// 4. 🚫 TOGGLE SPONSOR LINK (Referral Deactivate/Activate)
+router.post('/toggle-sponsor', async (req, res) => {
+    try {
+        const { userId, status } = req.body; // status true = deactivated
+        const user = await User.findOneAndUpdate(
+            { userId }, 
+            { isSponsorDeactivated: status }, 
+            { new: true }
+        );
+        res.json({ message: status ? "Sponsor Link Blocked!" : "Sponsor Link Activated!" });
+    } catch (err) { res.status(500).json({ message: "Server error" }); }
+});
+
+
+// 📊 5. GET LIVE IP & LOGIN STATS
+router.get('/live-ip-stats', async (req, res) => {
+    try {
+        const LoginHistory = require('../models/LoginHistory');
+        const User = require('../models/User');
+
+        // Sabse latest 15 logins uthao
+        const recentLogins = await LoginHistory.find().sort({ createdAt: -1 }).limit(15).lean();
+
+        // Har login ke IP par total kitne accounts hain, wo count karo
+        const enrichedData = await Promise.all(recentLogins.map(async (log) => {
+            const count = await User.countDocuments({ ipAddress: log.ipAddress });
+            return {
+                ...log,
+                totalAccountsOnIp: count
+            };
+        }));
+
+        res.json(enrichedData);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
 
 // ------------------------------------------------------------------
 // ✅ TELEGRAM MANAGEMENT ROUTES (ADMIN ONLY)

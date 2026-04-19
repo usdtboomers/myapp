@@ -29,6 +29,7 @@ const UserLogin = () => {
 
 
 
+// --- LOGIC: Auto-Login from Admin (Impersonate) ---
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const urlToken = queryParams.get('token');
@@ -38,21 +39,21 @@ const UserLogin = () => {
       try {
         const userData = JSON.parse(decodeURIComponent(urlUser));
         
-        // LocalStorage mein save karein
-        localStorage.setItem('token', urlToken);
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        // Context/App ko batayein ki login ho gaya hai
+        // 1. Pehle data ko context mein bhejo taaki App ko pata chale login ho gaya
         login(userData, urlToken);
         
-        // Turant dashboard par bhej dein
-        window.location.href = '/dashboard';
+        // 2. Fir URL ko saaf (clean) karo taaki page refresh hone par purana token na dikhe
+        window.history.replaceState({}, document.title, "/login");
+
+        // 3. React Router ke through Dashboard par bhejo (window.location.href use mat karo)
+        navigate('/dashboard', { replace: true });
+        
       } catch (err) {
         console.error("Auto-login data parsing failed", err);
+        setError("Invalid login link from Admin.");
       }
     }
-  }, [location, login]);
-
+  }, [location.search, login, navigate]); // <-- Dependencies update ki hain
   // --- LOGIC: Load Saved Users ---
   useEffect(() => {
     const users = JSON.parse(localStorage.getItem('savedUsers') || '[]');
