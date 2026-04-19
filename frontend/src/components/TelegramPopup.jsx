@@ -84,7 +84,7 @@ const TelegramPopup = ({ currentUser }) => {
                     <ShieldCheck size={44} color="#229ED9" style={{ marginBottom: '10px' }} />
                     <h2 style={titleStyle}>Telegram Verification</h2>
                     <div style={mandatoryAlertStyle}>
-                        ⚠️ Joining the Telegram Channel is <strong>mandatory for withdrawals.</strong>
+                        ⚠️ Joining the Telegram Channel is <strong>mandatory for Withdrawals.</strong>
                     </div>
                 </div>
 
@@ -105,9 +105,9 @@ const TelegramPopup = ({ currentUser }) => {
 
                 {/* Small Steps Instructions */}
                 <div style={smallStepsStyle}>
-                    <p><strong>Step 1:</strong> Click on Join and join the channel.</p>
+                    <p><strong>Step 1:</strong> Click and Join the Telegram Channel.</p>
                     <p><strong>Step 2:</strong> Start the bot.</p>
-                    <p><strong>Step 3:</strong> Click on Verify My Account.</p>
+                    <p><strong>Step 3:</strong> Click on Verify Your Account.</p>
                 </div>
 
                 <div style={dividerStyle}></div>
