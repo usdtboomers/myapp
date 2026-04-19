@@ -13,14 +13,18 @@ const { startCron } = require('./roiCron');
 // const { setupTelegramBot } = require('./utils/telegramBot');
 
 const app = express();
-
+app.set('trust proxy', true); // 🔥 YE SABSE ZAROORI HAI NGINX KE LIYE
 // Middleware
 // Middleware
 const allowedOrigins = [
-  'http://localhost:3000',      // Local React app (is port ko apne hisaab se change kar lena agar 5173 hai toh)
-  'http://good.localhost:3000', // Local Admin Subdomain
-  'https://usdtboomers.com',     // DHYAN DEIN: Yahan apna live domain dalna
-  'https://good.usdtboomers.com' // DHYAN DEIN: Yahan apna live admin subdomain dalna
+  'http://localhost:3000',
+  'http://good.localhost:3000',
+  'https://usdtboomers.com',
+  'http://usdtboomers.com',       // 👈 Bina SSL wala allow karo
+  'https://www.usdtboomers.com',   // 👈 www wala allow karo
+  'http://www.usdtboomers.com',
+  'https://good.usdtboomers.com',
+  'http://good.usdtboomers.com'
 ];
 
 app.use(cors({

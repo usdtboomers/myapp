@@ -17,7 +17,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://178.128.20.53';
 
 // 📌 Helper: Get Real IP Address
 const getClientIP = (req) => {
-    return req.headers['x-forwarded-for'] ? req.headers['x-forwarded-for'].split(',')[0] : req.socket.remoteAddress;
+    return req.headers['x-forwarded-for']?.split(',')[0] || req.ip || req.connection.remoteAddress;
 };
 
 // 📌 Generate Unique User ID
