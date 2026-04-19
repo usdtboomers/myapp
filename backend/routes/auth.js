@@ -56,7 +56,7 @@ if (!isLocalIP) {
 
     if (totalRegisteredFromIP >= 5) {
         return res.status(403).json({ 
-            message: `Access Denied: Is Device/Network par 5 accounts ki limit poori ho gayi hai.` 
+            message: `Access Denied: You have reached the maximum limit of 5 accounts per device or network.` 
         });
     }
 }
@@ -126,7 +126,7 @@ if (user.role !== 'admin') {
 
         if (uniqueUsersOnThisIP.length >= 5 && !uniqueUsersOnThisIP.includes(user.userId)) {
             return res.status(403).json({ 
-                message: `Access Denied: Is Device/Network par 5 accounts ki limit poori ho gayi hai.` 
+                message: `"Access Denied: You have reached the maximum limit of 5 accounts per device or network."` 
             });
         }
     }
