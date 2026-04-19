@@ -258,30 +258,57 @@ const Dashboard = () => {
   </div>
 </div>
 
-                <div className="flex flex-wrap text-white items-center gap-2">
-                  <button 
-                    onClick={() => window.open('https://t.me/usdt_boomers', '_blank')} 
-                    className="flex items-center gap-1.5 bg-[#229ED9]/10 text-[#229ED9] hover:bg-[#229ED9]/20 px-3 py-2 rounded-lg text-xs font-bold transition-all border border-[#229ED9]/20"
-                  >
-                    <Send size={14} /> 1. Join Channel
-                  </button>
+               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+  
+  {/* Step 1: Join Channel */}
+  <button 
+    onClick={() => window.open('https://t.me/usdt_boomers', '_blank')} 
+    style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+      backgroundColor: '#229ED9', color: '#ffffff',
+      padding: '8px 16px', borderRadius: '6px',
+      fontSize: '13px', fontWeight: 'bold',
+      border: 'none', cursor: 'pointer',
+      boxShadow: '0 2px 5px rgba(34, 158, 217, 0.4)'
+    }}
+  >
+    <Send size={15} /> 1. Join Channel
+  </button>
 
-                  <button 
-                    onClick={() => window.open(`https://t.me/Usdt_Boomers_Bot?start=${user?.userId || user?._id}`, '_blank')} 
-                    className="flex items-center gap-1.5 bg-[#229ED9]/10 text-[#229ED9] hover:bg-[#229ED9]/20 px-3 py-2 rounded-lg text-xs font-bold transition-all border border-[#229ED9]/20"
-                  >
-                    <ShieldCheck size={14} /> 2. Start Bot
-                  </button>
+  {/* Step 2: Start Bot */}
+  <button 
+    onClick={() => window.open(`https://t.me/Usdt_Boomers_Bot?start=${user?.userId || user?._id}`, '_blank')} 
+    style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+      backgroundColor: '#229ED9', color: '#ffffff',
+      padding: '8px 16px', borderRadius: '6px',
+      fontSize: '13px', fontWeight: 'bold',
+      border: 'none', cursor: 'pointer',
+      boxShadow: '0 2px 5px rgba(34, 158, 217, 0.4)'
+    }}
+  >
+    <ShieldCheck size={15} /> 2. Start Bot
+  </button>
 
-                  <button 
-                    onClick={handleManualCheck} 
-                    disabled={verifyLoading} 
-                    className="flex items-center gap-1.5 bg-green-500/20 text-green-400 hover:bg-green-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-green-500/30"
-                  >
-                    {verifyLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                    Verify Now
-                  </button>
-                </div>
+  {/* Step 3: Verify Button */}
+  <button 
+    onClick={handleManualCheck} 
+    disabled={verifyLoading} 
+    style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+      backgroundColor: '#16a34a', color: '#ffffff', // Solid Green
+      padding: '8px 16px', borderRadius: '6px',
+      fontSize: '13px', fontWeight: 'bold',
+      border: 'none', cursor: verifyLoading ? 'not-allowed' : 'pointer',
+      opacity: verifyLoading ? 0.7 : 1,
+      boxShadow: '0 2px 5px rgba(22, 163, 74, 0.4)'
+    }}
+  >
+    {verifyLoading ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
+    Verify Now
+  </button>
+
+</div>
               </div>
 
               {/* Status Message */}
