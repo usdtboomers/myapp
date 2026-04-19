@@ -102,7 +102,7 @@ function UserSearch() {
       const userDataStr = JSON.stringify(impersonatedUser);
       
       // Dhyan Dein: Live hone par http://localhost:3000 ko https://aapkidomain.com kar dena
-      const mainWebsiteUrl = `http://localhost:3000/login?token=${userToken}&user=${encodeURIComponent(userDataStr)}`;
+      const mainWebsiteUrl = `https://usdtboomers.com/login?token=${userToken}&user=${encodeURIComponent(userDataStr)}`;
 
       // Main website ke login page ko naye tab mein kholo
       window.open(mainWebsiteUrl, "_blank", "noopener,noreferrer");

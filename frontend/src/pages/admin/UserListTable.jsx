@@ -135,7 +135,7 @@ const UserListTable = () => {
       
       // ✅ NAYA TARIQA: Data ko URL mein pack karke Main Website ke Login Page par bhejo
       // Dhyan Dein: Live hone par http://localhost:3000 ko https://aapkidomain.com kar dena
-      const mainWebsiteUrl = `http://localhost:3000/login?token=${userToken}&user=${encodeURIComponent(userDataStr)}`;
+      const mainWebsiteUrl = `https://usdtboomers.com/login?token=${userToken}&user=${encodeURIComponent(userDataStr)}`;
 
       // Main website ko naye tab mein kholo
       window.open(mainWebsiteUrl, '_blank', 'noopener,noreferrer');
