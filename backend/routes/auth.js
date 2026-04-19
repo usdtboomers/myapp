@@ -61,17 +61,17 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     }
 
     // 🛑 REGISTRATION LIMIT: Ek IP se max 5 IDs
-  if (!isAdmin) {
-      // Ye query sirf unhe ginegi jinka IP match karta ho aur jo khali (null) na hon
-      const totalRegisteredFromIP = await User.countDocuments({ 
-        ipAddress: { $exists: true, $ne: null, $eq: userIP } 
-      });
+//   if (!isAdmin) {
+//       // Ye query sirf unhe ginegi jinka IP match karta ho aur jo khali (null) na hon
+//       const totalRegisteredFromIP = await User.countDocuments({ 
+//         ipAddress: { $exists: true, $ne: null, $eq: userIP } 
+//       });
 
-      if (totalRegisteredFromIP >= 5) {
-        return res.status(403).json({ 
-message: `Access Denied: Maximum registration limit reached. Only 5 accounts are allowed per device/IP (${userIP}).`        });
-      }
-    }
+//       if (totalRegisteredFromIP >= 5) {
+//         return res.status(403).json({ 
+// message: `Access Denied: Maximum registration limit reached. Only 5 accounts are allowed per device/IP (${userIP}).`        });
+//       }
+//     }
 
     if (!email || !email.toLowerCase().endsWith('@gmail.com')) {
         return res.status(400).json({ message: 'Registration failed: Only @gmail.com emails are accepted.' });
