@@ -288,17 +288,29 @@ router.post('/search-ip', async (req, res) => {
 router.post('/update-ip-rule', async (req, res) => {
     try {
         const { ipAddress, limit, isBlocked } = req.body;
-        let rule = await IpRule.findOne({ ipAddress });
-
-        if (rule) {
-            rule.limit = limit;
-            rule.isBlocked = isBlocked;
-            await rule.save();
-        } else {
-            await IpRule.create({ ipAddress, limit, isBlocked });
+        
+        // Validation: ipAddress aana zaroori hai
+        if (!ipAddress) {
+            return res.status(400).json({ message: "IP Address is required" });
         }
-        res.json({ message: "IP Rules Updated Successfully!" });
-    } catch (err) { res.status(500).json({ message: "Server error" }); }
+
+        // 🔥 USE THIS: findOneAndUpdate with Upsert
+        // Agar IP milega toh update hoga, nahi toh naya create ho jayega (upsert: true)
+        const updatedRule = await IpRule.findOneAndUpdate(
+            { ipAddress: ipAddress }, 
+            { 
+                limit: Number(limit), // 🔥 Number mein convert karna zaroori hai
+                isBlocked: Boolean(isBlocked) 
+            }, 
+            { new: true, upsert: true } 
+        );
+
+        res.json({ message: "IP Rules Updated Successfully!", rule: updatedRule });
+        
+    } catch (err) { 
+        console.error("IP Rule Update Error:", err);
+        res.status(500).json({ message: "Server error" }); 
+    }
 });
 
 // 4. 🚫 TOGGLE SPONSOR LINK (Referral Deactivate/Activate)
