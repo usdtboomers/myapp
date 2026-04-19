@@ -242,26 +242,26 @@ router.post('/login', async (req, res) => {
     // ==========================================
     // 🛡️ NAYA CODE: LOGIN PAR TELEGRAM MEMBERSHIP CHECK
     // ==========================================
-    if (user.isTelegramJoined && user.telegramId) {
-        try {
-            // Bot instance import karein (path check kar lena apne hisab se)
-            const { bot } = require('../utils/telegramBot'); 
-            const channelUsername = "@usdt_boomers"; // Aapka official channel
+    // if (user.isTelegramJoined && user.telegramId) {
+    //     try {
+    //         // Bot instance import karein (path check kar lena apne hisab se)
+    //         const { bot } = require('../utils/telegramBot'); 
+    //         const channelUsername = "@usdt_boomers"; // Aapka official channel
 
-            const memberStatus = await bot.telegram.getChatMember(channelUsername, user.telegramId);
-            const isActive = ['member', 'administrator', 'creator'].includes(memberStatus.status);
+    //         const memberStatus = await bot.telegram.getChatMember(channelUsername, user.telegramId);
+    //         const isActive = ['member', 'administrator', 'creator'].includes(memberStatus.status);
 
-            if (!isActive) {
-                // User ne channel leave kar diya hai, status reset karo
-                user.isTelegramJoined = false;
-                await user.save();
-                console.log(`⚠️ User ${user.userId} left channel. Status reset to False.`);
-            }
-        } catch (tgErr) {
-            // Agar bot block hai ya koi API error hai, toh login mat roko
-            console.error('Telegram Login Check Failed:', tgErr.message);
-        }
-    }
+    //         if (!isActive) {
+    //             // User ne channel leave kar diya hai, status reset karo
+    //             user.isTelegramJoined = false;
+    //             await user.save();
+    //             console.log(`⚠️ User ${user.userId} left channel. Status reset to False.`);
+    //         }
+    //     } catch (tgErr) {
+    //         // Agar bot block hai ya koi API error hai, toh login mat roko
+    //         console.error('Telegram Login Check Failed:', tgErr.message);
+    //     }
+    // }
     // ==========================================
     // 🔥 NAYA CODE: LOGIN HISTORY SAVE KARNE KE LIYE
     // ==========================================

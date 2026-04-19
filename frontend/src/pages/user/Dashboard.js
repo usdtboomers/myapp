@@ -14,11 +14,11 @@ import SuccessModal from "../../components/modals/SuccessModal";
 import TopUpModalWithInput from "../../components/modals/TopUpModalWithInput";
 import CreditToWalletModal from "../../components/modals/CreditToWalletModal";
 import TopNav from "../../components/navbar/TopNav";
-// ✅ 1. ADDED: PreLaunchPromo Import Kiya
-import PreLaunchPromo from "../../components/PreLaunchPromo"; // Path check kar lijiye agar aapne kahin aur rakha ho
-import TeamPromoPopup from "../../components/TeamPromoPopup"; // Ye nayi line add karni hai
-import RewardProgress from "./RewardProgress"; // Path check kar lena agar file same folder mein hai ya nahi
+import PreLaunchPromo from "../../components/PreLaunchPromo"; 
+import TeamPromoPopup from "../../components/TeamPromoPopup"; 
+import RewardProgress from "./RewardProgress"; 
 import TelegramPopup from "../../components/TelegramPopup";
+import { Send, ShieldCheck, CheckCircle, Loader2 } from 'lucide-react';
 
 const Dashboard = () => {
   const { user, token, setUser, logout } = useAuth();
@@ -26,7 +26,12 @@ const Dashboard = () => {
   const [showSidebar, setShowSidebar] = useState(false); 
 
   const [walletRefreshKey, setWalletRefreshKey] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Dashboard Loading
+  
+  // 🔥 ADDED: Telegram Verification ke liye alag state (Taaki pura page load na ho)
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyStatus, setVerifyStatus] = useState({ type: '', msg: '' });
+
   const [income, setIncome] = useState({
     directIncome: 0,
     levelIncome: 0,
@@ -97,7 +102,6 @@ const Dashboard = () => {
     }
   };
 
-
   useEffect(() => {
     if (user?.userId) {
         hasFetched.current = false;
@@ -136,6 +140,27 @@ const Dashboard = () => {
     }
   };
 
+  // 🔥 ADDED: Telegram Verification Function (Sirf Button ke liye)
+  const handleManualCheck = async () => {
+      setVerifyLoading(true);
+      setVerifyStatus({ type: '', msg: '' }); 
+      try {
+          const idToCheck = user?._id || user?.userId;
+          const res = await api.get(`/user/${idToCheck}`);
+
+          if (res.data.user.isTelegramJoined) {
+              setVerifyStatus({ type: 'success', msg: 'Account Verified Successfully! ✅ Refreshing...' });
+              setTimeout(() => window.location.reload(), 1500);
+          } else {
+              setVerifyStatus({ type: 'error', msg: "Verification failed! Please complete Step 1 & 2 first. ❌" });
+          }
+      } catch (error) {
+          setVerifyStatus({ type: 'error', msg: 'Connection error. Please try again.' });
+      } finally {
+          setVerifyLoading(false);
+      }
+  };
+
   if (!user || !token) return <SpinnerOverlay />;
 
   const referralLink = `${window.location.origin}/register?ref=${user.userId}`;
@@ -158,19 +183,14 @@ const Dashboard = () => {
 
       {loading && <SpinnerOverlay />}
       
-
-      {/* ✅ 2. ADDED: Free Topup Popup (Agar ID inactive hai toh ye aage aayega) */}
       <PreLaunchPromo />
-
       <TeamPromoPopup />
 
-      {/* TopNav - Fixed at top */}
-      <TopNav onHamburgerClick={() => setShowSidebar(true)} />
+      {/* TopNav ko popup se bhi upar rakhein */}
+      <div className="relative z-[100000000]"> 
+        <TopNav onHamburgerClick={() => setShowSidebar(true)} />
+      </div>
 
-{/* TopNav ko popup se bhi upar rakhein */}
-<div className="relative z-[100000000]"> 
-  <TopNav onHamburgerClick={() => setShowSidebar(true)} />
-</div>
       {/* Main Layout Container */}
       <div className="pt-1 p-2 md:p-0 flex gap-1 h-screen box-border bg-pattern">
         
@@ -180,69 +200,98 @@ const Dashboard = () => {
         {/* Main Content Area */}
         <main className="flex-1 w-full max-w-full overflow-y-auto pb-20 custom-scroll rounded-2xl bg-slate-900/40 backdrop-blur-md p-2 md:p-6 shadow-[0_0_40px_rgba(0,0,0,0.5)] lg:mt-2">
           
-          {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-  <div>
-    <div className="flex items-center gap-2 flex-wrap">
-      <h1 className="text-2xl md:text-3xl font-bold text-white">
-        Welcome{" "}
-        <span className="text-yellow-500 font-bold">
-          {user?.name || "User"}
-        </span>
-      </h1>
+          {/* ========================================== */}
+          {/* 1. HEADER SECTION (Welcome & Badge) */}
+          {/* ========================================== */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+            <div>
+              <div className="flex flex-col items-start gap-1.5">
+  <h1 className="text-2xl md:text-3xl font-bold text-white">
+    Welcome{" "}
+    <span className="text-yellow-500 font-bold">
+      {user?.name || "User"}
+    </span>
+  </h1>
 
-      {/* 🛡️ Chota aur Clean Status Badge */}
-      {user?.isTelegramJoined ? (
-       <div 
-  className="flex items-center gap-1 bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/40 shadow-lg shadow-green-500/20 transition-all duration-500 hover:scale-105"
-  style={{ 
-    height: 'fit-content',
-    animation: 'softGlow 3s infinite ease-in-out', // Subtle Glow Animation
-    backdropFilter: 'blur(4px)'
-  }}
->
-  {/* Inline Styles for the Animation */}
-  <style>{`
-    @keyframes softGlow {
-      0%, 100% { box-shadow: 0 0 5px rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.3); }
-      50% { box-shadow: 0 0 15px rgba(34, 197, 94, 0.5); border-color: rgba(34, 197, 94, 0.6); }
-    }
-  `}</style>
-
-  {/* SVG with a small rotation entry */}
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="12" 
-    height="12" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="4" 
-    strokeLinecap="round" 
-    strokeLinejoin="round"
-    className="animate-bounce-short"
-  >
-    <polyline points="20 6 9 17 4 12"></polyline>
-  </svg>
-
-  <span className="text-[10px] font-bold tracking-wider uppercase antialiased">
-    Telegram Verified
-  </span>
-</div>
-      ) : (
-        <div className="flex items-center gap-1 bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30 animate-pulse" style={{ height: 'fit-content' }}>
-          <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-          <span className="text-[10px] font-bold tracking-wider uppercase">Unverified</span>
-        </div>
-      )}
+  {/* 🛡️ Status Badge (Ab ye naam ke theek niche aayega) */}
+  {user?.isTelegramJoined ? (
+    <div className="flex items-center gap-1 bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/40 shadow-lg shadow-green-500/20" style={{ height: 'fit-content' }}>
+      <CheckCircle size={12} />
+      <span className="text-[10px] font-bold tracking-wider uppercase">Telegram Verified</span>
     </div>
-    
-    {/* Choti help line */}
-    {!user?.isTelegramJoined && (
-        <p className="text-gray-500 text-[11px] mt-1 ml-1 italic font-medium">Link Telegram to unlock withdrawals</p>
-    )}
+  ) : (
+    <div className="flex items-center gap-1 bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30 animate-pulse" style={{ height: 'fit-content' }}>
+      <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+      <span className="text-[10px] font-bold tracking-wider uppercase">Unverified</span>
+    </div>
+  )}
+</div>
+            </div>
+          </div>
+
+          {/* ========================================== */}
+          {/* 2. 🔥 COMPACT TELEGRAM VERIFICATION BANNER 🔥 */}
+          {/* ========================================== */}
+          {!user?.isTelegramJoined && (
+            <div className="bg-[#0f172a] border border-red-500/30 rounded-xl p-4 mb-8 relative overflow-hidden shadow-lg shadow-red-500/5">
+              <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+              
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+               <div className="pl-2">
+  <h3 className="text-red-400 font-bold text-sm flex items-center gap-2">
+    ⚠️ Action Required: Verify Telegram
+  </h3>
+  
+  <div className="mt-2.5 space-y-1.5 text-xs text-gray-300">
+    <p className="flex items-start gap-2">
+      <span className="font-bold text-red-300 whitespace-nowrap">Step 1:</span> 
+      <span>Click and Join the official Telegram Channel.</span>
+    </p>
+    <p className="flex items-start gap-2">
+      <span className="font-bold text-red-300 whitespace-nowrap">Step 2:</span> 
+      <span>Start the bot.</span>
+    </p>
+    <p className="flex items-start gap-2">
+      <span className="font-bold text-red-300 whitespace-nowrap">Step 3:</span> 
+      <span>Click on "Verify Now" button to complete process.</span>
+    </p>
   </div>
 </div>
+
+                <div className="flex flex-wrap text-white items-center gap-2">
+                  <button 
+                    onClick={() => window.open('https://t.me/usdt_boomers', '_blank')} 
+                    className="flex items-center gap-1.5 bg-[#229ED9]/10 text-[#229ED9] hover:bg-[#229ED9]/20 px-3 py-2 rounded-lg text-xs font-bold transition-all border border-[#229ED9]/20"
+                  >
+                    <Send size={14} /> 1. Join Channel
+                  </button>
+
+                  <button 
+                    onClick={() => window.open(`https://t.me/Usdt_Boomers_Bot?start=${user?.userId || user?._id}`, '_blank')} 
+                    className="flex items-center gap-1.5 bg-[#229ED9]/10 text-[#229ED9] hover:bg-[#229ED9]/20 px-3 py-2 rounded-lg text-xs font-bold transition-all border border-[#229ED9]/20"
+                  >
+                    <ShieldCheck size={14} /> 2. Start Bot
+                  </button>
+
+                  <button 
+                    onClick={handleManualCheck} 
+                    disabled={verifyLoading} 
+                    className="flex items-center gap-1.5 bg-green-500/20 text-green-400 hover:bg-green-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-green-500/30"
+                  >
+                    {verifyLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                    Verify Now
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Message */}
+              {verifyStatus.msg && (
+                <div className={`mt-3 pl-2 text-xs font-medium flex items-center gap-1 ${verifyStatus.type === 'error' ? 'text-red-400' : 'text-green-400'}`}>
+                  {verifyStatus.msg}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-8">
             {/* Wallet Balance */}
@@ -276,11 +325,8 @@ const Dashboard = () => {
                   <ReferralLink link={referralLink} />
                </div>
 
-               
-
                {/* RECENT DEPOSITS & WITHDRAWALS PREVIEW */}
                <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  
                   {/* Deposits Preview */}
                   <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
                     <div className="flex justify-between items-center mb-4">
@@ -303,7 +349,6 @@ const Dashboard = () => {
                             <div className="flex flex-col">
                               <span className="text-white">
                                 {new Date(dep.createdAt).toLocaleDateString()} 
-                               
                               </span>
                               {dep.hash && (
                                 <span className="text-blue-400/80 text-xs font-mono mt-0.5">
@@ -342,7 +387,6 @@ const Dashboard = () => {
                             <div className="flex flex-col">
                               <span className="text-white">
                                 {new Date(withd.createdAt).toLocaleDateString()} 
-                                
                               </span>
                               {withd.hash && (
                                 <span className="text-blue-400/80 text-xs font-mono mt-0.5">
@@ -358,7 +402,6 @@ const Dashboard = () => {
                       </ul>
                     )}
                   </div>
-
                </section>
             </div>
 
@@ -367,8 +410,8 @@ const Dashboard = () => {
             </section>
            
            <section className="mt-8 bg-slate-800/20 rounded-2xl border border-slate-700/30 overflow-hidden">
-    <RewardProgress />
-</section>
+             <RewardProgress />
+           </section>
           </div>
 
           {/* General Modals */}
@@ -411,15 +454,11 @@ const Dashboard = () => {
           )}
 
         </main>
-
-        
       </div>
 
-{!loading && user && <TelegramPopup currentUser={user} />}
+      {!loading && user && <TelegramPopup currentUser={user} />}
       
     </div>
-
-    
   );
 };
 

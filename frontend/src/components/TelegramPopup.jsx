@@ -3,6 +3,7 @@ import api from '../api/axios';
 import { CheckCircle, XCircle, Send, ShieldCheck, LogOut, Loader2, X } from 'lucide-react'; 
 
 const TelegramPopup = ({ currentUser }) => {
+    return null;
     const [isVerified, setIsVerified] = useState(true);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [loading, setLoading] = useState(false);

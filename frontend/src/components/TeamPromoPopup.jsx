@@ -13,33 +13,33 @@ const TeamPromoPopup = () => {
   const [isOpen, setIsOpen] = useState(false); 
   const [copied, setCopied] = useState(false);
 
-  // ✅ LOGIC 1: Telegram Verified hona chahiye + ID Active honi chahiye
+  // ✅ LOGIC 1: Wapas Normal Kar Diya (Bina Telegram Check ke)
   useEffect(() => {
-    if (user && user.topUpAmount > 0 && user.isTelegramJoined && !window.isTopupInProgress) {
+    if (user && user.topUpAmount > 0 && !window.isTopupInProgress) {
       setIsOpen(true);
     }
   }, [user]);
 
-  // ✅ LOGIC 2: Free ID claim ke baad trigger (Sirf agar verified hai)
+  // ✅ LOGIC 2: Wapas Normal
   useEffect(() => {
     const handleTrigger = () => {
-      if (user && user.isTelegramJoined) {
+      if (user) {
         setTimeout(() => {
           setIsOpen(true);
         }, 400); 
       }
     };
-
     window.addEventListener('showTeamPromo', handleTrigger);
     return () => window.removeEventListener('showTeamPromo', handleTrigger);
   }, [user]);
 
+  // 🛠️ YEH WALA FUNCTION COMMENT NAHI KARNA THA 🛠️
   const closePopup = () => {
     setIsOpen(false);
   };
 
-  // 🛡️ SECURITY: Agar Verified nahi hai ya User data nahi hai, toh kuch mat dikhao
-  if (!isOpen || !user || !user.isTelegramJoined) return null;
+  // 🛡️ SECURITY: isTelegramJoined yahan se hata diya
+  if (!isOpen || !user) return null;
 
   const referralLink = `${window.location.origin}/register?ref=${user.userId}`;
 
