@@ -164,7 +164,9 @@ const AdminSecurity = () => {
     btnSuccess: { padding: '10px 20px', background: '#2ecc71', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', width: '100%', marginTop: '10px' },
     infoBox: { background: '#f8f9fa', padding: '15px', borderRadius: '6px', border: '1px solid #e9ecef', marginTop: '15px', wordBreak: 'break-all' },
     ipLink: { color: '#3498db', cursor: 'pointer', textDecoration: 'underline', marginLeft: '10px', fontSize: '14px', background: 'none', border: 'none', padding: 0 },
-    userList: { listStyle: 'none', padding: 0, maxHeight: '200px', overflowY: 'auto' },
+    
+    // IP List Styles
+    userList: { listStyle: 'none', padding: 0, maxHeight: '200px', overflowY: 'auto', marginTop: '10px', background: '#fff', border: '1px solid #eee', borderRadius: '4px' },
     userListItem: { padding: '10px', borderBottom: '1px solid #eee', fontSize: '14px' },
     
     // Table & Responsive Styles
@@ -235,6 +237,23 @@ const AdminSecurity = () => {
                 <input type="checkbox" checked={ipRule.isBlocked} onChange={(e) => setIpRule({ ...ipRule, isBlocked: e.target.checked })} style={{ width: '25px', height: '25px', cursor: 'pointer' }} />
               </div>
               <button onClick={handleUpdateIpRule} style={{ ...styles.btnPrimary, width: '100%', background: '#2c3e50' }} disabled={loading}>💾 Save Security Rules</button>
+
+              {/* 🔥 YAHAN WAPAS AAYA LIST OF USERS ON THIS IP 🔥 */}
+              <div style={{ marginTop: '25px', borderTop: '1px solid #ddd', paddingTop: '15px' }}>
+                <h4>Users active on this IP ({ipData.length}):</h4>
+                {ipData.length > 0 ? (
+                  <ul style={styles.userList}>
+                    {ipData.map((u) => (
+                      <li key={u.userId} style={styles.userListItem}>
+                        <b>{u.userId}</b> - {u.name} <br/>
+                        <span style={{ fontSize: '12px', color: '#7f8c8d' }}>{u.email}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p style={{ color: '#7f8c8d', fontSize: '14px', marginTop: '5px' }}>No users found on this IP.</p>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -249,17 +268,15 @@ const AdminSecurity = () => {
           </button>
         </div>
 
-        {/* 🔥 NAYE TABLE CONTROLS (Responsive) 🔥 */}
+        {/* NAYE TABLE CONTROLS (Responsive) */}
         <div style={styles.controlsWrap}>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* Show Entries */}
             <select style={styles.controlSelect} value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))}>
               <option value={10}>Show 10</option>
               <option value={20}>Show 20</option>
               <option value={100}>Show 100</option>
             </select>
 
-            {/* IP Filter */}
             <select style={styles.controlSelect} value={ipCountFilter} onChange={(e) => setIpCountFilter(e.target.value)}>
               <option value="all">Filter by IP Count: All</option>
               <option value="1">1 ID on IP</option>
@@ -272,7 +289,6 @@ const AdminSecurity = () => {
             </select>
           </div>
 
-          {/* Search Table */}
           <input 
             type="text" 
             placeholder="Search User ID, Name or IP..." 
@@ -330,7 +346,7 @@ const AdminSecurity = () => {
           </table>
         </div>
 
-        {/* 🔥 PAGINATION FOOTER 🔥 */}
+        {/* PAGINATION FOOTER */}
         {filteredStats.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
             <span style={{ fontSize: '14px', color: '#7f8c8d', marginBottom: '10px' }}>
