@@ -47,21 +47,19 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     const userIP = getClientIP(req);
 
     // 🛡️ SMART REGISTRATION LIMIT
-    const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
-    
-    // Agar IP local nahi hai, toh hi limit check karo
-    if (!isLocalIP) {
-        const totalRegisteredFromIP = await User.countDocuments({ 
-            ipAddress: userIP,
-            ipAddress: { $ne: null, $nin: ["127.0.0.1", "::1"] } 
-        });
+  // 🛡️ SMART REGISTRATION LIMIT
+const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
 
-        if (totalRegisteredFromIP >= 5) {
-            return res.status(403).json({ 
-                message: `Access Denied: Maximum 5 accounts allowed per device/network.` 
-            });
-        }
+if (!isLocalIP) {
+    // Ab ye query sirf us bande ke REAL IP ko count karegi
+    const totalRegisteredFromIP = await User.countDocuments({ ipAddress: userIP });
+
+    if (totalRegisteredFromIP >= 5) {
+        return res.status(403).json({ 
+            message: `Access Denied: Is Device/Network par 5 accounts ki limit poori ho gayi hai.` 
+        });
     }
+}
 
     if (!email || !email.toLowerCase().endsWith('@gmail.com')) {
         return res.status(400).json({ message: 'Registration failed: Only @gmail.com emails are accepted.' });
@@ -111,8 +109,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
 router.post('/login', async (req, res) => {
   try {
     // login route ke andar ekdum upar daal do
-console.log("DEBUG: All Headers:", JSON.stringify(req.headers, null, 2));
-    const { userId, password } = req.body;
+     const { userId, password } = req.body;
     const userIP = getClientIP(req);
 
     const user = await User.findOne({ userId });
