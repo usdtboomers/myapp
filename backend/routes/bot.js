@@ -28,7 +28,7 @@ const startTelegramBot = () => {
     // 🔥 CRON PATTERN FIX: 'minute hour day month day-of-week' (5 Stars total)
     const schedules = {
         promo: isTesting ? '* * * * *' : '0 7 * * *',       // Subah 7:00 AM IST
-        withdrawal: isTesting ? '* * * * *' : '31 0 * * *'  // 🔥 12:28 AM IST (Abhi ke liye)
+        withdrawal: isTesting ? '* * * * *' : '1 0 * * *'  // 🔥 12:01 AM IST (Abhi ke liye)
     };
 
     // 1. Promo Message Task
@@ -68,7 +68,7 @@ const startTelegramBot = () => {
         timezone: "Asia/Kolkata"
     });
 
-    console.log(`🤖 Telegram Bot Started! Next Message at 12:28 AM IST.`);
+    console.log(`🤖 Telegram Bot Started! Next Message at 12:01 AM IST.`);
 };
 
 module.exports = startTelegramBot;
