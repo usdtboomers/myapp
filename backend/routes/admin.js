@@ -657,15 +657,6 @@ router.get('/deposits', verifyAdmin, async (req, res) => {
 
 
 
-// routes/admin.js
-
-// POST /api/admin/manual-deposit
-// GET /api/admin/manual-deposits
-// place near other admin routes in routes/admin.js
- 
- 
- 
-
  
 
 
@@ -713,6 +704,9 @@ router.get('/topup-users', verifyAdmin, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch top-up users' });
   }
 });
+
+
+
 
 router.get("/transactions", verifyAdmin, async (req, res) => {
   try {
