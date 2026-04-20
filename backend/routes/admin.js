@@ -184,32 +184,31 @@ router.get("/stats", verifyAdmin, async (req, res) => {
 
 
 // 🔹 GET /login-stats (For Advanced Login Analytics)
-// 🔹 GET /login-stats (For Advanced Login Analytics)
-router.get("/login-stats", verifyAdmin, async (req, res) => {
+ router.get("/login-stats", verifyAdmin, async (req, res) => {
   try {
     const { fromDate, toDate } = req.query; // NAYA: Range filters
     
     let matchStage = {};
     
     if (fromDate || toDate) {
-      matchStage.loginTime = {};
+      matchStage.createdAt = {}; // 🔥 FIX 1: loginTime ko createdAt kiya
       
       if (fromDate) {
         const start = new Date(fromDate);
         start.setHours(0, 0, 0, 0);
-        matchStage.loginTime.$gte = start;
+        matchStage.createdAt.$gte = start; // 🔥 FIX 2
       }
       
       if (toDate) {
         const end = new Date(toDate);
         end.setHours(23, 59, 59, 999);
-        matchStage.loginTime.$lte = end;
+        matchStage.createdAt.$lte = end; // 🔥 FIX 3
       }
     } else {
       // Default: Only today
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      matchStage = { loginTime: { $gte: today } };
+      matchStage = { createdAt: { $gte: today } }; // 🔥 FIX 4
     }
 
     const userLogins = await LoginHistory.aggregate([
@@ -220,7 +219,7 @@ router.get("/login-stats", verifyAdmin, async (req, res) => {
           name: { $first: "$name" },
           mobile: { $first: "$mobile" }, 
           loginCount: { $sum: 1 }, 
-          lastLoginTime: { $max: "$loginTime" }
+          lastLoginTime: { $max: "$createdAt" } // 🔥 FIX 5: loginTime ko $createdAt kiya
         }
       },
       {
@@ -329,6 +328,7 @@ router.post('/toggle-sponsor', async (req, res) => {
 
 // 📊 5. GET LIVE IP & LOGIN STATS
 // 📊 5. GET LIVE IP & LOGIN STATS (Unique Users Only)
+// 📊 5. GET LIVE IP & LOGIN STATS (Unique Users Only)
 router.get('/live-ip-stats', async (req, res) => {
     try {
         const LoginHistory = require('../models/LoginHistory');
@@ -345,8 +345,8 @@ router.get('/live-ip-stats', async (req, res) => {
                     createdAt: { $first: "$createdAt" } // Latest Time lo
                 } 
             },
-            { $sort: { createdAt: -1 } }, // 3. Group banne ke baad fir se Naye Time ke hisaab se arrange karo
-            { $limit: 15 } // 4. Sirf top 15 "Unique" log dikhao
+            { $sort: { createdAt: -1 } } // 3. Group banne ke baad fir se Naye Time ke hisaab se arrange karo
+            // 🔥 YAHAN SE { $limit: 15 } HATA DIYA HAI TAHRKI SAARE DIKHEIN 🔥
         ]);
 
         // Har login ke IP par total kitne accounts hain, wo count karo

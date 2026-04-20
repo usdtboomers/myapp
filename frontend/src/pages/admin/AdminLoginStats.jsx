@@ -35,20 +35,25 @@ const AdminLoginStats = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('adminToken');
-      if (!token) throw new Error('Admin token not found');
+      
+      if (!token) {
+        console.error('🚨 ADMIN TOKEN GAYAB HAI: LocalStorage mein adminToken nahi mila. Please login again.');
+        alert('Session expired. Please login again.');
+        return;
+      }
 
-      // API call ab dono dates bhej rahi hai
       const res = await api.get(`/admin/login-stats?fromDate=${filters.fromDate}&toDate=${filters.toDate}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.data.success) {
-        setStats(res.data.userLogins || []);
-        setFiltered(res.data.userLogins || []);
+        const loginData = res.data.userLogins || []; 
+        setStats(loginData);
+        setFiltered(loginData);
         setSummary(res.data.summary || { totalLoginAttempts: 0, uniqueUsers: 0 });
       }
     } catch (err) {
-      console.error('Error fetching login stats:', err);
+      console.error('💥 API Request Fail Ho Gayi:', err.response?.data || err.message);
     } finally {
       setLoading(false);
     }
@@ -57,18 +62,21 @@ const AdminLoginStats = () => {
   const applyFilters = () => {
     let result = [...stats];
 
-    // Filter by User ID
+    // Filter by User ID (Handles both userId and Mongoose _id)
     if (filters.userId) {
-      result = result.filter(u => String(u.userId).includes(filters.userId));
+      result = result.filter(u => {
+        const idToCheck = u.userId || u._id || '';
+        return String(idToCheck).includes(filters.userId);
+      });
     }
 
     // Filter by Login Count
     if (filters.countFilter !== 'all') {
       if (filters.countFilter === 'above5') {
-        result = result.filter(u => u.loginCount > 5);
+        result = result.filter(u => (u.loginCount || 1) > 5);
       } else {
         const count = Number(filters.countFilter);
-        result = result.filter(u => u.loginCount === count);
+        result = result.filter(u => (u.loginCount || 1) === count);
       }
     }
 
@@ -95,16 +103,22 @@ const AdminLoginStats = () => {
     setCurrentPage(1);
   };
 
-  // Export filtered stats to CSV
+  // Export filtered stats to CSV (Fixed for Mongoose keys)
   const exportToCSV = () => {
-    const csvData = filtered.map((user, index) => ({
-      "S.No": index + 1,
-      "User ID": user.userId,
-      "Name": user.name || "N/A",
-      "Phone": user.mobile || "N/A",
-      "Total Logins": user.loginCount,
-      "Last Login Time": new Date(user.lastLoginTime).toLocaleString('en-IN')
-    }));
+    const csvData = filtered.map((user, index) => {
+      const displayId = user.userId || user._id || 'N/A';
+      const displayCount = user.loginCount || 1;
+      const displayTime = user.lastLoginTime || user.createdAt;
+
+      return {
+        "S.No": index + 1,
+        "User ID": displayId,
+        "Name": user.name || "N/A",
+        "Phone": user.mobile || "N/A",
+        "Total Logins": displayCount,
+        "Last Login Time": displayTime ? new Date(displayTime).toLocaleString('en-IN') : "N/A"
+      };
+    });
 
     const csv = Papa.unparse(csvData);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -157,7 +171,6 @@ const AdminLoginStats = () => {
             onChange={e => setFilters({ ...filters, userId: e.target.value })}
           />
           
-          {/* NAYA: From Date aur To Date */}
           <div className="flex items-center gap-1">
             <span className="text-sm text-gray-500 font-medium ml-1">From:</span>
             <input
@@ -239,45 +252,53 @@ const AdminLoginStats = () => {
                 </td>
               </tr>
             ) : (
-              currentItems.map((user, index) => (
-                <tr key={user.userId || index} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 border text-gray-600">{indexOfFirstItem + index + 1}</td>
-                  
-                  {/* Copyable User ID */}
-                  <td className="px-4 py-2 border">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-800">{user.userId}</span>
-                      <button 
-                        onClick={() => handleCopy(user.userId.toString())}
-                        title="Copy User ID"
-                        className="text-gray-400 hover:text-gray-700 transition"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                  
-                  <td className="px-4 py-2 border font-medium text-gray-800">{user.name || '-'}</td>
-                  <td className="px-4 py-2 border text-gray-600">{user.mobile || '-'}</td>
-                  
-                  {/* Login Count Badge */}
-                  <td className="px-4 py-2 border text-center">
-                    <span className={`px-3 py-1 rounded text-xs font-bold ${
-                        user.loginCount > 5 ? 'bg-red-100 text-red-700' :
-                        user.loginCount > 2 ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-green-100 text-green-700'
-                      }`}>
-                      {user.loginCount}
-                    </span>
-                  </td>
-                  
-                  <td className="px-4 py-2 border text-gray-500 whitespace-nowrap">
-                    {new Date(user.lastLoginTime).toLocaleString('en-IN')}
-                  </td>
-                </tr>
-              ))
+              currentItems.map((user, index) => {
+                // YAHAN HAI MAIN FIX: Mongoose data aur normal data dono handle ho rahe hain
+                const displayId = user.userId || user._id || 'N/A';
+                const displayCount = user.loginCount || 1;
+                const displayTime = user.lastLoginTime || user.createdAt;
+
+                return (
+                  <tr key={displayId + '-' + index} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 border text-gray-600">{indexOfFirstItem + index + 1}</td>
+                    
+                    {/* Copyable User ID */}
+                    <td className="px-4 py-2 border">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-800">{displayId}</span>
+                        <button 
+                          onClick={() => handleCopy(displayId.toString())}
+                          title="Copy User ID"
+                          className="text-gray-400 hover:text-gray-700 transition"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                    
+                    <td className="px-4 py-2 border font-medium text-gray-800">{user.name || '-'}</td>
+                    <td className="px-4 py-2 border text-gray-600">{user.mobile || '-'}</td>
+                    
+                    {/* Login Count Badge */}
+                    <td className="px-4 py-2 border text-center">
+                      <span className={`px-3 py-1 rounded text-xs font-bold ${
+                          displayCount > 5 ? 'bg-red-100 text-red-700' :
+                          displayCount > 2 ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                        {displayCount}
+                      </span>
+                    </td>
+                    
+                    {/* Last Login Time */}
+                    <td className="px-4 py-2 border text-gray-500 whitespace-nowrap">
+                      {displayTime ? new Date(displayTime).toLocaleString('en-IN') : 'N/A'}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
