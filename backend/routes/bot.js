@@ -14,7 +14,7 @@ const startTelegramBot = () => {
     // Bot initialize karna
     const bot = new TelegramBot(token, { polling: false });
 
-    // 4 Din ke 4 alag messages ka array
+    // Messages Array
     const promoMessages = [
         `🚀 <b>$10 FREE ID available till 30 April (Pre-Launching Offer)</b> 🚀\n\n👉 <i>Just add 5 direct members</i>\n👉 <i>Follow the same duplication</i>\n👉 <i>Grow your team</i>\n👉 <i>Unlock rewards</i>\n\n💡 <b>Note:</b> <i>Rewards withdrawal will be enabled after upgrading to $30</i>\n👉 <b>Upgrade your ID to $30 to withdraw rewards</b>\n\n\n✅ <u>No conditions for withdrawal</u>\n🔐 <b>100% secure crowdfunding platform</b>\n\n\n🔥 <b>Want to earn rewards faster?</b>\n👉 <i>Share your referral link</i>\n👉 <i>Invite as many direct members as possible</i>\n\n⏳ <b>Pre-launching offer valid till 30 April</b>`,
         `🚀 <b>$10 FREE ID – Limited Time Offer</b> <i>(Till 30 April)</i>\n\n👉 <i>Add 5 direct members</i>\n👉 <i>Follow duplication</i>\n👉 <i>Grow your team & unlock rewards</i>\n\n💡 <b>Upgrade to $30 to enable withdrawals</b>\n\n🔥 <u>Share your link & invite more people</u>\n⏳ <i>Don’t miss this pre-launch offer!</i>`,
@@ -23,14 +23,12 @@ const startTelegramBot = () => {
     ];
 
     let currentMsgIndex = 0;
-
-    // 🛑 TESTING MODE SWITCH 🛑
     const isTesting = false;
 
-    // Cron Schedules
+    // 🔥 CRON PATTERN FIX: 'minute hour day month day-of-week' (5 Stars total)
     const schedules = {
-        promo: isTesting ? '* * * * *' : '0 7 * * *',       // India Time: Subah 7:00 AM
-        withdrawal: isTesting ? '* * * * *' : '1 5 * * *'   // India Time: Raat 12:01 AM
+        promo: isTesting ? '* * * * *' : '0 7 * * *',       // Subah 7:00 AM IST
+        withdrawal: isTesting ? '* * * * *' : '31 0 * * *'  // 🔥 12:28 AM IST (Abhi ke liye)
     };
 
     // 1. Promo Message Task
@@ -38,41 +36,39 @@ const startTelegramBot = () => {
         try {
             const msgToSend = promoMessages[currentMsgIndex];
             await bot.sendMessage(channelUsername, msgToSend, { parse_mode: 'HTML' });
-            
-            console.log(`✅ Promo message (Day ${currentMsgIndex + 1}) sent successfully to ${channelUsername}`);
+            console.log(`✅ Promo message (Day ${currentMsgIndex + 1}) sent successfully.`);
             currentMsgIndex = (currentMsgIndex + 1) % promoMessages.length;
         } catch (error) {
-            console.error("❌ Error sending promo message:", error.message);
+            console.error("❌ Error promo message:", error.message);
         }
     }, {
         scheduled: true,
-        timezone: "Asia/Kolkata" // 🔥 UK server ko India ke time par chalayega
+        timezone: "Asia/Kolkata"
     });
 
     // 2. Withdrawal Update Task
     cron.schedule(schedules.withdrawal, async () => {
         try {
-            // ✅ India ki current date nikal kar 1 din peeche karna
+            // India ki current date se 1 din peeche jana
             const indiaTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
             const yesterday = new Date(indiaTime);
             yesterday.setDate(yesterday.getDate() - 1);
             
-            // Date format: DD-MM-YYYY
             const dateString = yesterday.toLocaleDateString('en-GB').replace(/\//g, '-');
 
-            const withdrawalMsg = `💰 <b><u>Today Withdrawal Update</u></b>\n📅 <b>Date:</b> <code>${dateString}</code>\n\n🟢 <i>All withdrawals are being processed successfully</i> ✅\n\n🚀 <b>Stay active & keep growing!</b>`;
+            const withdrawalMsg = `💰 <b><u>Today Withdrawal Update</u></b>\n🗓️ <b>Date:</b> <code>${dateString}</code>\n\n🟢 <i>All withdrawals are being processed successfully</i> ✅\n\n🚀 <b>Stay active & keep growing!</b>`;
             
             await bot.sendMessage(channelUsername, withdrawalMsg, { parse_mode: 'HTML' });
-            console.log(`✅ Withdrawal update for date [${dateString}] sent successfully to ${channelUsername}`);
+            console.log(`✅ Withdrawal update for [${dateString}] sent successfully.`);
         } catch (error) {
-            console.error("❌ Error sending withdrawal message:", error.message);
+            console.error("❌ Error withdrawal message:", error.message);
         }
     }, {
         scheduled: true,
-        timezone: "Asia/Kolkata" // 🔥 UK server ko India ke time par chalayega
+        timezone: "Asia/Kolkata"
     });
 
-    console.log(`🤖 Telegram Bot is running in ${isTesting ? 'TESTING' : 'PRODUCTION'} mode (IST Timezone)...`);
+    console.log(`🤖 Telegram Bot Started! Next Message at 12:28 AM IST.`);
 };
 
 module.exports = startTelegramBot;

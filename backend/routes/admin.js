@@ -657,12 +657,20 @@ router.get('/deposits', verifyAdmin, async (req, res) => {
 
 
 
+// routes/admin.js
+
+// POST /api/admin/manual-deposit
+// GET /api/admin/manual-deposits
+// place near other admin routes in routes/admin.js
+ 
+ 
+ 
+
  
 
 
 
-// Get deduplicated top-up users
-// Get deduplicated top-up users
+ // Get deduplicated top-up users
 router.get('/topup-users', verifyAdmin, async (req, res) => {
   try {
     const topups = await Transaction.aggregate([
