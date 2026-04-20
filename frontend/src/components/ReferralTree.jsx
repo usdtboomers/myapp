@@ -24,19 +24,18 @@ function ReferralTree() {
         api.get(`/user/all-team/${userId}`),
       ]);
 
-      // Add child counts and expanded info
       const childrenWithCounts = await Promise.all(
         (treeRes.data.children || []).map(async (child) => {
           try {
-            const teamRes = await api.get(
-              `/user/all-team/${child.userId}`
-            );
+            const teamRes = await api.get(`/user/all-team/${child.userId}`);
             return {
               ...child,
               expanded: false,
               childrenLoaded: false,
               directCount: child.children?.length || 0,
               totalCount: teamRes.data.totalTeamCount || 0,
+              isExactMatch: false,
+              isPathMatch: false,
             };
           } catch {
             return {
@@ -45,6 +44,8 @@ function ReferralTree() {
               childrenLoaded: false,
               directCount: child.children?.length || 0,
               totalCount: 0,
+              isExactMatch: false,
+              isPathMatch: false,
             };
           }
         })
@@ -57,12 +58,15 @@ function ReferralTree() {
         children: childrenWithCounts,
         directCount: treeRes.data.children?.length || 0,
         totalCount: allTeamRes.data.totalTeamCount,
+        isExactMatch: false,
+        isPathMatch: false,
       };
 
       setTreeData(rootNode);
       setDirectCount(rootNode.directCount);
       setTotalTeamCount(rootNode.totalCount);
       setSearchResult(null);
+      setSearchQuery(""); // Clear search on new load
     } catch (err) {
       console.error(err);
       setError("❌ Referral tree not found or error fetching data");
@@ -91,15 +95,15 @@ function ReferralTree() {
       const childrenWithCounts = await Promise.all(
         (treeRes.data.children || []).map(async (child) => {
           try {
-            const teamRes = await api.get(
-              `/user/all-team/${child.userId}`
-            );
+            const teamRes = await api.get(`/user/all-team/${child.userId}`);
             return {
               ...child,
               expanded: false,
               childrenLoaded: false,
               directCount: child.children?.length || 0,
               totalCount: teamRes.data.totalTeamCount || 0,
+              isExactMatch: false,
+              isPathMatch: false,
             };
           } catch {
             return {
@@ -108,6 +112,8 @@ function ReferralTree() {
               childrenLoaded: false,
               directCount: child.children?.length || 0,
               totalCount: 0,
+              isExactMatch: false,
+              isPathMatch: false,
             };
           }
         })
@@ -125,23 +131,23 @@ function ReferralTree() {
     }
   };
 
-  // 🔹 Recursive tree renderer
+  // 🔹 Recursive tree renderer (🎨 Design with Yellow Brick Road Logic)
   const renderTree = (node) => {
-    const isMatch =
-      searchQuery &&
-      (String(node.userId).includes(searchQuery) ||
-        (node.name &&
-          node.name.toLowerCase().includes(searchQuery.toLowerCase())));
+    
+    // Dynamic CSS Classes: Path dikhane ke liye Light Yellow aur Target ke liye Bright Yellow
+    let bgClass = "bg-blue-100 text-blue-900"; // Normal Node
+    
+    if (node.isExactMatch) {
+      bgClass = "bg-yellow-300 text-yellow-900 border border-yellow-500 font-bold shadow-md"; // Final Target
+    } else if (node.isPathMatch) {
+      bgClass = "bg-yellow-100 text-yellow-800 border border-yellow-300 border-dashed"; // Raasta (Path to target)
+    }
 
     return (
       <li key={node.userId} className="list-none">
         <div
           onClick={() => handleExpandNode(node)}
-          className={`cursor-pointer p-2 rounded-lg text-sm font-medium shadow-md flex flex-col gap-1 ${
-            isMatch
-              ? "bg-yellow-200 text-yellow-900 border border-yellow-400"
-              : "bg-blue-100 text-blue-900"
-          }`}
+          className={`cursor-pointer p-2 rounded-lg text-sm font-medium shadow-sm flex flex-col gap-1 transition-all ${bgClass}`}
         >
           <div className="flex justify-between items-center">
             <span>
@@ -167,35 +173,54 @@ function ReferralTree() {
     );
   };
 
-  // 🔹 Search recursively and auto expand parents
-  const searchInTree = (node, query) => {
-    if (!node) return null;
-
-    if (
-      String(node.userId).includes(query) ||
-      (node.name && node.name.toLowerCase().includes(query.toLowerCase()))
-    ) {
-      node.expanded = true;
-      return node;
-    }
-
-    if (node.children) {
-      for (let child of node.children) {
-        const found = searchInTree(child, query);
-        if (found) {
-          node.expanded = true;
-          return found;
-        }
-      }
-    }
-
-    return null;
-  };
-
+  // 🚀 NAYA SMART SEARCH LOGIC (Bina Auto-Open kiye)
   const handleSearchInTree = () => {
     if (!searchQuery || !treeData) return;
-    const found = searchInTree(treeData, searchQuery);
-    setSearchResult(found);
+
+    const query = searchQuery.toLowerCase().trim();
+    let foundNode = null;
+
+    // Deep traverse aur marking function
+    const traverseAndMark = (node) => {
+      if (!node) return false;
+
+      // Purane marks hata do
+      node.isExactMatch = false;
+      node.isPathMatch = false;
+
+      // Check karo kya yehi banda hai
+      const isMatch = String(node.userId).includes(query) ||
+                      (node.name && node.name.toLowerCase().includes(query));
+
+      if (isMatch) {
+        node.isExactMatch = true;
+        if (!foundNode) foundNode = node; // Pinned result ke liye
+      }
+
+      // Check karo kya iske bacchon mein koi match hai
+      let childHasMatch = false;
+      if (node.children) {
+        for (let child of node.children) {
+          if (traverseAndMark(child)) {
+            childHasMatch = true;
+          }
+        }
+      }
+
+      // Agar andar baccha match hua (par ye khud match nahi hai), toh ise Light Yellow Path bana do
+      if (childHasMatch && !isMatch) {
+        node.isPathMatch = true; 
+      }
+
+      // 🛑 YAHAN SE NODE.EXPANDED = TRUE HATA DIYA HAI 🛑
+      // Tree bilkul open nahi hoga, admin khud click karke andar jayega
+
+      return isMatch || childHasMatch;
+    };
+
+    traverseAndMark(treeData);
+
+    setSearchResult(foundNode);
     setTreeData({ ...treeData });
   };
 
@@ -250,6 +275,7 @@ function ReferralTree() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="border rounded px-4 py-2 w-full"
+            onKeyDown={(e) => e.key === 'Enter' && handleSearchInTree()}
           />
           <button
             onClick={handleSearchInTree}
@@ -260,7 +286,7 @@ function ReferralTree() {
         </div>
       )}
 
-      {/* Search Result */}
+      {/* Search Result Pinned */}
       {searchResult && (
         <div className="mb-4">
           <h3 className="font-semibold text-gray-700 mb-2">

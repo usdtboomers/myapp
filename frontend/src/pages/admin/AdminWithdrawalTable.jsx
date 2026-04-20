@@ -26,6 +26,7 @@ const AdminWithdrawalTable = () => {
 
 
   // ----------------- 0. Impersonate User -----------------
+ // ----------------- 0. Impersonate User -----------------
   const handleImpersonate = async (userId) => {
     const result = await Swal.fire({
       title: 'Login as User?',
@@ -46,16 +47,39 @@ const AdminWithdrawalTable = () => {
 
       if (res.data.token) {
         Swal.close();
-        // User ka data localStorage mein set karein taaki dashboard khul sake
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('user', JSON.stringify(res.data.user)); 
         
-        // Naye tab mein user ka dashboard kholna
-        window.open('/dashboard', '_blank'); 
+        const { token: userToken, user: impersonatedUser } = res.data;
+        const userDataStr = JSON.stringify(impersonatedUser);
+
+        // 🔥 SMART DYNAMIC URL LOGIC 🔥
+        let targetBaseUrl = "";
+        const currentHost = window.location.hostname;
+
+        // Check: Agar aap Local PC par ho
+        if (currentHost === "localhost" || currentHost === "127.0.0.1") {
+          targetBaseUrl = "http://localhost:3000"; // Local Main Frontend ka port
+        } 
+        // Check: Agar aap Live Server par ho
+        else {
+          targetBaseUrl = "https://usdtboomers.com"; // Live Main Website
+        }
+
+        // Final URL banayen
+        const mainWebsiteUrl = `${targetBaseUrl}/login?token=${userToken}&user=${encodeURIComponent(userDataStr)}`;
+
+        // 🚀 POPUP BLOCKER FIX: Hidden link banakar click karwana 
+        // (window.open() API ke baad block ho jata hai, isliye a tag better hai)
+        const link = document.createElement('a');
+        link.href = mainWebsiteUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer'; // Security ke liye
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } catch (error) {
       console.error("Impersonation error:", error);
-      Swal.fire('Error', error.response?.data?.message || "Failed to login as user", 'error');
+      Swal.fire('Error', error.response?.data?.message || "Failed to impersonate user", 'error');
     }
   };
   // ----------------- 1. Professional Blockchain Approve -----------------

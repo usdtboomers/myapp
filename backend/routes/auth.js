@@ -61,9 +61,10 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
 
     // 🚀 NEW: SPONSOR DEACTIVATION CHECK
     if (sponsorExists.isSponsorDeactivated) {
-return res.status(403).json({
-  message: 'Policy violation: The provided sponsor link is invalid or deactivated.'
-});    }
+        return res.status(403).json({
+          message: 'Policy violation: The provided sponsor link is invalid or deactivated.'
+        });    
+    }
 
     const existingUser = await User.findOne({ $or: [{ email: email }, { mobile: mobile }] });
     if (existingUser) {
@@ -104,11 +105,43 @@ return res.status(403).json({
 
     await user.save();
 
+    // 👉 EMAIL TEMPLATE UPDATED HERE
     try {
         await sendEmail({
             email: user.email,
-            subject: '🎉 Welcome to USDBoomer!',
-            html: `<h3>Welcome ${user.name}</h3><p>User ID: ${user.userId}<br>Password: ${password}</p>`
+            subject: '🎉 Welcome to USDT Boomers!',
+            html: `
+            <div style="font-family: Arial, sans-serif; background-color: #f4f6f9; padding: 20px; color: #333;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                
+                <div style="background-color: #2c4a58; color: #ffffff; text-align: center; padding: 40px 20px;">
+                  <h1 style="margin: 0; font-size: 26px;">🚀 Welcome to USDT Boomers</h1>
+                  <p style="margin: 10px 0 0; font-size: 14px; color: #d1d8dc;">Your journey starts here</p>
+                </div>
+                
+                <div style="padding: 30px 40px;">
+                  <p style="font-size: 16px; margin-top: 0;">Hello <strong>${user.name}</strong>,</p>
+                  <p style="font-size: 15px; color: #555; line-height: 1.6; margin-bottom: 25px;">Congratulations! Your account has been successfully created. Please find your login details below.</p>
+                  
+                  <div style="background-color: #f8f9fa; border-radius: 8px; padding: 25px; margin: 20px 0; font-size: 15px;">
+                    <p style="margin: 0 0 15px;">👤 <strong>User ID:</strong> ${user.userId}</p>
+                    <p style="margin: 0 0 15px;">🔑 <strong>Password:</strong> ${password}</p>
+                    <p style="margin: 0;">🔑 <strong>Transaction Password:</strong> ${password}</p>
+                  </div>
+                  
+                  <div style="text-align: center; margin: 35px 0;">
+<a href="https://usdtboomers.com/login" style="background-color: #2088f0; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">🔐 Login to Dashboard</a>                  </div>
+                  
+                  <p style="color: #d9534f; font-size: 13px; margin: 0;">⚠️ Please do not share your login details with anyone for security reasons.</p>
+                </div>
+                
+                <div style="background-color: #1a1a1a; color: #aaaaaa; text-align: center; padding: 15px; font-size: 12px;">
+                  © 2026 USDT Boomers. All rights reserved.
+                </div>
+
+              </div>
+            </div>
+            `
         });
     } catch (emailErr) { console.error("Email failed"); }
 

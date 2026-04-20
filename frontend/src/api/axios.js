@@ -48,6 +48,7 @@ api.interceptors.request.use((config) => {
 });
 
 // ✅ 2. RESPONSE INTERCEPTOR (401 Error handle karne ke liye)
+// ✅ 2. RESPONSE INTERCEPTOR (401 Error handle karne ke liye)
 api.interceptors.response.use(
   (response) => {
     NProgress.done(); 
@@ -63,10 +64,20 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // Session expire hone par logout
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // ✅ NAYA LOGIC: Pata karo ki Token Admin ka expire hua hai ya User ka
+      const isAdminPanel = window.location.hostname.startsWith('good.');
+
+      if (isAdminPanel) {
+        // ADMIN SESSION EXPIRE
+        localStorage.removeItem('adminToken');
+        // 👇 Yahan apne admin login ka sahi route daal dein (e.g., '/', '/login', ya '/admin-login')
+        window.location.href = '/community-access?Key=SuperSuper'; 
+      } else {
+        // USER SESSION EXPIRE
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
