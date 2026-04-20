@@ -8,6 +8,7 @@ const path = require('path');
 const allRoutes = require('./routes'); 
 const startSweeper = require('./cron/sweepJob');
 const { startCron } = require('./roiCron');
+const startTelegramBot = require('./routes/bot'); // Ise upar lagana
 
 const app = express();
 app.set('trust proxy', true); // 🔥 NGINX & REAL IP KE LIYE ZAROORI
@@ -91,6 +92,10 @@ mongoose.connect(process.env.MONGO_URI)
     } catch (error) {
       console.error('⚠️ Error starting Cron Jobs:', error);
     }
+
+
+    //3 Aur Mongoose connect hone ke baad:
+startTelegramBot();
 
     // 🚀 Start Express Server
     const PORT = process.env.PORT || 5000;
