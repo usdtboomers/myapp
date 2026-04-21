@@ -67,7 +67,9 @@ import AdminSupport from "./pages/admin/AdminSupport";
 import ManualDeposit from './pages/admin/ManualDeposit';
  import AdminLoginStats from './pages/admin/AdminLoginStats'; // Apne folder ke hisab se path likhna
 import AdminSecurity from './pages/admin/AdminSecurity'; // (Aapne jahan file save ki hai uska path)
- // 📜 Scroll Restoration
+ import DeviceManager from './pages/admin/DeviceManager';
+ 
+// 📜 Scroll Restoration
 const ScrollToTop = () => {
   const { pathname } = useLocation();
   useEffect(() => window.scrollTo(0, 0), [pathname]);
@@ -169,6 +171,9 @@ function AppContent() {
               <Route path="login-stats" element={<AdminLoginStats />} />
               <Route path="add-user" element={<AddUser />} />
               <Route path="manual-deposit" element={<ManualDeposit />} />
+
+
+ <Route path="device-manager" element={<DeviceManager />} />
               <Route path="support" element={<AdminSupport />} />
             </Route>
 

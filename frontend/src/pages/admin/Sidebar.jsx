@@ -4,7 +4,7 @@ import {
   FaHome, FaUsers, FaMoneyBill, FaWallet, FaListAlt, FaCog, FaSignOutAlt,
   FaSitemap, FaProjectDiagram, FaExchangeAlt, FaFileAlt, FaUserPlus,
   FaArrowCircleUp, FaArrowCircleDown, FaBell, FaClipboardList, FaCoins,
-  FaUserSlash, FaBars, FaTimes, FaHistory, FaShieldAlt // 🔥 NAYA ICON ADD KIYA: FaShieldAlt
+  FaUserSlash, FaBars, FaTimes, FaHistory, FaShieldAlt, FaBan // 🔥 NAYA ICON ADD KIYA: FaBan
 } from 'react-icons/fa';
 
 const Sidebar = () => {
@@ -16,8 +16,8 @@ const Sidebar = () => {
   const BASE_PATH = "/super-panal"; 
 
   const linkClass = ({ isActive }) =>
-    `block px-4 py-2 rounded hover:bg-indigo-200 ${
-      isActive ? 'bg-indigo-600 text-white' : 'text-gray-800'
+    `block px-4 py-2 rounded hover:bg-indigo-200 transition-colors ${
+      isActive ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-800'
     }`;
 
   const handleLogout = () => {
@@ -87,10 +87,23 @@ const Sidebar = () => {
               <FaUserSlash className="inline-block mr-2" /> Blocked Users
             </NavLink>
 
-            {/* 🔥 NAYA LINK: SECURITY & IP MANAGER 🔥 */}
+            {/* 🔥 SECURITY SECTION 🔥 */}
+            <div className="pt-2 pb-1">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-2">Security</p>
+            </div>
+            
             <NavLink to={`${BASE_PATH}/security`} className={linkClass} onClick={toggleSidebar}>
-              <FaShieldAlt className="inline-block mr-2 text-red-500" /> Security & IPs
+              <FaShieldAlt className="inline-block mr-2 text-orange-500" /> IP Security
             </NavLink>
+
+            {/* 🚀 NAYA LINK: DEVICE MANAGER 🚀 */}
+            <NavLink to={`${BASE_PATH}/device-manager`} className={linkClass} onClick={toggleSidebar}>
+              <FaBan className="inline-block mr-2 text-red-600" /> Device Blocks
+            </NavLink>
+
+            <div className="pt-2 pb-1">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-2">Analytics & Logs</p>
+            </div>
 
             <NavLink to={`${BASE_PATH}/login-stats`} className={linkClass} onClick={toggleSidebar}>
               <FaHistory className="inline-block mr-2" /> Login Analytics
@@ -99,6 +112,10 @@ const Sidebar = () => {
             <NavLink to={`${BASE_PATH}/notifications`} className={linkClass} onClick={toggleSidebar}>
               <FaBell className="inline-block mr-2" /> Notifications
             </NavLink>
+
+            <div className="pt-2 pb-1">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-2">Finance</p>
+            </div>
 
             <NavLink to={`${BASE_PATH}/topups`} className={linkClass} onClick={toggleSidebar}>
               <FaArrowCircleUp className="inline-block mr-2" /> Top-Ups
@@ -117,10 +134,6 @@ const Sidebar = () => {
               <FaCoins className="inline-block mr-2" /> Manual Deposit
             </NavLink>
 
-            <NavLink to={`${BASE_PATH}/support`} className={linkClass} onClick={toggleSidebar}>
-              <FaFileAlt className="inline-block mr-2" /> Support
-            </NavLink>
-
             <NavLink to={`${BASE_PATH}/wallet-summary`} className={linkClass} onClick={toggleSidebar}>
               <FaWallet className="inline-block mr-2" /> Wallet Summary
             </NavLink>
@@ -134,8 +147,16 @@ const Sidebar = () => {
               <FaExchangeAlt className="inline-block mr-2" /> Reverse Txn
             </NavLink>
 
+            <div className="pt-2 pb-1">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-2">System</p>
+            </div>
+
             <NavLink to={`${BASE_PATH}/add-user`} className={linkClass} onClick={toggleSidebar}>
               <FaUserPlus className="inline-block mr-2" /> Add User
+            </NavLink>
+            
+            <NavLink to={`${BASE_PATH}/support`} className={linkClass} onClick={toggleSidebar}>
+              <FaFileAlt className="inline-block mr-2" /> Support
             </NavLink>
 
             <NavLink to={`${BASE_PATH}/settings`} className={linkClass} onClick={toggleSidebar}>
@@ -148,7 +169,7 @@ const Sidebar = () => {
         <div className="p-4 border-t bg-gray-50">
           <button
             onClick={handleLogout}
-            className="flex items-center justify-center w-full px-4 py-3 text-red-600 bg-white border border-red-200 hover:bg-red-50 rounded-lg transition font-semibold"
+            className="flex items-center justify-center w-full px-4 py-3 text-red-600 bg-white border border-red-200 hover:bg-red-50 rounded-lg transition font-semibold shadow-sm"
           >
             <FaSignOutAlt className="mr-2" />
             Logout

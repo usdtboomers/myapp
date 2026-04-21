@@ -11,6 +11,7 @@ const Deposit = require('../models/Deposit');
 const verifyAdmin = require('../middleware/adminAuth');
  const LoginHistory = require('../models/LoginHistory');
 const IpRule = require('../models/IpRule');
+const BlockedDevice = require('../models/BlockedDevice'); // Apna model import karein
 
 const { ethers } = require('ethers');
 require('dotenv').config();
@@ -329,33 +330,31 @@ router.post('/toggle-sponsor', async (req, res) => {
 // 📊 5. GET LIVE IP & LOGIN STATS
 // 📊 5. GET LIVE IP & LOGIN STATS (Unique Users Only)
 // 📊 5. GET LIVE IP & LOGIN STATS (Unique Users Only)
+// 📊 backend/routes/admin.js ma aa badlav karo
 router.get('/live-ip-stats', async (req, res) => {
     try {
-        const LoginHistory = require('../models/LoginHistory');
-        const User = require('../models/User');
-
-        // 🔥 SMART FIX: Ek ID ek hi baar aayegi, aur uska sabse latest time dikhega
         const recentLogins = await LoginHistory.aggregate([
-            { $sort: { createdAt: -1 } }, // 1. Sabse naye records upar laao
+            { $sort: { createdAt: -1 } },
             { 
                 $group: { 
-                    _id: "$userId", // 2. User ID ke hisaab se Group banao (Duplicate hatao)
-                    name: { $first: "$name" }, // Uska naam lo
-                    ipAddress: { $first: "$ipAddress" }, // Latest IP lo
-                    createdAt: { $first: "$createdAt" } // Latest Time lo
+                    _id: "$userId", 
+                    name: { $first: "$name" },
+                    ipAddress: { $first: "$ipAddress" },
+                    createdAt: { $first: "$createdAt" },
+                    // 🚀 NAYU: User model mathi deviceId levu padse
                 } 
             },
-            { $sort: { createdAt: -1 } } // 3. Group banne ke baad fir se Naye Time ke hisaab se arrange karo
-            // 🔥 YAHAN SE { $limit: 15 } HATA DIYA HAI TAHRKI SAARE DIKHEIN 🔥
+            { $sort: { createdAt: -1 } }
         ]);
 
-        // Har login ke IP par total kitne accounts hain, wo count karo
         const enrichedData = await Promise.all(recentLogins.map(async (log) => {
+            const user = await User.findOne({ userId: log._id }).select('deviceId'); // 🚀 Device ID fetch karyu
             const count = await User.countDocuments({ ipAddress: log.ipAddress });
             return {
-                userId: log._id, // MongoDB grouping mein ID '_id' ban jati hai, humne isey wapas userId kar diya
+                userId: log._id,
                 name: log.name,
                 ipAddress: log.ipAddress,
+                deviceId: user ? user.deviceId : "N/A", // 🚀 Frontend ma moklavayu
                 createdAt: log.createdAt,
                 totalAccountsOnIp: count
             };
@@ -363,11 +362,52 @@ router.get('/live-ip-stats', async (req, res) => {
 
         res.json(enrichedData);
     } catch (err) {
-        console.error(err);
         res.status(500).json({ message: "Server error" });
     }
 });
 
+
+
+ 
+// 1. GET: Saare blocked devices ki list dekhne ke liye
+router.get('/blocked-devices', async (req, res) => {
+    try {
+        const devices = await BlockedDevice.find().sort({ blockedAt: -1 });
+        res.json(devices);
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// 2. POST: Naya device block karne ke liye
+router.post('/block-device', async (req, res) => {
+    try {
+        const { deviceId, reason } = req.body;
+        if (!deviceId) return res.status(400).json({ message: "Device ID zaroori hai" });
+
+        const exists = await BlockedDevice.findOne({ deviceId });
+        if (exists) return res.status(400).json({ message: "Ye device pehle se block hai" });
+
+        const newBlock = new BlockedDevice({ deviceId, reason: reason || "Admin dwara block" });
+        await newBlock.save();
+
+        res.json({ message: "✅ Device successfully block ho gaya!" });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// 3. DELETE: Device ko UNBLOCK karne ke liye
+router.delete('/unblock-device/:deviceId', async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        await BlockedDevice.findOneAndDelete({ deviceId });
+        
+        res.json({ message: "✅ Device successfully unblock ho gaya!" });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 // ------------------------------------------------------------------
 // ✅ TELEGRAM MANAGEMENT ROUTES (ADMIN ONLY)
 // ------------------------------------------------------------------
@@ -674,12 +714,20 @@ router.get('/deposits', verifyAdmin, async (req, res) => {
 router.get('/topup-users', verifyAdmin, async (req, res) => {
   try {
     const topups = await Transaction.aggregate([
-      { $match: { type: 'topup' } },
+      { 
+        $match: { 
+          type: 'topup',
+          // ✅ FIX: Sirf wahi record uthayega jahan userId receiver (toUserId) ka ho.
+          // Isse transfer karne wale ki duplicate entry filter ho jayegi.
+          $expr: { $eq: ["$userId", "$toUserId"] } 
+        } 
+      },
       {
         $group: {
           _id: {
             userId: "$userId",
             amount: "$amount",
+            // Ek hi din mein same amount ke multiple entries ko group karne ke liye
             date: { $dateToString: { format: "%Y-%m-%d", date: "$date" } }
           },
           latest: { $last: "$$ROOT" }
@@ -689,19 +737,24 @@ router.get('/topup-users', verifyAdmin, async (req, res) => {
       { $sort: { date: -1 } }
     ]);
 
+    // Saare unique userIds nikalna
     const userIds = [...new Set(topups.map(t => t.userId))];
     
-    // ✅ FIX: Fetch 'mobile' along with userId and name
-    const users = await User.find({ userId: { $in: userIds } }, { userId: 1, name: 1, mobile: 1 });
+    // Users table se Name aur Mobile fetch karna
+    const users = await User.find(
+      { userId: { $in: userIds } }, 
+      { userId: 1, name: 1, mobile: 1 }
+    );
 
-    // ✅ FIX: Save entire user object in map so we can extract name AND mobile
+    // Fast lookup ke liye userMap banana
     const userMap = Object.fromEntries(users.map(u => [u.userId, u]));
 
+    // Final result map karna frontend ke liye
     const result = topups.map(tx => ({
       _id: tx._id,
       userId: tx.userId,
       name: userMap[tx.userId]?.name || 'Unknown',
-      mobile: userMap[tx.userId]?.mobile || 'N/A', // ✅ Sent to frontend
+      mobile: userMap[tx.userId]?.mobile || 'N/A', 
       topUpAmount: tx.amount,
       topUpDate: tx.date || tx.createdAt
     }));
@@ -712,7 +765,6 @@ router.get('/topup-users', verifyAdmin, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch top-up users' });
   }
 });
-
 
 
 

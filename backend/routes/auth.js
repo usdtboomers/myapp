@@ -10,7 +10,10 @@ const sendEmail = require('../utils/sendEmail');
 const checkFeature = require('../middleware/checkFeatureEnabled');
 const DummyUser = require('../models/DummyUser.js');
 const LoginHistory = require('../models/LoginHistory'); 
-const IpRule = require('../models/IpRule'); // 🚀 NEW: IP Rules Model Import
+const IpRule = require('../models/IpRule'); 
+
+// 🚀 NEW: BlockedDevice Model Import
+const BlockedDevice = require('../models/BlockedDevice'); 
 const { bot } = require('../utils/telegramBot');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'yoursecretkey';
@@ -43,8 +46,8 @@ const generateUserId = async () => {
 // ====================== REGISTER ======================
 router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
   try {
-    
-    const { name, mobile, email, country, password, sponsorId } = req.body;
+    // 🚀 NEW: req.body se deviceId bhi le rahe hain
+    const { name, mobile, email, country, password, sponsorId, deviceId } = req.body;
     const userIP = getClientIP(req);
 
     if (!email || !email.toLowerCase().endsWith('@gmail.com')) {
@@ -59,7 +62,6 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     }
     if (!sponsorExists) return res.status(400).json({ message: 'Invalid Sponsor ID.' });
 
-    // 🚀 NEW: SPONSOR DEACTIVATION CHECK
     if (sponsorExists.isSponsorDeactivated) {
         return res.status(403).json({
           message: 'Policy violation: The provided sponsor link is invalid or deactivated.'
@@ -75,15 +77,12 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
 
     if (!isLocalIP) {
-        // Fetch Admin Rules for this IP
         const rule = await IpRule.findOne({ ipAddress: userIP });
         
-        // 1. Is this IP completely blocked?
         if (rule && rule.isBlocked) {
             return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
         }
 
-        // 2. What is the limit for this IP? (Default 5)
         const allowedLimit = rule ? rule.limit : 5;
         const totalRegisteredFromIP = await User.countDocuments({ ipAddress: userIP });
 
@@ -94,13 +93,29 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
         }
     }
 
+    // 🚀 NEW: DEVICE FINGERPRINT CHECK
+    if (deviceId) {
+        // 1. Check if Device is Blocked
+        const isDeviceBlocked = await BlockedDevice.findOne({ deviceId });
+        if (isDeviceBlocked) {
+            return res.status(403).json({ message: "Access Denied: Your device has been blocked." });
+        }
+        
+        // 2. Limit Accounts Per Device (Optional: Yahan main 2 laga raha hu, aap apne hisaab se change kar lena)
+        const accountsOnDevice = await User.countDocuments({ deviceId });
+        if (accountsOnDevice >= 2) { 
+            return res.status(403).json({ message: "Limit Exceeded: You cannot create more accounts from this device." });
+        }
+    }
+
     const userId = await generateUserId();
     const user = new User({
       userId, name, mobile, email, country,
       password, transactionPassword: password,
       sponsorId: parseInt(sponsorId),
       role: 'user',
-      ipAddress: userIP 
+      ipAddress: userIP,
+      deviceId: deviceId || null // 🚀 NEW: Device ID Database me save kar rahe hain
     });
 
     await user.save();
@@ -110,38 +125,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
         await sendEmail({
             email: user.email,
             subject: '🎉 Welcome to USDT Boomers!',
-            html: `
-            <div style="font-family: Arial, sans-serif; background-color: #f4f6f9; padding: 20px; color: #333;">
-              <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-                
-                <div style="background-color: #2c4a58; color: #ffffff; text-align: center; padding: 40px 20px;">
-                  <h1 style="margin: 0; font-size: 26px;">🚀 Welcome to USDT Boomers</h1>
-                  <p style="margin: 10px 0 0; font-size: 14px; color: #d1d8dc;">Your journey starts here</p>
-                </div>
-                
-                <div style="padding: 30px 40px;">
-                  <p style="font-size: 16px; margin-top: 0;">Hello <strong>${user.name}</strong>,</p>
-                  <p style="font-size: 15px; color: #555; line-height: 1.6; margin-bottom: 25px;">Congratulations! Your account has been successfully created. Please find your login details below.</p>
-                  
-                  <div style="background-color: #f8f9fa; border-radius: 8px; padding: 25px; margin: 20px 0; font-size: 15px;">
-                    <p style="margin: 0 0 15px;">👤 <strong>User ID:</strong> ${user.userId}</p>
-                    <p style="margin: 0 0 15px;">🔑 <strong>Password:</strong> ${password}</p>
-                    <p style="margin: 0;">🔑 <strong>Transaction Password:</strong> ${password}</p>
-                  </div>
-                  
-                  <div style="text-align: center; margin: 35px 0;">
-<a href="https://usdtboomers.com/login" style="background-color: #2088f0; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">🔐 Login to Dashboard</a>                  </div>
-                  
-                  <p style="color: #d9534f; font-size: 13px; margin: 0;">⚠️ Please do not share your login details with anyone for security reasons.</p>
-                </div>
-                
-                <div style="background-color: #1a1a1a; color: #aaaaaa; text-align: center; padding: 15px; font-size: 12px;">
-                  © 2026 USDT Boomers. All rights reserved.
-                </div>
-
-              </div>
-            </div>
-            `
+            html: `... (Aapka email HTML same hai) ...` // (Space bachane ke liye maine HTML hide kiya hai, aap apna wala hi rakhna)
         });
     } catch (emailErr) { console.error("Email failed"); }
 
@@ -156,7 +140,8 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
 // ====================== LOGIN ======================
 router.post('/login', async (req, res) => {
   try {
-    const { userId, password } = req.body;
+    // 🚀 NEW: req.body se deviceId bhi le rahe hain
+    const { userId, password, deviceId } = req.body;
     const userIP = getClientIP(req);
 
     const user = await User.findOne({ userId });
@@ -167,15 +152,12 @@ router.post('/login', async (req, res) => {
         const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
 
         if (!isLocalIP) {
-            // Fetch Admin Rules for this IP
             const rule = await IpRule.findOne({ ipAddress: userIP });
             
-            // 1. Check if IP is Blocked
             if (rule && rule.isBlocked) {
                 return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
             }
 
-            // 2. Check Custom Limit (Default 5)
             const allowedLimit = rule ? rule.limit : 5;
             const uniqueUsersOnThisIP = await LoginHistory.distinct('userId', { ipAddress: userIP });
 
@@ -184,6 +166,14 @@ router.post('/login', async (req, res) => {
                     message: `Access Denied: You have reached the maximum limit of ${allowedLimit} accounts per device or network.` 
                 });
             }
+        }
+    }
+
+    // 🚀 NEW: DEVICE FINGERPRINT CHECK (Login ke time bhi block check)
+    if (deviceId) {
+        const isDeviceBlocked = await BlockedDevice.findOne({ deviceId });
+        if (isDeviceBlocked) {
+            return res.status(403).json({ message: "Access Denied: Your device has been blocked." });
         }
     }
 
@@ -204,6 +194,12 @@ router.post('/login', async (req, res) => {
 
     // ✅ IP Update (Migration)
     user.ipAddress = userIP; 
+    
+    // 🚀 NEW: Agar naye phone se login kiya hai toh database me update kardo
+    if (deviceId) {
+        user.deviceId = deviceId;
+    }
+    
     await user.save();
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '15m' });
@@ -224,6 +220,8 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// ... (Aapke Forgot / Reset password ke routes same rahenge yahan) ...
 
 
 // ====================== FORGOT PASSWORD ======================

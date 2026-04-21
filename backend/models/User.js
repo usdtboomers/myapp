@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema({
   packageId: { type: mongoose.Schema.Types.ObjectId, ref: "Package" },
 
 isSponsorDeactivated: { type: Boolean, default: false }, // Referral rokne ke liye
+deviceId: { type: String, default: null },
 
 telegramId: { type: String, default: null },
   isTelegramJoined: { type: Boolean, default: false },

@@ -7,7 +7,7 @@ import TelegramButton from '../../components/TelegramButton';
 // ✅ REAL IMPORT
 // ----------------------------------------------------------------------
 import { useAuth } from '../../context/AuthContext';
-
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
 // ----------------------------------------------------------------------
 
 const UserLogin = () => {
@@ -96,16 +96,24 @@ const UserLogin = () => {
   };
 
   // --- LOGIC: Handle Login ---
+  // --- LOGIC: Handle Login ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
+      // 🚀 NAYA: API call se pehle Device ID nikal rahe hain
+      const fpPromise = FingerprintJS.load();
+      const fp = await fpPromise;
+      const result = await fp.get();
+      const visitorId = result.visitorId;
+
       // Real API Call
       const res = await api.post('/auth/login', {
         userId,
         password,
+        deviceId: visitorId // 🚀 NAYA: Backend ko deviceId bhej rahe hain
       });
 
       const { token, user } = res.data;
@@ -121,10 +129,11 @@ const UserLogin = () => {
       // Simulate API delay
       setTimeout(() => {
         setLoading(false);
-navigate('/dashboard', { replace: true });
+        navigate('/dashboard', { replace: true });
       }, 1500);
 
     } catch (err) {
+      // Agar admin ne block kiya hoga, toh yahan backend ka error show hoga
       setError(err.response?.data?.message || 'Login failed');
       setLoading(false);
     }
