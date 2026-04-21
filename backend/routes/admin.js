@@ -331,30 +331,37 @@ router.post('/toggle-sponsor', async (req, res) => {
 // 📊 5. GET LIVE IP & LOGIN STATS (Unique Users Only)
 // 📊 5. GET LIVE IP & LOGIN STATS (Unique Users Only)
 // 📊 backend/routes/admin.js ma aa badlav karo
+// 📊 5. GET LIVE IP & LOGIN STATS (OPTIMIZED FOR SPEED)
 router.get('/live-ip-stats', async (req, res) => {
     try {
+        const LoginHistory = require('../models/LoginHistory');
+        const User = require('../models/User');
+
+        // 🔥 OPTIMIZATION: Hum database se sirf latest 500 records uthayenge
+        // Taaki server hang na ho aur calculation 1 second me ho jaye.
         const recentLogins = await LoginHistory.aggregate([
-            { $sort: { createdAt: -1 } },
+            { $sort: { createdAt: -1 } }, // Naye records upar
+            { $limit: 500 }, // 🛑 ROKO: Poora database scan hone se bachayega
             { 
                 $group: { 
                     _id: "$userId", 
-                    name: { $first: "$name" },
-                    ipAddress: { $first: "$ipAddress" },
-                    createdAt: { $first: "$createdAt" },
-                    // 🚀 NAYU: User model mathi deviceId levu padse
+                    name: { $first: "$name" }, 
+                    ipAddress: { $first: "$ipAddress" }, 
+                    createdAt: { $first: "$createdAt" } 
                 } 
             },
-            { $sort: { createdAt: -1 } }
+            { $sort: { createdAt: -1 } },
+            { $limit: 50 } // 🔥 Admin panel me sirf top 50 live log dikhenge (Speed ke liye)
         ]);
 
         const enrichedData = await Promise.all(recentLogins.map(async (log) => {
-            const user = await User.findOne({ userId: log._id }).select('deviceId'); // 🚀 Device ID fetch karyu
+            const user = await User.findOne({ userId: log._id }).select('deviceId'); 
             const count = await User.countDocuments({ ipAddress: log.ipAddress });
             return {
                 userId: log._id,
                 name: log.name,
                 ipAddress: log.ipAddress,
-                deviceId: user ? user.deviceId : "N/A", // 🚀 Frontend ma moklavayu
+                deviceId: user ? user.deviceId : "N/A",
                 createdAt: log.createdAt,
                 totalAccountsOnIp: count
             };
@@ -362,6 +369,7 @@ router.get('/live-ip-stats', async (req, res) => {
 
         res.json(enrichedData);
     } catch (err) {
+        console.error("Live Stats Error:", err);
         res.status(500).json({ message: "Server error" });
     }
 });
