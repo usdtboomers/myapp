@@ -181,9 +181,12 @@ router.get('/direct-team/:userId', async (req, res) => {
 // ---------------------------
 router.get('/all-team/:userId', async (req, res) => {
   const userId = Number(req.params.userId);
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const search = req.query.search || "";
+  const skip = (page - 1) * limit;
 
   try {
-    // MongoDB aggregation query for lightning-fast downline extraction
     const result = await User.aggregate([
       { $match: { userId: userId } },
       {
@@ -193,55 +196,52 @@ router.get('/all-team/:userId', async (req, res) => {
           connectFromField: "userId",
           connectToField: "sponsorId",
           as: "downline",
-           depthField: "level"
+          depthField: "level"
         }
       }
     ]);
 
-    if (!result || result.length === 0 || !result[0].downline) {
-      return res.json({
-        team: [],
-        totalTeamCount: 0,
-        directCount: 0,
-        indirectCount: 0,
-        levelWiseCount: {}
-      });
+    if (!result.length || !result[0].downline.length) {
+      return res.json({ team: [], totalCount: 0, stats: { total: 0, active: 0 } });
     }
 
-    let allTeam = result[0].downline;
-
-    const levelWiseCount = {};
-    let directCount = 0;
-    
-    // Formatting data for frontend
-    const formattedTeam = allTeam.map((u, i) => {
-      const actualLevel = (u.level || 0) + 1; // graphLookup level 0 se start karta hai
-      
-      levelWiseCount[actualLevel] = (levelWiseCount[actualLevel] || 0) + 1;
-      if (actualLevel === 1) directCount++;
-
-      return {
-        srNo: i + 1,
-        _id: u._id,
-        userId: u.userId,
-        name: u.name,
-        country: u.country,
-        topUpAmount: u.topUpAmount || 0,
-        createdAt: u.createdAt,
-        level: actualLevel
-      };
+    // 1. Filter: Level 0 hatayein aur Search lagayein
+    let filteredTeam = result[0].downline.filter(u => {
+      const isIndirect = u.level >= 0; // GraphLookup level 0 means L-1
+      const matchesSearch = u.userId.toString().includes(search) || 
+                            u.name.toLowerCase().includes(search.toLowerCase());
+      return isIndirect && matchesSearch;
     });
 
+    // 2. Stats (Har baar sahi count ke liye)
+    const stats = {
+      total: filteredTeam.length,
+      active: filteredTeam.filter(u => u.topUpAmount > 0).length
+    };
+
+    // 3. Sorting & Pagination (Latest first)
+    const paginated = filteredTeam
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(skip, skip + limit);
+
+    const formatted = paginated.map((u, i) => ({
+      _id: u._id,
+      userId: u.userId,
+      name: u.name,
+      country: u.country,
+      topUpAmount: u.topUpAmount || 0,
+      createdAt: u.createdAt,
+      level: u.level + 1
+    }));
+
     res.json({
-      team: formattedTeam,
-      totalTeamCount: formattedTeam.length,
-      directCount: directCount,
-      indirectCount: formattedTeam.length - directCount,
-      levelWiseCount: levelWiseCount
+      team: formatted,
+      totalCount: stats.total,
+      activeCount: stats.active,
+      totalPages: Math.ceil(stats.total / limit)
     });
 
   } catch (err) {
-    console.error('Error fetching team:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
