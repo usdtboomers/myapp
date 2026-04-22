@@ -1,20 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import api from '../../api/axios'; // Path apne folder structure ke hisaab se check kar lena
+import React, { useEffect, useState, useMemo } from 'react'; // 🔥 useMemo import kiya
+import api from '../../api/axios'; 
 import { saveAs } from 'file-saver';
 import Papa from 'papaparse';
 
 const UserListTable = () => {
   const [users, setUsers] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  
-  // ✅ NEW: TopUp Filter State
   const [topUpFilter, setTopUpFilter] = useState('all'); 
-
-  // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); 
 
@@ -25,14 +20,10 @@ const UserListTable = () => {
       if (!token) throw new Error('Admin token not found');
 
       const res = await api.get('/admin/users', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      const data = res.data || [];
-      setUsers(data);
-      setFilteredUsers(data);
+      setUsers(res.data || []);
     } catch (err) {
       console.error('Failed to fetch users:', err);
     } finally {
@@ -44,9 +35,10 @@ const UserListTable = () => {
     fetchUsers();
   }, []);
 
-  // ✅ UPDATED: Filter users by search, date, AND TopUp Status
-  useEffect(() => {
-    const filtered = users.filter(user => {
+  // 🔥 SUPER FAST OPTIMIZATION: useMemo ka use kiya hai filter ke liye
+  // Ab ye data tabhi filter hoga jab user list ya search badlega, faltu re-renders nahi honge.
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
       const nameMatch = user.name?.toLowerCase().includes(search.toLowerCase());
       const idMatch = String(user.userId).includes(search);
       const createdAt = new Date(user.createdAt);
@@ -67,16 +59,17 @@ const UserListTable = () => {
       } else if (topUpFilter === 'paid') {
         topUpMatch = amount > 0;
       } else if (topUpFilter !== 'all') {
-        // Specific amount (10, 30, 60, 120, etc.)
         topUpMatch = amount === Number(topUpFilter);
       }
 
       return (nameMatch || idMatch) && inDateRange && topUpMatch;
     });
+  }, [users, search, dateFrom, dateTo, topUpFilter]); // Sirf inke change hone par chalega
 
-    setFilteredUsers(filtered);
-    setCurrentPage(1); 
-  }, [search, users, dateFrom, dateTo, topUpFilter]);
+  // Jab bhi filter change ho, page 1 pe wapas jao
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, dateFrom, dateTo, topUpFilter]);
 
   // Pagination Logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -115,13 +108,12 @@ const UserListTable = () => {
     saveAs(blob, 'filtered-user-list.csv');
   };
 
-  // ✅ Handle Login As User (Impersonation) - SMART DYNAMIC URL
+  // ✅ Handle Login As User (Impersonation)
   const handleLoginAsUser = async (targetUserId) => {
     try {
       const adminToken = localStorage.getItem('adminToken');
       if (!adminToken) return alert("Admin not authorized");
 
-      // Request token for the target user from Admin API
       const res = await api.post('/admin/impersonate', { userId: targetUserId }, {
         headers: { Authorization: `Bearer ${adminToken}` }
       });
@@ -129,19 +121,16 @@ const UserListTable = () => {
       const { token: userToken, user: impersonatedUser } = res.data;
       const userDataStr = JSON.stringify(impersonatedUser);
       
-      // 🔥 SMART DYNAMIC URL LOGIC 🔥
       let targetBaseUrl = "";
       const currentHost = window.location.hostname;
 
       if (currentHost === "localhost" || currentHost === "127.0.0.1") {
-        targetBaseUrl = "http://localhost:3000"; // Local Main Frontend
+        targetBaseUrl = "http://localhost:3000"; 
       } else {
-        targetBaseUrl = "https://usdtboomers.com"; // Live Main Website
+        targetBaseUrl = "https://usdtboomers.com"; 
       }
 
       const mainWebsiteUrl = `${targetBaseUrl}/login?token=${userToken}&user=${encodeURIComponent(userDataStr)}`;
-
-      // Main website ko naye tab mein kholo
       window.open(mainWebsiteUrl, '_blank', 'noopener,noreferrer');
       
     } catch (err) {
@@ -150,7 +139,6 @@ const UserListTable = () => {
     }
   };
 
-  // ✅ Copy Function
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
     alert(`Copied ID: ${text}`); 
@@ -158,11 +146,14 @@ const UserListTable = () => {
 
   if (loading) {
     return (
-      <div className="p-4 text-center text-gray-600 text-lg">
-        Loading users...
+      <div className="p-4 text-center text-gray-600 text-lg font-bold mt-10">
+        ⏳ Loading user data... Please wait
       </div>
     );
   }
+
+  // BAAKI KA RETURN (JSX HTML) WAHI SAME RAHEGA JO AAPKA THA
+  // Yahan apna purana return() block copy-paste kar lena...
 
   return (
     <div className="p-4 ">

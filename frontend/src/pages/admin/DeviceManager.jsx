@@ -28,10 +28,9 @@ const DeviceManager = () => {
   };
 
   useEffect(() => {
+    // 🔥 OPTIMIZED: Har 1 minute wala auto-refresh hata diya hai.
+    // Ab ye sirf page open hone par load hoga, jisse server fast rahega.
     fetchData();
-    // Refresh live users every 1 minute (60000 ms)
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
   }, []);
 
   // 2. Block New Device Manually
@@ -105,7 +104,10 @@ const DeviceManager = () => {
     const searchLower = blockedSearch.toLowerCase();
     return (
       (device.deviceId && device.deviceId.toLowerCase().includes(searchLower)) ||
-      (device.reason && device.reason.toLowerCase().includes(searchLower))
+      (device.reason && device.reason.toLowerCase().includes(searchLower)) ||
+      // 🔥 NEW: Blocked search me User ID aur Name bhi kaam karega
+      (device.userId && device.userId.toString().includes(searchLower)) ||
+      (device.name && device.name.toLowerCase().includes(searchLower))
     );
   });
 
@@ -252,13 +254,13 @@ const DeviceManager = () => {
                  Current Blocked List
               </h2>
               <span className="bg-red-100 text-red-700 py-1 px-3 rounded-full text-xs font-bold border border-red-200 whitespace-nowrap">
-                  Total Blocked: {blockedDevices.length}
+                 Total Blocked: {blockedDevices.length}
               </span>
             </div>
 
             <input
                type="text"
-               placeholder="Search Blocked ID or Reason..."
+               placeholder="Search User ID, Name, Device..."
                value={blockedSearch}
                onChange={(e) => setBlockedSearch(e.target.value)}
                className="w-full md:w-64 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -270,6 +272,9 @@ const DeviceManager = () => {
               <thead className="bg-gray-100 text-gray-600 uppercase text-xs font-bold sticky top-0 shadow-sm">
                 <tr>
                   <th className="px-4 py-3 md:px-6 md:py-4">Sr No.</th>
+                  {/* 🔥 NEW COLUMNS ADDED HERE */}
+                  <th className="px-4 py-3 md:px-6 md:py-4">User ID</th>
+                  <th className="px-4 py-3 md:px-6 md:py-4">Name</th>
                   <th className="px-4 py-3 md:px-6 md:py-4">Device ID (Hash)</th>
                   <th className="px-4 py-3 md:px-6 md:py-4">Block Reason</th>
                   <th className="px-4 py-3 md:px-6 md:py-4">Date & Time</th>
@@ -279,7 +284,7 @@ const DeviceManager = () => {
               <tbody className="divide-y divide-gray-200">
                 {filteredBlockedDevices.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500 font-medium text-sm md:text-base">
+                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500 font-medium text-sm md:text-base">
                       {blockedDevices.length === 0 
                         ? '🟢 System is clean. No devices are currently blocked.' 
                         : 'No blocked devices match your search.'}
@@ -289,6 +294,11 @@ const DeviceManager = () => {
                   filteredBlockedDevices.map((device, index) => (
                     <tr key={device._id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 md:px-6 md:py-4 font-semibold text-gray-500">{index + 1}</td>
+                      
+                      {/* 🔥 NEW USER ID & NAME DISPLAYED HERE */}
+                      <td className="px-4 py-3 md:px-6 md:py-4 font-bold text-gray-900">{device.userId}</td>
+                      <td className="px-4 py-3 md:px-6 md:py-4 font-semibold text-gray-600">{device.name}</td>
+
                       <td className="px-4 py-3 md:px-6 md:py-4 font-mono text-indigo-600 text-xs md:text-sm tracking-wide">{device.deviceId}</td>
                       <td className="px-4 py-3 md:px-6 md:py-4 text-gray-700"><span className="bg-gray-100 px-2 py-1 md:px-3 md:py-1 rounded text-[10px] md:text-xs border border-gray-300">{device.reason}</span></td>
                       <td className="px-4 py-3 md:px-6 md:py-4 text-gray-500 text-[10px] md:text-xs">

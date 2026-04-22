@@ -332,16 +332,15 @@ router.post('/toggle-sponsor', async (req, res) => {
 // 📊 5. GET LIVE IP & LOGIN STATS (Unique Users Only)
 // 📊 backend/routes/admin.js ma aa badlav karo
 // 📊 5. GET LIVE IP & LOGIN STATS (OPTIMIZED FOR SPEED)
+// 📊 5. GET LIVE IP & LOGIN STATS (OPTIMIZED FOR SPEED - NO LOOPS)
 router.get('/live-ip-stats', async (req, res) => {
     try {
         const LoginHistory = require('../models/LoginHistory');
         const User = require('../models/User');
 
-        // 🔥 OPTIMIZATION: Hum database se sirf latest 500 records uthayenge
-        // Taaki server hang na ho aur calculation 1 second me ho jaye.
         const recentLogins = await LoginHistory.aggregate([
-            { $sort: { createdAt: -1 } }, // Naye records upar
-            { $limit: 1000 }, // 🛑 ROKO: Poora database scan hone se bachayega
+            { $sort: { createdAt: -1 } },
+            { $limit: 1000 },
             { 
                 $group: { 
                     _id: "$userId", 
@@ -351,20 +350,33 @@ router.get('/live-ip-stats', async (req, res) => {
                 } 
             },
             { $sort: { createdAt: -1 } },
-            { $limit: 200 } // 🔥 Admin panel me sirf top 50 live log dikhenge (Speed ke liye)
+            { $limit: 200 } 
         ]);
 
-        const enrichedData = await Promise.all(recentLogins.map(async (log) => {
-            const user = await User.findOne({ userId: log._id }).select('deviceId'); 
-            const count = await User.countDocuments({ ipAddress: log.ipAddress });
-            return {
-                userId: log._id,
-                name: log.name,
-                ipAddress: log.ipAddress,
-                deviceId: user ? user.deviceId : "N/A",
-                createdAt: log.createdAt,
-                totalAccountsOnIp: count
-            };
+        if (recentLogins.length === 0) return res.json([]);
+
+        // Ek hi baar mein saari detail nikal lenge (Loop hata diya)
+        const userIds = recentLogins.map(log => log._id);
+        const ipAddresses = [...new Set(recentLogins.map(log => log.ipAddress))];
+
+        const usersData = await User.find({ userId: { $in: userIds } }).select('userId deviceId').lean();
+        const userMap = {};
+        usersData.forEach(u => { userMap[u.userId] = u.deviceId; });
+
+        const ipCountsData = await User.aggregate([
+            { $match: { ipAddress: { $in: ipAddresses } } },
+            { $group: { _id: "$ipAddress", count: { $sum: 1 } } }
+        ]);
+        const ipCountMap = {};
+        ipCountsData.forEach(ip => { ipCountMap[ip._id] = ip.count; });
+
+        const enrichedData = recentLogins.map(log => ({
+            userId: log._id,
+            name: log.name,
+            ipAddress: log.ipAddress,
+            deviceId: userMap[log._id] || "N/A",
+            createdAt: log.createdAt,
+            totalAccountsOnIp: ipCountMap[log.ipAddress] || 1
         }));
 
         res.json(enrichedData);
@@ -375,14 +387,34 @@ router.get('/live-ip-stats', async (req, res) => {
 });
 
 
-
- 
-// 1. GET: Saare blocked devices ki list dekhne ke liye
+// 1. GET: Saare blocked devices ki list dekhne ke liye (WITH USER ID & NAME)
 router.get('/blocked-devices', async (req, res) => {
     try {
-        const devices = await BlockedDevice.find().sort({ blockedAt: -1 });
-        res.json(devices);
+        const devices = await BlockedDevice.find().sort({ blockedAt: -1 }).lean();
+        
+        if (devices.length === 0) return res.json([]);
+
+        // Block list walo ke naam aur ID nikalna (Bina naya data save kiye)
+        const deviceIds = devices.map(d => d.deviceId);
+        const User = require('../models/User'); // Model zaroor call karna yahan
+        const users = await User.find({ deviceId: { $in: deviceIds } }).select('deviceId userId name').lean();
+
+        const userMap = {};
+        users.forEach(u => { 
+            if (!userMap[u.deviceId]) {
+                userMap[u.deviceId] = u; 
+            }
+        });
+
+        const enrichedDevices = devices.map(device => ({
+            ...device,
+            userId: userMap[device.deviceId]?.userId || "N/A",
+            name: userMap[device.deviceId]?.name || "Unknown"
+        }));
+
+        res.json(enrichedDevices);
     } catch (err) {
+        console.error("Blocked Devices Error:", err);
         res.status(500).json({ message: 'Server error' });
     }
 });
