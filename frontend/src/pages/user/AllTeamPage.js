@@ -1,11 +1,8 @@
 import React, { useEffect, useState } from "react";
-import api from "../../api/axios"; 
-import useAuth from "../../hooks/useAuth"; 
-
+import api from "../../api/axios"; // Updated path based on your snippet
+import useAuth from "../../hooks/useAuth"; // Updated path based on your snippet
 const AllTeamPage = () => {
   const { user } = useAuth();
-  
-  // State Management
   const [team, setTeam] = useState([]);
   const [stats, setStats] = useState({
     totalTeam: 0,
@@ -14,74 +11,85 @@ const AllTeamPage = () => {
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false); // ✅ Added loading state for better UI
-
+  // ✅ ADDED: State for sorting
+  const [sortConfig, setSortConfig] = useState({ key: "createdAt", direction: "desc" });
   useEffect(() => {
     if (!user?.userId) return;
-
     const fetchAllTeam = async () => {
-      setIsLoading(true);
       try {
-        // 🔥 Server-Side Fetching (Sirf required data aayega)
-        const res = await api.get(`/user/all-team/${user.userId}`, {
-          params: {
-            page: currentPage,
-            limit: entriesPerPage,
-            search: search
-          }
-        });
-
-        // ✅ Direct set karein, koi local filter ki zarurat nahi
-        setTeam(res.data.team || []);
-
-        // ✅ Stats update (Backend ke exact naam use kiye hain)
+        const res = await api.get(`/user/all-team/${user.userId}`);
+        // ✅ CHANGED: Filter out Level 1 (Direct Team)
+        let teamData = (res.data.team || []).filter(u => u.level > 0);
+        // Initial default sort (Newest first)
+        teamData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setTeam(teamData);
+        // Stats Calculation (Based on filtered Indirect Team)
         setStats({
-          totalTeam: res.data.totalCount || res.data.totalTeamCount || 0,
-          activeTeam: res.data.activeCount || 0
+          totalTeam: teamData.length,
+          activeTeam: teamData.filter(u => u.topUpAmount > 0).length
         });
-
       } catch (err) {
         console.error("Error fetching all team:", err);
-      } finally {
-        setIsLoading(false);
       }
     };
-
-    // 🔥 DEBOUNCING: Search type karne ke 500ms baad ek hi API call jayegi
-    const delayDebounceFn = setTimeout(() => {
-      fetchAllTeam();
-    }, 500);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [user?.userId, currentPage, entriesPerPage, search]); 
-
-  // ✅ Pagination Math (Total pages server se aaye count se banenge)
-  const totalPages = Math.ceil(stats.totalTeam / entriesPerPage) || 1;
-  const indexOfFirst = (currentPage - 1) * entriesPerPage;
-
-  // Handlers
+    fetchAllTeam();
+  }, [user?.userId]);
+  // 1. Search Filter
+  const filtered = team.filter(
+    (u) =>
+      u.userId?.toString().includes(search) ||
+      u.name?.toLowerCase().includes(search.toLowerCase())
+  );
+  // ✅ ADDED: Sorting Logic
+  const sortedTeam = [...filtered].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    let aValue = a[sortConfig.key] || "";
+    let bValue = b[sortConfig.key] || "";
+    // Handle strings for case-insensitive sorting
+    if (typeof aValue === "string") aValue = aValue.toLowerCase();
+    if (typeof bValue === "string") bValue = bValue.toLowerCase();
+    // Handle Dates
+    if (sortConfig.key === "createdAt") {
+      aValue = new Date(a.createdAt).getTime();
+      bValue = new Date(b.createdAt).getTime();
+    }
+    if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+    return 0;
+  });
+  // 3. Pagination (using sortedTeam instead of filtered)
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentItems = sortedTeam.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(sortedTeam.length / entriesPerPage) || 1;
   const handleNext = () => currentPage < totalPages && setCurrentPage(prev => prev + 1);
   const handlePrev = () => currentPage > 1 && setCurrentPage(prev => prev - 1);
   const handleEntriesChange = (e) => {
     setEntriesPerPage(parseInt(e.target.value));
-    setCurrentPage(1); // Rows change karne par page 1 par wapas aao
+    setCurrentPage(1);
   };
-
-  // ✅ Columns Definition (Local sorting hata di hai kyunki backend by default latest first de raha hai)
+  // ✅ ADDED: Sort Click Handler
+  const handleSort = (key) => {
+    if (!key) return; // Don't sort "Sr" column
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+  // ✅ ADDED: Column configurations mapping labels to data keys
   const tableColumns = [
-    { label: "Sr" },
-    { label: "Lvl" },
-    { label: "User ID" },
-    { label: "Top-Up ($)" },
-    { label: "Name" },
-    { label: "Country" },
-    { label: "Joined" }
+    { label: "Sr", key: null },
+    { label: "Lvl", key: "level" },
+    { label: "User ID", key: "userId" },
+    { label: "Top-Up ($)", key: "topUpAmount" },
+    { label: "Name", key: "name" },
+    { label: "Country", key: "country" },
+    { label: "Joined", key: "createdAt" }
   ];
-
   return (
     <div style={styles.container}>
       <h2 className="text-white font-bold p-1 text-xl" style={{ marginBottom: 10 }}>🌍 Downline Team </h2>
-      
       {/* Stats Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "15px" }}>
         <div style={styles.statCard}>
@@ -93,17 +101,13 @@ const AllTeamPage = () => {
           <p style={styles.statValue} className="text-green-600">{stats.activeTeam}</p>
         </div>
       </div>
-
       {/* Search + Entries */}
       <div style={styles.controls}>
         <input
           type="text"
           placeholder="Search by name or ID"
           value={search}
-          onChange={(e) => { 
-            setSearch(e.target.value); 
-            setCurrentPage(1); // Naya search karne par page 1 par jao
-          }}
+          onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
           style={styles.searchInput}
         />
         <select value={entriesPerPage} onChange={handleEntriesChange} style={styles.select}>
@@ -113,63 +117,60 @@ const AllTeamPage = () => {
           <option value={100}>Show 100</option>
         </select>
       </div>
-
       {/* Table */}
-      <div style={{ overflowX: "auto", position: "relative" }}>
-        
-        {/* Loading Indicator */}
-        {isLoading && (
-          <div style={styles.loaderOverlay}>
-            <span style={{color: '#4A90E2', fontWeight: 'bold'}}>Loading Data...</span>
-          </div>
-        )}
-
+      <div style={{ overflowX: "auto" }}>
         <table style={styles.table}>
           <thead>
             <tr style={styles.headerRow}>
-              {tableColumns.map((col, idx) => (
-                <th key={idx} style={styles.th}>
+              {tableColumns.map((col) => (
+                <th
+                  key={col.label}
+                  style={{ ...styles.th, cursor: col.key ? "pointer" : "default" }}
+                  onClick={() => handleSort(col.key)}
+                >
                   {col.label}
+                  {/* Show sorting indicator arrows */}
+                  {sortConfig.key === col.key && (
+                    <span style={{ marginLeft: "5px", fontSize: "10px" }}>
+                      {sortConfig.direction === "asc" ? "▲" : "▼"}
+                    </span>
+                  )}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {team.length === 0 && !isLoading ? (
+            {currentItems.length === 0 ? (
               <tr>
                 <td colSpan="7" style={styles.emptyCell}>No team members found.</td>
               </tr>
             ) : (
-              team.map((u, i) => (
+              currentItems.map((u, i) => (
                 <tr
-                  key={u._id || i}
+                  key={u._id}
                   style={{
                     ...styles.tr,
                     backgroundColor: i % 2 === 0 ? "#fafafa" : "#fff",
-                    opacity: isLoading ? 0.5 : 1 // Loading ke time table thoda dim ho jayega
                   }}
                 >
-                  {/* Serial Number calculation */}
                   <td style={styles.td}>{indexOfFirst + i + 1}</td>
-                  
                   {/* Level Column */}
                   <td style={styles.td}>
                     <span style={{ background: "#e3f2fd", color: "#1565c0", padding: "2px 6px", borderRadius: "4px", fontWeight: "bold", fontSize: "10px" }}>
                       L-{u.level}
                     </span>
                   </td>
-                  
                   <td style={styles.td}>{u.userId}</td>
                   <td style={{ ...styles.td, fontWeight: "bold", color: u.topUpAmount > 0 ? "green" : "red" }}>
                     ${u.topUpAmount || 0}
                   </td>
-                  
-                  {/* Name Column */}
-                  <td style={{ ...styles.td, ...styles.nameCell }} title={u.name || "-"}>
+                  {/* Name Column with Truncation and Tooltip */}
+                  <td
+                    style={{ ...styles.td, ...styles.nameCell }}
+                    title={u.name || "-"}
+                  >
                     {u.name || "-"}
-                  </td>                  
-                  
-                  <td style={styles.td}>{u.country || "-"}</td>
+                  </td>                  <td style={styles.td}>{u.country || "-"}</td>
                   <td style={styles.td}>
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "-"}
                   </td>
@@ -179,23 +180,21 @@ const AllTeamPage = () => {
           </tbody>
         </table>
       </div>
-
       {/* Pagination */}
       <div style={styles.pagination}>
         <button onClick={handlePrev} disabled={currentPage === 1} style={styles.pageBtn(currentPage === 1)}>
           ⬅ Prev
         </button>
         <span className="text-white" style={styles.pageText}>
-          Page <strong>{currentPage}</strong> / <strong>{totalPages === 0 ? 1 : totalPages}</strong>
+          Page <strong>{currentPage}</strong> / <strong>{totalPages}</strong>
         </span>
-        <button onClick={handleNext} disabled={currentPage === totalPages || totalPages === 0} style={styles.pageBtn(currentPage === totalPages || totalPages === 0)}>
+        <button onClick={handleNext} disabled={currentPage === totalPages} style={styles.pageBtn(currentPage === totalPages)}>
           Next ➡
         </button>
       </div>
     </div>
   );
 };
-
 /* Styles */
 const styles = {
   container: {
@@ -242,15 +241,6 @@ const styles = {
     border: "1px solid #ccc",
     fontSize: 12,
   },
-  loaderOverlay: {
-    position: "absolute",
-    top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10
-  },
   table: {
     width: "100%",
     borderCollapse: "collapse",
@@ -261,12 +251,13 @@ const styles = {
     backgroundColor: "#4A90E2",
     color: "white",
     textAlign: "left",
-    userSelect: "none"
+    userSelect: "none" // Prevents text selection when clicking headers
   },
   th: {
     padding: "8px",
     fontWeight: 600,
     borderBottom: "2px solid #ddd",
+    transition: "background 0.2s ease",
   },
   td: {
     padding: "6px 8px",
@@ -274,7 +265,7 @@ const styles = {
     color: "#333",
   },
   nameCell: {
-    maxWidth: "120px",
+    maxWidth: "120px", // Aap isko apne hisaab se kam ya zyada kar sakte hain (e.g., 150px)
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -309,5 +300,4 @@ const styles = {
     fontSize: "12px",
   }
 };
-
 export default AllTeamPage;
