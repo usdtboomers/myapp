@@ -4,65 +4,55 @@ import useAuth from "../../hooks/useAuth";
 
 const AllTeamPage = () => {
   const { user } = useAuth();
-  
   const [team, setTeam] = useState([]);
   const [stats, setStats] = useState({
     totalTeam: 0,
     activeTeam: 0
   });
-  
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: "createdAt", direction: "desc" });
   
-  // ✅ ADDED: Loading state for Spinner
+  // ✅ ADDED: Loading State for Spinner
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user?.userId) return;
-
     const fetchAllTeam = async () => {
-      setIsLoading(true); // Fetch start hone par spinner ON
+      setIsLoading(true); // Fetch start hone par spinner chalu
       try {
         const res = await api.get(`/user/all-team/${user.userId}`);
         
         let teamData = (res.data.team || []).filter(u => u.level > 0);
         
-        // Stats poore data par calculate honge (jaise 5000 log)
+        teamData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setTeam(teamData);
+        
         setStats({
           totalTeam: teamData.length,
           activeTeam: teamData.filter(u => u.topUpAmount > 0).length
         });
-
-        // Data set kar diya
-        setTeam(teamData);
       } catch (err) {
         console.error("Error fetching all team:", err);
       } finally {
-        setIsLoading(false); // Data aane ke baad spinner OFF
+        setIsLoading(false); // Data aane ke baad spinner band
       }
     };
-    
     fetchAllTeam();
   }, [user?.userId]);
 
-  // ✅ ADDED: useMemo & 300 Limit (Anti-Crash Logic)
-  // useMemo browser ko hang hone se bachata hai jab aap search mein type karte hain
-  const processedTeam = useMemo(() => {
-    let filtered = team;
-
-    // 1. Search Logic
-    if (search) {
-      const lower = search.toLowerCase();
-      filtered = team.filter(u =>
-        u.userId?.toString().includes(lower) ||
-        u.name?.toLowerCase().includes(lower)
-      );
-    }
+  // ✅ SPEED HACK: useMemo taaki 5000 users par search karte waqt page hang na ho
+  const sortedTeam = useMemo(() => {
+    // 1. Search Filter
+    const filtered = team.filter(
+      (u) =>
+        u.userId?.toString().includes(search) ||
+        u.name?.toLowerCase().includes(search.toLowerCase())
+    );
 
     // 2. Sorting Logic
-    let sorted = [...filtered].sort((a, b) => {
+    return filtered.sort((a, b) => {
       if (!sortConfig.key) return 0;
       let aValue = a[sortConfig.key] || "";
       let bValue = b[sortConfig.key] || "";
@@ -79,17 +69,13 @@ const AllTeamPage = () => {
       if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
       return 0;
     });
-
-    // 🔥 AAPKA IDEA: Browser crash rokne ke liye table list ko 300 par limit kar diya
-    return sorted.slice(0, 300); 
-
   }, [team, search, sortConfig]);
 
-  // 3. Pagination Logic
+  // 3. Pagination (using sortedTeam)
   const indexOfLast = currentPage * entriesPerPage;
   const indexOfFirst = indexOfLast - entriesPerPage;
-  const currentItems = processedTeam.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(processedTeam.length / entriesPerPage) || 1;
+  const currentItems = sortedTeam.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(sortedTeam.length / entriesPerPage) || 1;
 
   const handleNext = () => currentPage < totalPages && setCurrentPage(prev => prev + 1);
   const handlePrev = () => currentPage > 1 && setCurrentPage(prev => prev - 1);
@@ -153,11 +139,12 @@ const AllTeamPage = () => {
       {/* Table Area */}
       <div style={{ overflowX: "auto", position: "relative", minHeight: "200px" }}>
         
-        {/* ✅ ADDED: Loading Spinner */}
+        {/* ✅ ADDED: Loader Spinner Layout */}
         {isLoading && (
           <div style={styles.loaderOverlay}>
-            <div style={{ color: "#4A90E2", fontWeight: "bold", fontSize: "16px", backgroundColor: "#fff", padding: "10px 20px", borderRadius: "8px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)" }}>
-              ⏳ Loading Team Data...
+            <div style={styles.loaderBox}>
+              <span style={{ fontSize: "20px", display: "block", marginBottom: "5px" }}>⏳</span>
+              Fetching Data...
             </div>
           </div>
         )}
@@ -229,8 +216,6 @@ const AllTeamPage = () => {
         </button>
         <span className="text-white" style={styles.pageText}>
           Page <strong>{currentPage}</strong> / <strong>{totalPages}</strong>
-          <br/>
-          <small style={{fontSize: '9px', opacity: 0.8}}>(Showing top {processedTeam.length} results)</small>
         </span>
         <button onClick={handleNext} disabled={currentPage === totalPages || totalPages === 0} style={styles.pageBtn(currentPage === totalPages || totalPages === 0)}>
           Next ➡
@@ -250,7 +235,7 @@ const styles = {
   searchInput: { flex: "1 1 140px", padding: "8px", borderRadius: 4, border: "1px solid #ccc", fontSize: 12 },
   select: { padding: "6px", borderRadius: 4, border: "1px solid #ccc", fontSize: 12 },
   
-  // ✅ ADDED: Loader Overlay Styles
+  // ✅ ADDED: Loader Styles
   loaderOverlay: {
     position: "absolute",
     top: 0, left: 0, right: 0, bottom: 0,
@@ -259,6 +244,15 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10
+  },
+  loaderBox: {
+    backgroundColor: "#fff",
+    padding: "15px 30px",
+    borderRadius: "8px",
+    boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+    color: "#4A90E2",
+    fontWeight: "bold",
+    textAlign: "center"
   },
 
   table: { width: "100%", borderCollapse: "collapse", minWidth: "500px", fontSize: 11 },
