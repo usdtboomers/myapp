@@ -942,59 +942,7 @@ router.get('/level-income', verifyAdmin, async (req, res) => {
 // GET /api/admin/spin-income
 
 // 🔹 Admin: Update user spins or transaction amount
-router.get("/spin-income", verifyAdmin, async (req, res) => {
-  try {
-    const { userId, fromDate, toDate } = req.query;
-
-    // Build filter for spin_income, buy_spin, and topup_spin transactions
-    const filter = { type: { $in: ["spin_income", "buy_spin", "topup_spin"] } };
-    if (userId) filter.userId = Number(userId);
-    if (fromDate || toDate) filter.createdAt = {};
-    if (fromDate) filter.createdAt.$gte = new Date(fromDate);
-    if (toDate) filter.createdAt.$lte = new Date(toDate);
-
-    // Fetch transactions
-    const transactions = await Transaction.find(filter).sort({ createdAt: -1 });
-
-    // Extract unique userIds
-    const userIds = [...new Set(transactions.map(tx => tx.userId))];
-
-    // Fetch user details
-    const users = await User.find(
-      { userId: { $in: userIds } },
-      { userId: 1, name: 1 } // only needed fields
-    );
-
-    // Map userId to { name, availableSpins, usedSpins }
-    const userMap = {};
-    for (const u of users) {
-      const availableSpins = await Spin.countDocuments({ userId: u.userId, used: false });
-      const usedSpins = await Spin.countDocuments({ userId: u.userId, used: true });
-      userMap[u.userId] = { name: u.name || "-", availableSpins, usedSpins };
-    }
-
-    // Format transactions with user info
-    const formatted = transactions.map(tx => {
-      const user = userMap[tx.userId] || { name: "-", availableSpins: 0, usedSpins: 0 };
-      return {
-        _id: tx._id,
-        userId: tx.userId,
-        name: user.name,
-        availableSpins: user.availableSpins,
-        usedSpins: user.usedSpins,
-        amount: tx.amount,
-        type: tx.type,              // spin_income, buy_spin, topup_spin
-        description: tx.description,
-        createdAt: tx.createdAt,
-      };
-    });
-
-    res.json(formatted);
-  } catch (err) {
-    console.error("Error fetching spin transactions:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
+ 
 
 
 
