@@ -118,5 +118,9 @@ ipAddress: { type: String}, // IP save karne ke liye field
 }, { timestamps: true });
 
 userSchema.index({ sponsorId: 1 });
+// Schema ke end mein, jahan sponsorId ka index hai wahan ye bhi daal dein:
+userSchema.index({ ipAddress: 1 }); // IP search fast karne ke liye
+userSchema.index({ deviceId: 1 });  // Device block/search fast karne ke liye
+userSchema.index({ createdAt: -1 }); // Recent users jaldi nikalne ke liye
 
 module.exports = mongoose.model('User', userSchema);

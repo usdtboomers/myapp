@@ -338,9 +338,11 @@ router.get('/live-ip-stats', async (req, res) => {
         const LoginHistory = require('../models/LoginHistory');
         const User = require('../models/User');
 
+        // 1. Kam data fetch karenge (300 instead of 1000)
+        // 2. Final limit 50 kar di hai taaki rendering fast ho
         const recentLogins = await LoginHistory.aggregate([
             { $sort: { createdAt: -1 } },
-            { $limit: 1000 },
+            { $limit: 200 }, 
             { 
                 $group: { 
                     _id: "$userId", 
@@ -350,23 +352,28 @@ router.get('/live-ip-stats', async (req, res) => {
                 } 
             },
             { $sort: { createdAt: -1 } },
-            { $limit: 200 } 
+            { $limit: 50 } // Sirf top 50 users
         ]);
 
         if (recentLogins.length === 0) return res.json([]);
 
-        // Ek hi baar mein saari detail nikal lenge (Loop hata diya)
         const userIds = recentLogins.map(log => log._id);
         const ipAddresses = [...new Set(recentLogins.map(log => log.ipAddress))];
 
-        const usersData = await User.find({ userId: { $in: userIds } }).select('userId deviceId').lean();
+        // 3. Lean query use kar rahe hain (Fastest way in Mongoose)
+        const usersData = await User.find({ userId: { $in: userIds } })
+            .select('userId deviceId')
+            .lean();
+
         const userMap = {};
         usersData.forEach(u => { userMap[u.userId] = u.deviceId; });
 
+        // 4. IP counting ko optimize kiya (Aggregating only necessary IPs)
         const ipCountsData = await User.aggregate([
             { $match: { ipAddress: { $in: ipAddresses } } },
             { $group: { _id: "$ipAddress", count: { $sum: 1 } } }
-        ]);
+        ]).hint({ ipAddress: 1 }); // Index use karne ke liye hint
+
         const ipCountMap = {};
         ipCountsData.forEach(ip => { ipCountMap[ip._id] = ip.count; });
 
