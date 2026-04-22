@@ -173,9 +173,11 @@ router.get('/direct-team/:userId', async (req, res) => {
 // ---------------------------
 router.get('/all-team/:userId', async (req, res) => {
   const userId = Number(req.params.userId);
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const search = req.query.search ? req.query.search.toLowerCase() : "";
 
   try {
-    // MongoDB aggregation query for lightning-fast downline extraction
     const result = await User.aggregate([
       { $match: { userId: userId } },
       {
@@ -185,51 +187,67 @@ router.get('/all-team/:userId', async (req, res) => {
           connectFromField: "userId",
           connectToField: "sponsorId",
           as: "downline",
-           depthField: "level"
+          depthField: "level"
         }
       }
     ]);
 
     if (!result || result.length === 0 || !result[0].downline) {
-      return res.json({
-        team: [],
-        totalTeamCount: 0,
-        directCount: 0,
-        indirectCount: 0,
-        levelWiseCount: {}
-      });
+      return res.json({ team: [], totalTeamCount: 0, activeCount: 0, directCount: 0, levelWiseCount: {}, totalPages: 1 });
     }
 
     let allTeam = result[0].downline;
-
     const levelWiseCount = {};
     let directCount = 0;
+    let totalActiveCount = 0; // 🔥 NAYA: Poori team ka active count
     
-    // Formatting data for frontend
-    const formattedTeam = allTeam.map((u, i) => {
-      const actualLevel = (u.level || 0) + 1; // graphLookup level 0 se start karta hai
-      
+    // 1. Calculate Stats for ALL 3000+ users (Fast in backend)
+    allTeam.forEach((u) => {
+      const actualLevel = (u.level || 0) + 1;
       levelWiseCount[actualLevel] = (levelWiseCount[actualLevel] || 0) + 1;
       if (actualLevel === 1) directCount++;
+      if (u.topUpAmount > 0) totalActiveCount++; // 🔥 Har active user ko gino
+    });
 
+    // 2. Apply Search Filter (If any)
+    if (search) {
+      allTeam = allTeam.filter(u => 
+        u.userId?.toString().includes(search) ||
+        u.name?.toLowerCase().includes(search)
+      );
+    }
+
+    // 3. Sort (Newest First)
+    allTeam.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // 4. Slice the array to send ONLY required items (e.g., 50 items for table)
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginatedTeam = allTeam.slice(startIndex, endIndex);
+
+    // 5. Format only the paginated items
+    const formattedTeam = paginatedTeam.map((u, i) => {
       return {
-        srNo: i + 1,
+        srNo: startIndex + i + 1,
         _id: u._id,
         userId: u.userId,
         name: u.name,
         country: u.country,
         topUpAmount: u.topUpAmount || 0,
         createdAt: u.createdAt,
-        level: actualLevel
+        level: (u.level || 0) + 1
       };
     });
 
     res.json({
       team: formattedTeam,
-      totalTeamCount: formattedTeam.length,
+      totalTeamCount: result[0].downline.length, // Total team (e.g. 3000)
+      activeCount: totalActiveCount, // 🔥 NAYA: Total active users (e.g. 500)
       directCount: directCount,
-      indirectCount: formattedTeam.length - directCount,
-      levelWiseCount: levelWiseCount
+      indirectCount: result[0].downline.length - directCount,
+      levelWiseCount: levelWiseCount,
+      currentPage: page,
+      totalPages: Math.ceil(allTeam.length / limit) || 1
     });
 
   } catch (err) {

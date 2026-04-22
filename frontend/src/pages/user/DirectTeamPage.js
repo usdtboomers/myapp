@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react"; // 🔥 useMemo add kiya hai
 import api from "api/axios"; // Make sure path is correct
 import { useAuth } from "../../context/AuthContext"; // Make sure path is correct
 
@@ -32,15 +32,21 @@ const DirectTeamPage = () => {
     fetchDirectTeam();
   }, [user?.userId]);
 
-  const filtered = team.filter((u) => {
+  // 🔥 YAHAN CHANGE KIYA HAI: useMemo lagaya taaki search aur filter fast ho
+  const filtered = useMemo(() => {
     const s = search.toLowerCase();
-    return (
+    return team.filter((u) =>
       u.userId?.toString().includes(s) ||
       u.name?.toLowerCase().includes(s) ||
       u.mobile?.toString().includes(s) ||
       u.country?.toLowerCase().includes(s)
     );
-  });
+  }, [team, search]);
+
+  // 🔥 YAHAN CHANGE KIYA HAI: Jab bhi search mein kuch type ho, page 1 par wapas aa jaye
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   const indexOfLast = currentPage * entriesPerPage;
   const indexOfFirst = indexOfLast - entriesPerPage;
@@ -124,7 +130,7 @@ const DirectTeamPage = () => {
               <tr>
                 <td
                   colSpan="8"
-                  className="text-center py-4 text-white italic"
+                  className="text-center py-4 text-gray-500 italic"
                 >
                   No direct referrals found.
                 </td>
@@ -159,13 +165,12 @@ const DirectTeamPage = () => {
                     </span>
                   </td>
 
-                  {/* ✅ EDITED: Mobile Number with Hardcoded +91 for WhatsApp */}
+                  {/* ✅ Mobile Number with Hardcoded +91 for WhatsApp */}
                   <td className="p-2 sm:p-3 border">
                     <div className="flex items-center gap-2">
                         <span className="text-gray-700">{member.mobile || "-"}</span>
                         {member.mobile && (
                             <a 
-                                // 👉 YAHAN CHANGE KIYA HAI: Added '91' before variable
                                 href={`https://wa.me/91${member.mobile}`} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
