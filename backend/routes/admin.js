@@ -341,7 +341,7 @@ router.get('/live-ip-stats', async (req, res) => {
         // Taaki server hang na ho aur calculation 1 second me ho jaye.
         const recentLogins = await LoginHistory.aggregate([
             { $sort: { createdAt: -1 } }, // Naye records upar
-            { $limit: 500 }, // 🛑 ROKO: Poora database scan hone se bachayega
+            { $limit: 1000 }, // 🛑 ROKO: Poora database scan hone se bachayega
             { 
                 $group: { 
                     _id: "$userId", 
@@ -351,7 +351,7 @@ router.get('/live-ip-stats', async (req, res) => {
                 } 
             },
             { $sort: { createdAt: -1 } },
-            { $limit: 50 } // 🔥 Admin panel me sirf top 50 live log dikhenge (Speed ke liye)
+            { $limit: 200 } // 🔥 Admin panel me sirf top 50 live log dikhenge (Speed ke liye)
         ]);
 
         const enrichedData = await Promise.all(recentLogins.map(async (log) => {
