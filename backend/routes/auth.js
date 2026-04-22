@@ -98,7 +98,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
         // 1. Check if Device is Blocked
         const isDeviceBlocked = await BlockedDevice.findOne({ deviceId });
         if (isDeviceBlocked) {
-            return res.status(403).json({ message: "Access Denied: Your device has been blocked." });
+return res.status(403).json({ message: "Access Denied: Your device has been blocked due to a policy violation." });
         }
         
         // 2. Limit Accounts Per Device (Optional: Yahan main 2 laga raha hu, aap apne hisaab se change kar lena)
@@ -173,8 +173,7 @@ router.post('/login', async (req, res) => {
     if (deviceId) {
         const isDeviceBlocked = await BlockedDevice.findOne({ deviceId });
         if (isDeviceBlocked) {
-            return res.status(403).json({ message: "Access Denied: Your device has been blocked." });
-        }
+return res.status(403).json({ message: "Access Denied: Your device has been blocked due to a policy violation." });        }
     }
 
     console.log(`User Logging In: ${user.email} | IP: ${userIP}`);
