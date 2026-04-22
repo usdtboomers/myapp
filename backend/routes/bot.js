@@ -32,12 +32,26 @@ const startTelegramBot = () => {
     };
 
     // 1. Promo Message Task
+  // Is line ko ab hata do (iska kaam khatam):
+    // let currentMsgIndex = 0; 
+
+    // 1. Promo Message Task
     cron.schedule(schedules.promo, async () => {
         try {
-            const msgToSend = promoMessages[currentMsgIndex];
+            // 🔥 NAYA LOGIC: Tareekh (Date) ke hisaab se index nikalna
+            const indiaTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+            const todayDate = new Date(indiaTime).getDate(); // Returns day of the month (1-31)
+            
+            // Tumhare array ki length 4 hai.
+            // Example: Agar 22 date hai toh: 22 % 4 = 2 (3rd message jayega)
+            // Agar 23 date hai toh: 23 % 4 = 3 (4th message jayega)
+            const calculatedIndex = todayDate % promoMessages.length; 
+
+            const msgToSend = promoMessages[calculatedIndex];
+            
             await bot.sendMessage(channelUsername, msgToSend, { parse_mode: 'HTML' });
-            console.log(`✅ Promo message (Day ${currentMsgIndex + 1}) sent successfully.`);
-            currentMsgIndex = (currentMsgIndex + 1) % promoMessages.length;
+            
+            console.log(`✅ Promo message (Index ${calculatedIndex}) sent successfully for Date: ${todayDate}`);
         } catch (error) {
             console.error("❌ Error promo message:", error.message);
         }
