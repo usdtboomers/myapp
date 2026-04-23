@@ -183,7 +183,6 @@ router.get('/all-team/:userId', async (req, res) => {
   const userId = Number(req.params.userId);
 
   try {
-    // MongoDB aggregation query for lightning-fast downline extraction
     const result = await User.aggregate([
       { $match: { userId: userId } },
       {
@@ -193,7 +192,20 @@ router.get('/all-team/:userId', async (req, res) => {
           connectFromField: "userId",
           connectToField: "sponsorId",
           as: "downline",
-           depthField: "level"
+          depthField: "level"
+        }
+      },
+      // 🔥 YEH NAYA STAGE ADD KIYA HAI 🔥
+      // Isse 4000+ users ka data 90% halka (lightweight) ho jayega
+      {
+        $project: {
+          "downline._id": 1,
+          "downline.userId": 1,
+          "downline.name": 1,
+          "downline.country": 1,
+          "downline.topUpAmount": 1,
+          "downline.createdAt": 1,
+          "downline.level": 1
         }
       }
     ]);
@@ -215,7 +227,7 @@ router.get('/all-team/:userId', async (req, res) => {
     
     // Formatting data for frontend
     const formattedTeam = allTeam.map((u, i) => {
-      const actualLevel = (u.level || 0) + 1; // graphLookup level 0 se start karta hai
+      const actualLevel = (u.level || 0) + 1; 
       
       levelWiseCount[actualLevel] = (levelWiseCount[actualLevel] || 0) + 1;
       if (actualLevel === 1) directCount++;
@@ -245,6 +257,8 @@ router.get('/all-team/:userId', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+
 
 
 // ---------------------------
