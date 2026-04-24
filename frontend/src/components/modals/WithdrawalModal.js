@@ -331,7 +331,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
             <div style={styles.header}>
               <div>
                 {/* 🔥 User ko Modal Title mein bhi apna ID dikhega */}
-                <h2 style={styles.title}>Withdraw Funds <span style={{fontSize: "14px", color: "#94a3b8", fontWeight: "normal"}}>| ID: {userId}</span></h2>
+                <h2 style={styles.title}>Withdraw Funds <span style={{fontSize: "14px", color: "#94a3b8", fontWeight: "normal"}}></span></h2>
               </div>
               <button onClick={onClose} style={{background: 'none', border: 'none', color: '#94a3b8', fontSize: '24px', cursor: 'pointer'}}>&times;</button>
             </div>
