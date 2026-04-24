@@ -27,8 +27,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
   const [successData, setSuccessData] = useState({ userId: "", amount: 0, source: "" });
   const [messageModal, setMessageModal] = useState({ open: false, title: "", message: "", type: "info" });
   const [currentTime, setCurrentTime] = useState(Date.now());
-// State section mein ye line add karo
-const [latestWithdrawals, setLatestWithdrawals] = useState({});
+  const [latestWithdrawals, setLatestWithdrawals] = useState({});
 
   const { user: loggedInUser, token } = useAuth();
 
@@ -53,8 +52,8 @@ const [latestWithdrawals, setLatestWithdrawals] = useState({});
   };
 
   const unlockDays = [3, 13, 43, 73, 103];
-// ✅ Naya Code (Continuous Flow)
-const packageOffsets = { 10: 0, 30: 1, 60: 6, 120: 11, 240: 16, 480: 21, 960: 26 };
+  const packageOffsets = { 10: 0, 30: 1, 60: 6, 120: 11, 240: 16, 480: 21, 960: 26 };
+
   // --- LOGIC: Fetch Data ---
   const fetchData = useCallback(async () => {
     try {
@@ -96,25 +95,22 @@ const packageOffsets = { 10: 0, 30: 1, 60: 6, 120: 11, 240: 16, 480: 21, 960: 26
     
     const joinDate = loggedInUser?.createdAt ? new Date(loggedInUser.createdAt).getTime() : Date.now();
 
-    // 1️⃣ FREE LOGIC (Strictly matching Plan.js to show exact same levels as Dashboard)
     const hoursSinceJoined = Math.max(0, Math.floor((currentTime - joinDate) / (1000 * 60 * 60)));
     const daysSinceJoined = Math.max(0, Math.floor((currentTime - joinDate) / (1000 * 60 * 60 * 24)));
     let isAchievedFree = false;
 
     if (amount === 10) {
-      isAchievedFree = hoursSinceJoined >= (idx * 4); // Matched Plan.js exact logic
+      isAchievedFree = hoursSinceJoined >= (idx * 4); 
     } else {
-      const reqDaysFree = packageOffsets[amount] + idx; // Matched Plan.js exact logic
+      const reqDaysFree = packageOffsets[amount] + idx; 
       isAchievedFree = daysSinceJoined >= reqDaysFree;
     }
 
-    // 2️⃣ PAID LOGIC (Real Backend Timers)
     let isUnlockedPaid = false;
     let timeLeftPaid = 0;
 
     if (hasPackage) {
       const startDate = new Date(activePkg.startDate || activePkg.date).getTime();
-      // Use Backend array (3, 13, 43...) for Paid Timers
       const targetTime = startDate + (unlockDays[idx] * 24 * 60 * 60 * 1000);
       timeLeftPaid = Math.max(0, Math.floor((targetTime - currentTime) / 1000));
       isUnlockedPaid = timeLeftPaid === 0;
@@ -130,7 +126,7 @@ const packageOffsets = { 10: 0, 30: 1, 60: 6, 120: 11, 240: 16, 480: 21, 960: 26
     const levelWithdrawn = Math.max(0, withdrawnInPlan);
     const availableInLevel = hasPackage 
         ? (isUnlockedPaid ? Math.max(0, fullEarning - levelWithdrawn) : 0) 
-        : Math.max(0, fullEarning - levelWithdrawn); // Fake Bait balance for Free
+        : Math.max(0, fullEarning - levelWithdrawn); 
 
     return { 
       originalIdx: idx, 
@@ -156,8 +152,8 @@ const packageOffsets = { 10: 0, 30: 1, 60: 6, 120: 11, 240: 16, 480: 21, 960: 26
     const value = e.target.value;
     if (/^\d*\.?\d{0,2}$/.test(value)) {
       setLevelWithdrawals((prev) => ({
-        ...prev, // Pichla data rakho
-        [`${planKey}_${levelIdx}`]: value // Naya data add/update karo
+        ...prev, 
+        [`${planKey}_${levelIdx}`]: value 
       }));
     }
   };
@@ -166,130 +162,135 @@ const packageOffsets = { 10: 0, 30: 1, 60: 6, 120: 11, 240: 16, 480: 21, 960: 26
     const value = e.target.value;
     if (/^\d*\.?\d{0,2}$/.test(value)) {
       setOtherWithdrawals((prev) => ({
-        ...prev, // Pichla data rakho
-        [sourceName]: value // Naya data add/update karo
+        ...prev, 
+        [sourceName]: value 
       }));
     }
   };
 
-const handleWithdraw = async () => {
-  try {
-    // 🌟 Promo User Check
-    const isPromo = loggedInUser?.role === "promo";
+  const handleWithdraw = async () => {
+    try {
+      // 🌟 Promo User Check
+      const isPromo = loggedInUser?.role === "promo";
 
-    const planEntries = Object.entries(levelWithdrawals).filter(([_, val]) => Number(val) > 0);
-    const otherEntries = Object.entries(otherWithdrawals).filter(([_, val]) => Number(val) > 0);
+      const planEntries = Object.entries(levelWithdrawals).filter(([_, val]) => Number(val) > 0);
+      const otherEntries = Object.entries(otherWithdrawals).filter(([_, val]) => Number(val) > 0);
 
-    let totalRequested = 0;
-    planEntries.forEach(([_, val]) => totalRequested += Number(val));
-    otherEntries.forEach(([_, val]) => totalRequested += Number(val));
+      let totalRequested = 0;
+      planEntries.forEach(([_, val]) => totalRequested += Number(val));
+      otherEntries.forEach(([_, val]) => totalRequested += Number(val));
 
-    if (totalRequested === 0) return showMessage("Warning", "Enter amount to withdraw.");
-    
-    // 🛡️ Bypassed for Promo: $5 Minimum Check
-    if (!isPromo && totalRequested < 5) {
-      return showMessage("Warning", "Minimum total withdrawal amount is $5.");
-    }
-    
-    if (!walletAddress.trim()) return showMessage("Warning", "Please enter your USDT BEP20 Wallet Address.");
-    if (!transactionPassword.trim()) return showMessage("Warning", "Enter transaction password.");
-
-    let items = []; 
-    let successMessages = [];
-
-    // Process Matrix Levels
-    for (const [key, val] of planEntries) {
-      const [planKey, levelIdx] = key.split("_");
-      const requestedAmount = Number(val);
-      const levelData = getLevelData(planKey, parseInt(levelIdx));
-
-      // 🛡️ Bypassed for Promo: Package & Timer Checks
-      if (!isPromo) {
-          if (!levelData.hasPackage) {
-              return showMessage("Top-up Required ⚠️", `You must activate the $${planToPackageAmount[planKey]} Package to withdraw.`, "error");
-          }
-          if (!levelData.isUnlockedPaid) {
-            return showMessage("Warning", `Level ${parseInt(levelIdx) + 1} timer is still running.`);
-          }
-          if (requestedAmount > levelData.availableInLevel) {
-            return showMessage("Insufficient Funds", `Available: $${levelData.availableInLevel}`);
-          }
-      }
-
-      items.push({
-        source: planKey,
-        level: parseInt(levelIdx),
-        package: planToPackageAmount[planKey],
-        amount: requestedAmount,
-      });
-      successMessages.push(planNames[planKey]);
-    }
-
-    // Process Reward & Direct
-    for (const [sourceKey, val] of otherEntries) {
-      const requestedAmount = Number(val);
+      if (totalRequested === 0) return showMessage("Warning", "Enter amount to withdraw.");
       
-      // 🛡️ Bypassed for Promo: Balance checks
-      if (!isPromo) {
-          if (sourceKey === 'reward' && requestedAmount > balances.rewardIncome) {
-              return showMessage("Insufficient Funds", `You only have $${balances.rewardIncome} in Reward Income.`);
-          }
-          if (sourceKey === 'direct' && requestedAmount > balances.directIncome) {
-              return showMessage("Insufficient Funds", `You only have $${balances.directIncome} in Direct Income.`);
-          }
+      // 🛡️ Bypassed for Promo: $5 Minimum Check
+      if (!isPromo && totalRequested < 5) {
+        return showMessage("Warning", "Minimum total withdrawal amount is $5.");
+      }
+      
+      if (!walletAddress.trim()) return showMessage("Warning", "Please enter your USDT BEP20 Wallet Address.");
+      if (!transactionPassword.trim()) return showMessage("Warning", "Enter transaction password.");
+
+      let items = []; 
+      let successMessages = [];
+
+      // Process Matrix Levels
+      for (const [key, val] of planEntries) {
+        const [planKey, levelIdx] = key.split("_");
+        const requestedAmount = Number(val);
+        const levelData = getLevelData(planKey, parseInt(levelIdx));
+
+        // 🛡️ Bypassed for Promo: Package & Timer Checks
+        if (!isPromo) {
+            if (!levelData.hasPackage) {
+                return showMessage("Top-up Required ⚠️", `You must activate the $${planToPackageAmount[planKey]} Package to withdraw.`, "error");
+            }
+            if (!levelData.isUnlockedPaid) {
+              return showMessage("Warning", `Level ${parseInt(levelIdx) + 1} timer is still running.`);
+            }
+            if (requestedAmount > levelData.availableInLevel) {
+              return showMessage("Insufficient Funds", `Available: $${levelData.availableInLevel}`);
+            }
+        }
+
+        items.push({
+          source: planKey,
+          level: parseInt(levelIdx),
+          package: planToPackageAmount[planKey],
+          amount: requestedAmount,
+        });
+        successMessages.push(planNames[planKey]);
       }
 
-      items.push({
-        source: sourceKey,
-        amount: requestedAmount,
+      // Process Reward & Direct
+      for (const [sourceKey, val] of otherEntries) {
+        const requestedAmount = Number(val);
+        
+        // 🛡️ Bypassed for Promo: Balance checks
+        if (!isPromo) {
+            if (sourceKey === 'reward' && requestedAmount > balances.rewardIncome) {
+                return showMessage("Insufficient Funds", `You only have $${balances.rewardIncome} in Reward Income.`);
+            }
+            if (sourceKey === 'direct' && requestedAmount > balances.directIncome) {
+                return showMessage("Insufficient Funds", `You only have $${balances.directIncome} in Direct Income.`);
+            }
+        }
+
+        items.push({
+          source: sourceKey,
+          amount: requestedAmount,
+        });
+        successMessages.push(sourceKey === "reward" ? "USDT Reward" : "Direct Income");
+      }
+
+      setLoading(true);
+
+      if (isAddressMissing) {
+        try {
+          await api.put(`/user/${userId}`, { walletAddress });
+        } catch (e) {
+          console.log("Wallet update failed, continuing...", e);
+        }
+      }
+
+      // 🔥 DYNAMIC ENDPOINT
+      const endpoint = isPromo ? "/wallet/promo-withdraw" : "/wallet/withdraw";
+
+      // 🔥 Yahan API response capture kar rahe hain
+      const response = await api.post(endpoint, {
+        transactionPassword,
+        items
+      }, { 
+        headers: { Authorization: `Bearer ${token}` } 
       });
-      successMessages.push(sourceKey === "reward" ? "USDT Reward" : "Direct Income");
+
+      const uniqueSources = [...new Set(successMessages)].join(", ");
+
+      // 🔥 DYNAMIC ID LOGIC: Promo hai aur backend se id aayi hai to wo use karo, nahi to normal real userId use karo
+      const finalUserId = (isPromo && response.data.generatedId) ? response.data.generatedId : userId;
+
+      setSuccessData({
+        userId: finalUserId,
+        amount: totalRequested,
+        source: uniqueSources,
+      });
+
+      setSuccessOpen(true);
+      setLevelWithdrawals({});
+      setOtherWithdrawals({});
+      setTransactionPassword("");
+      await fetchData();
+
+    } catch (err) {
+      console.log(err);
+      const msg = err.response?.status === 403
+        ? "Invalid Transaction Password"
+        : err.response?.data?.message || "Withdrawal failed.";
+      showMessage("Error", msg);
+    } finally {
+      setLoading(false); 
     }
+  };
 
-    setLoading(true);
-
-    if (isAddressMissing) {
-      try {
-        await api.put(`/user/${userId}`, { walletAddress });
-      } catch (e) {
-        console.log("Wallet update failed, continuing...", e);
-      }
-    }
-
-    // 🔥 DYNAMIC ENDPOINT: Role ke hisab se URL change hoga
-    const endpoint = isPromo ? "/wallet/promo-withdraw" : "/wallet/withdraw";
-
-    await api.post(endpoint, {
-      transactionPassword,
-      items
-    }, { 
-      headers: { Authorization: `Bearer ${token}` } 
-    });
-
-    const uniqueSources = [...new Set(successMessages)].join(", ");
-
-    setSuccessData({
-      userId,
-      amount: totalRequested,
-      source: uniqueSources,
-    });
-
-    setSuccessOpen(true);
-    setLevelWithdrawals({});
-    setOtherWithdrawals({});
-    setTransactionPassword("");
-    await fetchData();
-
-  } catch (err) {
-    console.log(err);
-    const msg = err.response?.status === 403
-      ? "Invalid Transaction Password"
-      : err.response?.data?.message || "Withdrawal failed.";
-    showMessage("Error", msg);
-  } finally {
-    setLoading(false); 
-  }
-};
   const isAnySelected = Object.values(levelWithdrawals).some(v => Number(v) > 0) || Object.values(otherWithdrawals).some(v => Number(v) > 0);
 
   // --- STYLES ---
@@ -329,7 +330,8 @@ const handleWithdraw = async () => {
           <div style={styles.modal}>
             <div style={styles.header}>
               <div>
-                <h2 style={styles.title}>Withdraw Funds</h2>
+                {/* 🔥 User ko Modal Title mein bhi apna ID dikhega */}
+                <h2 style={styles.title}>Withdraw Funds <span style={{fontSize: "14px", color: "#94a3b8", fontWeight: "normal"}}>| ID: {userId}</span></h2>
               </div>
               <button onClick={onClose} style={{background: 'none', border: 'none', color: '#94a3b8', fontSize: '24px', cursor: 'pointer'}}>&times;</button>
             </div>
@@ -375,7 +377,6 @@ const handleWithdraw = async () => {
               </div>
 
               {/* MATRIX INCOME WALLETS */}
-            {/* MATRIX INCOME WALLETS */}
               <div>
                 <div style={{fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px', marginTop:'5px', letterSpacing: '1px'}}>Global Growth INCOME</div>
                 
@@ -385,7 +386,6 @@ const handleWithdraw = async () => {
                   const activePackage = userPackages.find(p => p.amount === pkgAmount);
                   const hasPackage = !!activePackage;
 
-                  // 1️⃣ FREE LOGIC DATES (Based on Join Date)
                   const joinDate = loggedInUser?.createdAt ? new Date(loggedInUser.createdAt).getTime() : Date.now();
                   const daysSinceJoined = Math.max(0, Math.floor((currentTime - joinDate) / (1000 * 60 * 60 * 24)));
                   const hoursSinceJoined = Math.max(0, Math.floor((currentTime - joinDate) / (1000 * 60 * 60)));
@@ -394,10 +394,8 @@ const handleWithdraw = async () => {
                   const earningsArray = packageEarnings[pkgAmount] || [];
                   const allProcessedLevels = [];
 
-                  // 2️⃣ PROCESS ALL 5 LEVELS FIRST
                   for (let idx = 0; idx < earningsArray.length; idx++) {
                       
-                      // Free Check
                       let isAchievedFree = false;
                       if (pkgAmount === 10) {
                         isAchievedFree = hoursSinceJoined >= (idx * 4);
@@ -405,7 +403,6 @@ const handleWithdraw = async () => {
                         isAchievedFree = daysSinceJoined >= (pkgOffset + idx);
                       }
 
-                      // Paid & Timer Check
                       let isAchievedPaid = false;
                       let isUnlockedPaid = false;
                       let timeLeftPaid = 0;
@@ -413,7 +410,6 @@ const handleWithdraw = async () => {
                       if (hasPackage) {
                         const startDateMs = new Date(activePackage.startDate || activePackage.date).getTime(); 
                         
-                        // Achieved Check for Paid
                         if (pkgAmount === 10) {
                           const activeHours = Math.max(0, Math.floor((currentTime - startDateMs) / (1000 * 60 * 60)));
                           isAchievedPaid = activeHours >= (idx * 4);
@@ -422,13 +418,11 @@ const handleWithdraw = async () => {
                           isAchievedPaid = activeDays >= idx;
                         }
 
-                        // Real Timer for Withdrawal (3, 13, 43, 73, 103 Days)
                         const targetTime = startDateMs + (unlockDays[idx] * 24 * 60 * 60 * 1000);
                         timeLeftPaid = Math.max(0, Math.floor((targetTime - currentTime) / 1000));
                         isUnlockedPaid = timeLeftPaid === 0;
                       }
 
-                      // Save all info to array
                       allProcessedLevels.push({
                           originalIdx: idx,
                           earning: earningsArray[idx],
@@ -438,13 +432,9 @@ const handleWithdraw = async () => {
                       });
                   }
 
-                  // 3️⃣ FIND ACTIVE TIMER (Wo pehla level jo Top-up ho gaya hai par time khatam nahi hua)
                   const activeTimerIdx = allProcessedLevels.findIndex(l => !l.isUnlockedPaid);
-
-                  // 4️⃣ FILTER ONLY ACHIEVED FOR DISPLAY
                   const achievedLevels = allProcessedLevels.filter(l => l.isAchieved);
 
-                  // Agar ek bhi level achieve nahi hua toh return null (Hide box)
                   if (achievedLevels.length === 0) return null;
 
                   return (
@@ -459,25 +449,17 @@ const handleWithdraw = async () => {
                            )}
                          </div>
                          
-                         {/* Total Calculation: Achieved sum - Withdrawn */}
-                        {/* Total Calculation: Achieved sum - Withdrawn */}
-{/* IS HISSE KO REPLACE KAR DO */}
-{(() => {
-    // 1. achievedLevels ka total sum
-    const totalEarningsOfAchievedLevels = achievedLevels.reduce((sum, levelData) => sum + (levelData.earning || 0), 0);
-    
-    // 2. 🔥 CHANGE: loggedInUser ki jagah latestWithdrawals use kiya
-    const totalWithdrawnInThisPlan = latestWithdrawals[planKey] || 0;
-    
-    // 3. Calculation
-    const frontendAvailableInThisPlan = Math.max(0, totalEarningsOfAchievedLevels - totalWithdrawnInThisPlan);
-    
-    return (
-        <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>
-            Withdraw Available Amt: ${frontendAvailableInThisPlan.toFixed(2)}
-        </span>
-    );
-})()}
+                         {(() => {
+                            const totalEarningsOfAchievedLevels = achievedLevels.reduce((sum, levelData) => sum + (levelData.earning || 0), 0);
+                            const totalWithdrawnInThisPlan = latestWithdrawals[planKey] || 0;
+                            const frontendAvailableInThisPlan = Math.max(0, totalEarningsOfAchievedLevels - totalWithdrawnInThisPlan);
+                            
+                            return (
+                                <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}>
+                                    Withdraw Available Amt: ${frontendAvailableInThisPlan.toFixed(2)}
+                                </span>
+                            );
+                        })()}
                       </div>
                       
                       <div className="custom-scroll" style={{ overflowX: 'auto', width: '100%' }}>
@@ -487,7 +469,6 @@ const handleWithdraw = async () => {
                             const originalIdx = data.originalIdx; 
                             const isLast = vIdx === achievedLevels.length - 1;
                             
-                            // 🔥 Timer Logic
                             const isCurrentlyCountingPaid = hasPackage && originalIdx === activeTimerIdx;
                             const { d, h, m, s } = getFormattedTime(data.timeLeftPaid);
 
@@ -501,14 +482,12 @@ const handleWithdraw = async () => {
                                   borderBottom: isLast ? 'none' : '1px solid #1e293b'
                               }}>
                                 
-                                {/* Left Column: Level Info */}
                                 <div>
                                    <span style={{color: '#e2e8f0', fontWeight: 'bold', fontSize: '11px'}}>
                                       Level {originalIdx+1} <br/><span className="font-bold text-yellow-500" >${data.earning}</span>
                                    </span>
                                 </div>
                                 
-                                {/* Center Column: Timer or Unlocked */}
                                 <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                                    {isCurrentlyCountingPaid ? (
                                       <div style={{ display: 'flex', gap: '8px' }}>
@@ -536,7 +515,6 @@ const handleWithdraw = async () => {
                                    )}
                                 </div>
 
-                                {/* Right Column: Input Box */}
                                 <div style={{ width: '100%' }}>
                                      <input 
                                        type="number" 

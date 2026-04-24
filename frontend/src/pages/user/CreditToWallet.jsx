@@ -9,9 +9,13 @@ const CreditToWalletHistory = () => {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); // State for rows
+  const [errorMessage, setErrorMessage] = useState(""); // ✅ Naya state error dikhane ke liye
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      setErrorMessage("User ID not found. Please log in again.");
+      return;
+    }
 
     api.get(`/wallet/history/${userId}`)
       .then((res) => {
@@ -24,9 +28,14 @@ const CreditToWalletHistory = () => {
 
         setTransactions(creditTxs);
         setFiltered(creditTxs);
+        setErrorMessage(""); // ✅ Success hone par error clear kar do
       })
       .catch((err) => {
         console.error("Failed to fetch wallet transactions", err);
+        // ✅ API se jo error aayega, wo seedha state mein set hoga
+        setErrorMessage(
+          err.response?.data?.message || "Failed to load history. Please try again later."
+        );
         setTransactions([]);
         setFiltered([]);
       });
@@ -61,6 +70,21 @@ const CreditToWalletHistory = () => {
       <h2 className="text-white font-bold" style={{ marginBottom: 12, fontSize: 16 }}>
         💰 Credit To Wallet 
       </h2>
+
+      {/* ✅ NAYA ERROR MESSAGE BOX */}
+      {errorMessage && (
+        <div style={{
+          backgroundColor: "#ffebee",
+          color: "#c62828",
+          padding: "10px",
+          borderRadius: "4px",
+          marginBottom: "12px",
+          border: "1px solid #ffcdd2",
+          fontWeight: "bold"
+        }}>
+          ⚠️ {errorMessage}
+        </div>
+      )}
 
       {/* ✅ TOP SECTION: Search + Rows Dropdown */}
       <div
@@ -153,7 +177,8 @@ const CreditToWalletHistory = () => {
             ) : (
               <tr>
                 <td colSpan="6" style={emptyCellStyle}>
-                  No transactions found.
+                  {/* Agar error hai toh empty table me 'No transactions' ki jagah error dikhayega */}
+                  {errorMessage ? "Could not load data." : "No transactions found."}
                 </td>
               </tr>
             )}

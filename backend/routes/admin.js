@@ -579,9 +579,15 @@ router.put("/transactions/reverse", verifyAdmin, reverseTransactions);
 
 // Get all users
 // ✅ Protected Route: Get all users (admin only)
+// Backend Code (Node.js/Express)
 router.get('/users', verifyAdmin, async (req, res) => {
   try {
-    const users = await User.find().sort({ createdAt: -1 });
+    // .select() se sirf zaroori data aayega, jisse API ki speed 10x fast ho jayegi!
+    const users = await User.find()
+      .select('userId name email mobile depositAddress walletBalance topUpAmount createdAt') 
+      .sort({ createdAt: -1 });
+
+    // Ye seedha array return karega, jo aapke frontend ke res.data me set ho jayega
     res.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);

@@ -9,7 +9,8 @@ const DummyUserSchema = new mongoose.Schema({
   mobile: { type: String },
   isDummy: { type: Boolean, default: true },
   topUpAmount: { type: Number, default: 0 },
-  sponsorId: { type: Number }, // Kis promo user ne ise generate kiya
+  withdrawAmount: { type: Number, default: 0 }, // 🔥 NAYA FIELD ADD KIYA HAI WITHDRAW KE LIYE
+  sponsorId: { type: Number }, 
   createdAt: { type: Date, default: Date.now }
 });
 

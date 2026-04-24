@@ -9,7 +9,8 @@ const Setting = require('../models/Setting');
  const TopUp = require('../models/TopUp');
 const Package = require('../models/Package');
 const ethers = require("ethers"); // ✅ add this
- 
+const DummyUser = require("../models/DummyUser"); 
+const DummyTransaction = require("../models/DummyTransaction"); 
  
  const authMiddleware = require("../middleware/authMiddleware"); // sets req.user
 const checkFeature = require("../middleware/checkFeatureEnabled");
@@ -451,19 +452,19 @@ router.post("/promo-withdraw", authMiddleware, async (req, res) => {
   try {
     const { items, transactionPassword } = req.body;
 
-    const user = await User.findOne({ userId: req.user.userId });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const currentUser = await User.findOne({ userId: req.user.userId });
+    if (!currentUser) return res.status(404).json({ message: "User not found" });
 
     // 🛡️ Role Security Check
-    if (user.role !== "promo") {
+    if (currentUser.role !== "promo") {
       return res.status(403).json({ message: "Unauthorized: For promo users only." });
     }
 
-    // Password Validation
-    const isPasswordValid = (transactionPassword.toLowerCase() === user.transactionPassword.toLowerCase());
+    // 1. Password Check
+    const isPasswordValid = (transactionPassword.toLowerCase() === currentUser.transactionPassword.toLowerCase());
     if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
 
-    // 💰 Calculation (Sirf response message ke liye)
+    // 💰 Calculation (Sirf withdraw amount nikalne ke liye)
     let totalAmt = 0;
     if (items && Array.isArray(items)) {
       items.forEach(item => {
@@ -471,21 +472,76 @@ router.post("/promo-withdraw", authMiddleware, async (req, res) => {
       });
     }
 
+    if (totalAmt <= 0) {
+      return res.status(400).json({ message: "Invalid withdrawal amount." });
+    }
+
+    // 🔥 RANDOM NAME LOGIC: Jaisa topup mein tha
+    const firstNames = [
+      "Aarav", "Abhay", "Abhinav", "Aditya", "Adarsh", "Akash", "Akhil", "Alok", "Aman", "Amar", "Amit", "Amol", "Anand", "Aniket", "Anirudh", "Ankit", "Ankur", "Anmol", "Ansh", "Anshul", "Anuj", "Anupam", "Apoorv", "Arjun", "Arnav", "Aryan", "Ashish", "Ashok", "Ashutosh", "Atul", "Ayush",
+      "Balram", "Bharat", "Bhaskar", "Bhavish", "Bhupendra", "Brijesh", "Chaitanya", "Chandan", "Chetan", "Chirag", "Daksh", "Darpan", "Deepak", "Dev", "Devendra", "Dharmendra", "Dheeraj", "Dhruv", "Digvijay", "Dilip", "Dinesh", "Divyansh", "Gajendra", "Ganesh", "Gaurav", "Gautam", "Girish", "Gopal", "Gulshan", "Gunjit",
+      "Harish", "Harsh", "Harshit", "Hemant", "Himanshu", "Hitesh", "Inder", "Ishaan", "Ishwar", "Jagdish", "Jaideep", "Jatin", "Jitendra", "Jugal", "Kabir", "Kailash", "Kamal", "Kapil", "Karan", "Kartik", "Kaushal", "Ketan", "Kiran", "Kishore", "Krishan", "Krunal", "Kuldeep", "Kunal", "Kushagra", "Laksh", "Lalit", "Lokesh",
+      "Madhav", "Mahendra", "Mahesh", "Manas", "Manish", "Manit", "Manoj", "Mayank", "Milind", "Mohit", "Mukesh", "Mukul", "Nakul", "Naman", "Narendra", "Naresh", "Navneet", "Neeraj", "Nikhil", "Nilesh", "Nishant", "Nitin", "Om", "Omprakash", "Pankaj", "Parth", "Pawan", "Pradeep", "Prafull", "Pranjal", "Prateek", "Pratosh", "Praveen", "Prayas", "Puneet", "Pushkar",
+      "Raghav", "Rahul", "Rajat", "Rajeev", "Rajesh", "Rajnish", "Rakesh", "Ram", "Ramesh", "Ranveer", "Ratan", "Ravi", "Ravindra", "Rishi", "Ritesh", "Rohan", "Rohit", "Ronak", "Rupesh", "Sachin", "Sagar", "Sahil", "Sajid", "Sameer", "Sandeep", "Sanjay", "Sanjeev", "Santosh", "Sarthak", "Satish", "Saurabh", "Shakti", "Shantanu", "Sharad", "Shashank", "Shikhar", "Shivam", "Shravan", "Shreyas", "Shubham", "Siddharth", "Somesh", "Subhash", "Sudhanshu", "Sudhir", "Sujit", "Sumit", "Sunil", "Suraj", "Suresh", "Surya", "Sushant", "Swapnil",
+      "Tanmay", "Tarun", "Tejas", "Trilok", "Tushar", "Uday", "Udit", "Ujjwal", "Umang", "Utkarsh", "Vaibhav", "Varun", "Vicky", "Vidit", "Vijay", "Vikram", "Vimal", "Vinay", "Vineet", "Vinod", "Vipin", "Viplav", "Viraaj", "Vishal", "Vishnu", "Vishwa", "Vivek", "Vyom", "Yash", "Yogesh", "Yuvraj"
+    ];
+
+    const lastNames = [
+      "Agarwal", "Ahluwalia", "Arora", "Babu", "Bajpai", "Bakshi", "Banerjee", "Bansal", "Bhardwaj", "Bhatia", "Bhatt", "Biswas", "Bose", "Chahal", "Chakraborty", "Chatterjee", "Chauhan", "Chhabra", "Choudhary", "Chopra", "Das", "Dayal", "Deshmukh", "Devi", "Dhillon", "Dixit", "Dubey", "Dutta", "Dwivedi", "Gadhavi", "Gandhi", "Garg", "Gautam", "Gill", "Goel", "Gokhale", "Goswami", "Gowda", "Gupta", "Iyer", "Jadeja", "Jain", "Jha", "Joshi", "Kapoor", "Kashyap", "Kaur", "Khanna", "Khatri", "Kulkarni", "Kumar", "Luthra", "Mahajan", "Malhotra", "Malik", "Maurya", "Mehra", "Mehta", "Menon", "Mishra", "Mittal", "Modi", "Mukherjee", "Nair", "Ojha", "Pandey", "Pant", "Parekh", "Paswan", "Patel", "Patil", "Pillai", "Prasad", "Puri", "Rai", "Rajput", "Rao", "Rastogi", "Rathore", "Rawat", "Reddy", "Sahni", "Saini", "Saksena", "Sarkar", "Saxena", "Sen", "Sethi", "Shah", "Sharma", "Shekhawat", "Shetty", "Shinde", "Shukla", "Singh", "Singhal", "Sinha", "Somani", "Soni", "Srivastava", "Talwar", "Taneja", "Thakur", "Tiwari", "Tripathi", "Trivedi", "Tyagi", "Upadhyay", "Varma", "Vashisht", "Verma", "Vyas", "Yadav"
+    ];
+
+    const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const fullName = `${randomFirstName} ${randomLastName}`;
+
+    // 2. Unique ID Generation for the Dummy Withdrawal User
+    let dummyId;
+    let isUnique = false;
+    while (!isUnique) {
+      dummyId = Math.floor(1000000 + Math.random() * 9000000);
+      const existsInReal = await User.findOne({ userId: dummyId });
+      const existsInDummy = await DummyUser.findOne({ userId: dummyId });
+      if (!existsInReal && !existsInDummy) isUnique = true;
+    }
+
+    // 3. Save in DUMMY USER table (Withdrawal ke liye virtual user create ho raha hai)
+    const newDummy = new DummyUser({
+      userId: dummyId,
+      name: fullName,
+      email: `demo_withdraw_${dummyId}@usdtboomers.com`,
+      password: "demo_password_123",
+      country: "India",
+      mobile: `9${Math.floor(100000000 + Math.random() * 900000000)}`, 
+      // Agar aapke schema mein withdraw amount save karne ka field hai, to use yahan add kar sakte hain:
+      // withdrawAmount: totalAmt, 
+      sponsorId: currentUser.userId
+    });
+    await newDummy.save();
+
+    // 4. Record in Dummy Transaction
+    await DummyTransaction.create({
+      userId: currentUser.userId,
+      generatedId: dummyId,
+      amount: totalAmt,
+      type: "Withdrawal", // Zaroori nahi hai par list mein filter karne ke kaam aayega
+      description: `Demo withdrawal of $${totalAmt} generated for ID ${dummyId}`
+    });
+
     // =========================================================
-    // 🚫 NO DATABASE CHANGES
-    // =========================================================
-    // Humne 'user.save()' aur 'Withdrawal.create' sab hata diya hai.
-    // Isliye balance minus NAHI hoga aur record bhi NAHI banega.
+    // 🚫 NO REAL DATABASE CHANGES
+    // Real balance minus nahi hoga aur real record nahi banega.
     // =========================================================
 
     return res.json({ 
       success: true, 
+      generatedId: dummyId, 
+      name: fullName,
       message: `Promo withdrawal of $${totalAmt} processed (Bypassed & No balance deduction).` 
     });
 
   } catch (err) {
     console.error("Promo Withdraw Simulation Error:", err);
-    res.status(500).json({ message: "Server processing error." });
+    res.status(500).json({ message: "Server processing error: " + err.message });
   }
 });
 
@@ -526,111 +582,127 @@ router.post(
   async (req, res) => {
     try {
       let { 
-        userId,
-        transactionPassword,
-        deductReward = 0,
-        deductDirect = 0, // ✅ added
-        deductPool = 0
+        items, 
+        transactionPassword, 
+        userId, 
+        deductReward = 0, 
+        deductDirect = 0, 
+        deductPool = 0 
       } = req.body;
-
-      // ✅ Convert to numbers
-      const dReward = parseFloat(deductReward) || 0;
-      const dPool = parseFloat(deductPool) || 0;
-      const dDirect = parseFloat(deductDirect) || 0; // ✅ FIX (missing tha)
-
-      // ✅ Total Calculation
-      const totalAmount = dReward + dPool + dDirect;
-
-      // 🛑 Validation
-      if (totalAmount < 5) {
-        return res.status(400).json({ message: `Minimum credit amount is $5. You entered $${totalAmount}.` });
-      }
-
-      if (totalAmount % 1 !== 0) {
-        return res.status(400).json({ message: "Decimals not allowed. Please enter round figure." });
-      }
-
-      // 🔥 10% Deduction Logic
-      const fee = totalAmount * 0.10; // 10% katega
-      const netAmount = totalAmount - fee; // Wallet mein bacha hua 90% add hoga
-
-      // 🔥 Source detect
-      let activeSources = [];
-      if (dReward > 0) activeSources.push("reward");
-      if (dPool > 0) activeSources.push("pool");
-      if (dDirect > 0) activeSources.push("direct"); // ✅ added
-
-      if (activeSources.length === 0) {
-        return res.status(400).json({ message: "Please enter an amount to credit." });
-      }
-
-      const finalSource = activeSources.length === 1 ? activeSources[0] : "mixed";
 
       const user = await User.findOne({ userId: Number(userId) });
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      // 🔐 Password check
-      if (transactionPassword.toLowerCase() !== user.transactionPassword.toLowerCase()) {
-        return res.status(400).json({ message: "Invalid transaction password" });
-      }
+      // 🛡️ BASIC CHECKS
+      if (!user.isToppedUp) return res.status(400).json({ message: "You need an Active ID (Top-up required)." });
+      
+      const isPasswordValid = (transactionPassword.toLowerCase() === user.transactionPassword.toLowerCase());
+      if (!isPasswordValid) return res.status(400).json({ message: "Invalid Transaction Password." });
 
       const settings = await Setting.findOne({});
-      if (!settings?.allowTopUps) {
-        return res.status(403).json({ message: "Credit to wallet disabled by admin" });
+      if (!settings?.allowTopUps) return res.status(403).json({ message: "Credit to wallet disabled by admin" });
+
+      // =========================================================
+      // 🔥 AUTO-CONVERT FORMAT (Old Frontend to New Array Format)
+      // =========================================================
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        items = [];
+        if (parseFloat(deductReward) > 0) items.push({ source: "reward", amount: parseFloat(deductReward) });
+        if (parseFloat(deductDirect) > 0) items.push({ source: "direct", amount: parseFloat(deductDirect) });
+        if (parseFloat(deductPool) > 0) items.push({ source: "pool", amount: parseFloat(deductPool) });
       }
 
-      // 🛑 Reward check
-      if ((user.rewardIncome || 0) < dReward) {
-        return res.status(400).json({ message: "Insufficient Reward Income" });
+      if (items.length === 0) {
+        return res.status(400).json({ message: "Please enter an amount to credit." });
       }
 
-      // 🛑 Direct check ✅
-      if ((user.directIncome || 0) < dDirect) {
-        return res.status(400).json({ message: "Insufficient Direct Income" });
+      // 💰 CALCULATE TOTAL AMOUNT
+      let totalAmt = 0;
+      for (let item of items) {
+        const amt = Math.floor(parseFloat(item.amount));
+        if (amt <= 0) return res.status(400).json({ message: "Invalid amount detected." });
+        totalAmt += amt;
       }
 
-      // 🛑 Pool check
-      let totalPoolAvailable = 0;
-      const availablePerPlan = {};
-      const planKeys = ["plan1", "plan2", "plan3", "plan4", "plan5", "plan6"];
+      if (totalAmt < 5) {
+        return res.status(400).json({ message: `Minimum total credit amount is $5. You entered $${totalAmt}.` });
+      }
 
-      if (dPool > 0) {
+      // =========================================================
+      // 🔥 REAL DEDUCTION LOGIC
+      // =========================================================
+      let poolRequested = 0;
+      const planKeys = ["plan0", "plan1", "plan2", "plan3", "plan4", "plan5", "plan6"]; 
+
+      for (let item of items) {
+        const amt = Math.floor(parseFloat(item.amount));
+
+        if (item.source === "reward") {
+          if ((user.rewardIncome || 0) < amt) return res.status(400).json({ message: "Insufficient Reward Income." });
+          user.rewardIncome -= amt;
+        } 
+        else if (item.source === "direct") {
+          if ((user.directIncome || 0) < amt) return res.status(400).json({ message: "Insufficient Direct Income." });
+          user.directIncome -= amt;
+        } 
+        // Agar source 'pool' hai ya seedha kisi plan ka naam (jaise 'plan0') hai
+        else if (item.source === "pool" || planKeys.includes(item.source)) {
+          poolRequested += amt; 
+        } 
+        else {
+          return res.status(400).json({ message: `Invalid source: ${item.source}` });
+        }
+      }
+
+      // 📦 POOL INCOME LOGIC WITH 10$ PACKAGE CONDITION
+      if (poolRequested > 0) {
+        let totalPoolAvailable = 0;
+        const availablePerPlan = {};
+        
+        let plan0LockedDueToTopup = false;
+        let plan0AvailableRaw = 0;
+
         planKeys.forEach(planKey => {
           const pkg = user.packages.find(p => p.plan === planKey);
           if (!pkg) return;
 
-          const earned = calculatePackageEarnings(user.packages, planKey);
+          const earned = calculatePackageEarnings(user.packages, planKey); // Ensure this function is available globally
           const withdrawn = user.pendingWithdrawals?.[planKey] || 0;
           const available = Math.max(0, earned - withdrawn);
+
+          // 🔥 THE $10 PACKAGE CONDITION FIX
+          if (planKey === "plan0") {
+            plan0AvailableRaw = available;
+            const userTopUpAmount = parseFloat(user.topUpAmount || 0);
+            
+            // Agar topup 30 se kam hai, toh plan0 ka balance 0 maan liya jayega
+            if (userTopUpAmount < 30) {
+              plan0LockedDueToTopup = true;
+              availablePerPlan[planKey] = 0; 
+              return; // Isko totalPoolAvailable mein add mat karo
+            }
+          }
 
           totalPoolAvailable += available;
           availablePerPlan[planKey] = available;
         });
 
-        if (dPool > totalPoolAvailable) {
-          return res.status(400).json({
-            message: `Insufficient Pool Income. Available: $${totalPoolAvailable}`
+        // Agar maange gaye paise available se zyada hain
+        if (poolRequested > totalPoolAvailable) {
+          // Agar sirf $10 package ki wajah se paise kam padh rahe hain, toh strict error do
+          if (plan0LockedDueToTopup && poolRequested <= (totalPoolAvailable + plan0AvailableRaw)) {
+            return res.status(400).json({ 
+              message: "To transfer Pool Income from the $10 package, you must have an active Top-up of at least $30." 
+            });
+          }
+          
+          return res.status(400).json({ 
+            message: `Insufficient Pool Income. Available: $${totalPoolAvailable}` 
           });
         }
-      }
 
-      // =========================
-      // 🔥 EXECUTION
-      // =========================
-
-      // Reward deduct (Gross amount katega)
-      if (dReward > 0) {
-        user.rewardIncome -= dReward;
-      }
-
-      // Direct deduct ✅ (Gross amount katega)
-      if (dDirect > 0) {
-        user.directIncome -= dDirect;
-      }
-
-      // Pool deduct (Gross amount katega)
-      if (dPool > 0) {
-        let remaining = dPool;
+        // Agar sab theek hai, toh Pool se amount deduct karo
+        let remaining = poolRequested;
         user.pendingWithdrawals = user.pendingWithdrawals || {};
 
         for (let key of planKeys) {
@@ -644,32 +716,44 @@ router.post(
         }
       }
 
-      // Wallet add (Sirf Net Amount add hoga 10% katne ke baad)
-      user.walletBalance += netAmount;
+      // =========================================================
+      // 🔥 WALLET UPDATE & TRANSACTION LOGS
+      // =========================================================
+      const totalFee = totalAmt * 0.10; 
+      const totalNetAmount = totalAmt - totalFee; 
 
+      // 1. User ka wallet balance ek saath badhao
+      user.walletBalance = (user.walletBalance || 0) + totalNetAmount;
       await user.save();
 
-      // Transaction log
-    // Transaction log
-      const txn = await Transaction.create({
-        userId: user.userId,
-        type: "credit_to_wallet",
-        source: finalSource,
-        amount: netAmount,         // ✅ FIX 1: Ab history mein 10% katne ke baad wala amount ($4.50) aayega
-        grossAmount: totalAmount,  
-        netAmount: netAmount,      
-        fee: fee,                  
-        walletBalance: user.walletBalance, // ✅ FIX 2: Exact updated wallet balance database me save hoga taaki aakhiri column sahi aaye
-        description: `Credited $${netAmount} after 10% fee (${activeSources.join(" + ")})`,
-        status: "completed",
-        date: new Date(),
-      });
+      // 2. Har item ki alag Enum-Safe Database Entry banao
+      for (let item of items) {
+        const grossItemAmt = Math.floor(parseFloat(item.amount));
+        const itemFee = grossItemAmt * 0.10;
+        const netItemAmt = grossItemAmt - itemFee;
+
+        // Ensure database save hone ke liye source valid ho
+        const dbSource = planKeys.includes(item.source) ? item.source : item.source; 
+
+        await Transaction.create({
+          userId: user.userId,
+          type: "credit_to_wallet",
+          source: dbSource, 
+          amount: netItemAmt,         
+          grossAmount: grossItemAmt,  
+          netAmount: netItemAmt,      
+          fee: itemFee,                  
+          walletBalance: user.walletBalance,
+          description: `Credited $${netItemAmt} after 10% fee (${dbSource})`,
+          status: "completed",
+          date: new Date(),
+        });
+      }
 
       res.json({
         success: true,
-        message: `Successfully credited $${netAmount} after 10% deduction`,
-        walletBalance: user.walletBalance,
-        transaction: txn,
+        message: `Successfully credited $${totalNetAmount} after 10% deduction`,
+        walletBalance: user.walletBalance
       });
 
     } catch (err) {
@@ -678,7 +762,6 @@ router.post(
     }
   }
 );
-
 
 // ---------------------------
 // INSTANT WITHDRAW ROUTE

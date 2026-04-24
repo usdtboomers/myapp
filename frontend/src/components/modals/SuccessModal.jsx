@@ -11,7 +11,7 @@ const SuccessModal = ({
   spinQuantity = 0,
   customTitle = "",
   customMessage = "",
-  source = "", // "plan1", "plan2" OR "Direct", "Level", "Direct + Level"
+  source = "", 
   zIndex = 2000,
 }) => {
   const [showConfetti, setShowConfetti] = useState(false);
@@ -86,40 +86,42 @@ const SuccessModal = ({
     }
 
     switch (type) {
-      case "withdrawal":
-        // 🔥 LOGIC: Check if it's a Plan Withdrawal or Instant
-        // Agar source 'plan' se shuru hota hai (e.g. plan1, plan2) to Normal hai
+     case "withdrawal":
         const isPlan = source && source.toLowerCase().startsWith("plan");
-        
-        // Title Set Karo
         const titleText = isPlan ? "Withdrawal Successful" : "Withdrawal Successful";
-        
-        // Label aur Value Set Karo
         const labelText = isPlan ? "Plan" : "Source";
         const valueText = isPlan ? (planNames[source] || source) : source;
 
         return (
-         <SuccessLayout title="Withdrawal Successful ">
-  <div className="flex flex-col items-center justify-center space-y-4 py-4">
-    
-    {/* 1. Label - Gray and Spaced out like the image */}
-   <p className="text-white text-sm sm:text-lg font-extrabold tracking-[0.25em] uppercase opacity-90">
-  Amount
-</p>
+          <SuccessLayout title="Withdrawal Successful ">
+            <div className="flex flex-col items-center justify-center w-full px-6 py-2">
+              
+              {/* 🔥 NAYA ADD KIYA: Screenshot jaisa transparent border wala User ID box */}
+            {/* 🔥 UPDATED: No border, nazdeek, aur bada User ID number */}
+              <div className="w-full flex justify-center items-center gap-3 mt-3 mb-6">
+                 <span className="text-white text-sm sm:text-base font-extrabold uppercase tracking-widest">
+                   User ID :
+                 </span>
+                 <span className="text-white text-lg sm:text-xl font-black font-mono tracking-wide">
+                   {userId}
+                 </span>
+              </div>
 
-    {/* 2. Main Amount - $ and 5 are now in one line and same size */}
-    <div className="relative">
-      <h2 className="text-5xl sm:text-6xl font-black bg-gradient-to-b from-yellow-200 via-yellow-400 to-yellow-600 text-transparent bg-clip-text drop-shadow-[0_4px_12px_rgba(255,215,0,0.5)]">
-        ${amount}
-      </h2>
-    </div>
+              {/* 1. Label - "AMOUNT" text spacing aur size set kiya */}
+              <p className="text-white text-[13px] sm:text-sm font-extrabold tracking-[0.2em] uppercase mb-1">
+                Amount
+              </p>
 
- 
+              {/* 2. Main Amount - $20 bilkul chipka hua aur waisa hi bada */}
+              <div className="relative mb-2">
+                <h2 className="text-6xl sm:text-7xl font-black bg-gradient-to-b from-yellow-200 via-yellow-400 to-yellow-600 text-transparent bg-clip-text drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] leading-none">
+                  ${amount}
+                </h2>
+              </div>
 
-  </div>
-</SuccessLayout>
+            </div>
+          </SuccessLayout>
         );
-
       case "deposit":
         return (
           <SuccessLayout title="Deposit Successful">
@@ -154,15 +156,12 @@ const SuccessModal = ({
           </SuccessLayout>
         );
 
-     case "topup":
+      case "topup":
         const topupPkgName = packageNames[amount] || `$${amount} Package`;
         return (
           <SuccessLayout title="🎉 Top-Up Successful!">
             <div className="flex flex-col items-center justify-center space-y-6 py-2 px-4 w-full">
               
-              {/* 1. Glowing & Bouncing Success Icon */}
-               
-
               {/* 2. Main Premium Heading */}
               <div className="text-center">
                 <h3 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-600 drop-shadow-lg mb-1">
@@ -183,8 +182,6 @@ const SuccessModal = ({
                     <span className="text-white text-xs font-bold font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-700">{userId}</span>
                   </div>
                   
-                
-                  
                   {/* Amount Row */}
                   <div className="flex justify-between items-center pt-1">
                     <span className="text-white text-[10px] uppercase tracking-wider font-bold mt-1">Amount Paid</span>
@@ -195,9 +192,6 @@ const SuccessModal = ({
 
                 </div>
               </div>
-
-              {/* 4. Motivational Footer Note */}
- 
 
             </div>
           </SuccessLayout>

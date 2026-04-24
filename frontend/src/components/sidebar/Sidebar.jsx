@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api from "api/axios";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom"; // ✅ ADDED: Link import kiya hai
 import jsPDF from "jspdf";
 
 import {
@@ -16,29 +16,45 @@ import {
   BadgeDollarSign,
   BarChart,
   Bell,
-  Trophy, // ✅ ADDED: Trophy icon for Reward Progress
+  Trophy, 
 } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
 
-// ✅ Sidebar Item with optional notification badge
-const SidebarItem = ({ label, icon: Icon, active, onClick, badge }) => (
-  <div
-    onClick={onClick}
-    className={`relative flex items-center gap-2 bg-black px-3 py-2 cursor-pointer rounded-md font-medium text-white text-sm transition duration-200 ${
-      active ? "bg-white/20 shadow-md" : "hover:bg-white/10"
-    }`}
-  >
-    <Icon size={16} />
-    <span>{label}</span>
+// ✅ UPDATED: Sidebar Item ko <a> / <Link> tag banaya hai taaki "Open in New Tab" kaam kare
+const SidebarItem = ({ label, icon: Icon, active, onClick, badge, path }) => {
+  const content = (
+    <>
+      <Icon size={16} />
+      <span>{label}</span>
+      {badge > 0 && (
+        <span className="absolute -top-1 -right-0 bg-red-600 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full">
+          {badge}
+        </span>
+      )}
+    </>
+  );
 
-    {badge > 0 && (
-      <span className="absolute -top-1 -right-0 bg-red-600 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full">
-        {badge}
-      </span>
-    )}
-  </div>
-);
+  const className = `relative flex items-center gap-2 bg-black px-3 py-2 cursor-pointer rounded-md font-medium text-white text-sm transition duration-200 ${
+    active ? "bg-white/20 shadow-md" : "hover:bg-white/10"
+  }`;
+
+  // Agar path exist karta hai aur "#" nahi hai, to react-router ka <Link> use karenge
+  if (path && path !== "#") {
+    return (
+      <Link to={path} onClick={onClick} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  // PDF download ya normal click action ke liye div
+  return (
+    <div onClick={onClick} className={className}>
+      {content}
+    </div>
+  );
+};
 
 const Sidebar = ({ user }) => {
   const navigate = useNavigate();
@@ -76,11 +92,11 @@ const Sidebar = ({ user }) => {
     document.body.style.overflow = isOpen ? "hidden" : "auto";
   }, [isOpen]);
 
-const downloadPDF = () => {
-  // Ye file ko naye tab mein open karega
-  const fileUrl = "/files/USDT_BOOMERS.pdf"; 
-  window.open(fileUrl, "_blank");
-};
+  const downloadPDF = () => {
+    // Ye file ko naye tab mein open karega
+    const fileUrl = "/files/USDT_BOOMERS.pdf"; 
+    window.open(fileUrl, "_blank");
+  };
   
   const menuItems = [
     { label: "Dashboard", icon: Home, path: "/dashboard" },
@@ -160,11 +176,12 @@ const downloadPDF = () => {
                 label={item.label}
                 icon={item.icon}
                 badge={item.badge}
+                path={item.path} // ✅ Pass path to component
                 active={location.pathname === item.path}
                 onClick={() => {
+                  // Ab yaha par navigate(item.path) ki zarurat nahi, <Link> handle kar lega
                   if (item.onClick) item.onClick();
-                  else navigate(item.path);
-                  setIsOpen(false);
+                  setIsOpen(false); // Sirf sidebar close karne ka logic rakha hai
                 }}
               />
             ))}
