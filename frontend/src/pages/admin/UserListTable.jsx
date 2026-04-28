@@ -94,6 +94,7 @@ const UserListTable = () => {
   const exportToCSV = () => {
     const csvData = filteredUsers.map(user => ({
       UserID: user.userId,
+      SponsorID: user.sponsorId || "N/A", // ✅ ADDED SPONSOR ID HERE
       Name: user.name,
       Email: user.email,
       Mobile: user.mobile, 
@@ -152,9 +153,6 @@ const UserListTable = () => {
     );
   }
 
-  // BAAKI KA RETURN (JSX HTML) WAHI SAME RAHEGA JO AAPKA THA
-  // Yahan apna purana return() block copy-paste kar lena...
-
   return (
     <div className="p-4 ">
       {/* Top Controls */}
@@ -191,7 +189,7 @@ const UserListTable = () => {
             <option value="all">All Users</option>
             <option value="unpaid">Registered (No Top-Up)</option>
             <option value="paid">All Paid Users</option>
-            <option value="10">$10 Package</option> {/* 🔥 NAYA OPTION ADDED YAHAN */}
+            <option value="10">$10 Package</option> 
             <option value="30">$30 Package</option>
             <option value="60">$60 Package</option>
             <option value="120">$120 Package</option>
@@ -232,7 +230,8 @@ const UserListTable = () => {
           <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
             <tr>
               <th className="px-4 py-3 border">User ID</th>
-              <th className="px-4 py-3 border">Name</th>
+              <th className="px-4 py-3 border">User Name</th>
+              <th className="px-4 py-3 border">Sponsor ID</th> {/* ✅ ADDED SPONSOR ID HEADER */}
               <th className="px-4 py-3 border">Email</th>
               <th className="px-4 py-3 border">Mobile</th>
               <th className="px-4 py-3 border">Deposit Address</th>
@@ -244,7 +243,7 @@ const UserListTable = () => {
           <tbody>
             {currentItems.length === 0 ? (
               <tr>
-                <td colSpan="8" className="text-center px-4 py-4 text-gray-500">
+                <td colSpan="9" className="text-center px-4 py-4 text-gray-500"> {/* ✅ Updated colSpan to 9 */}
                   No users found.
                 </td>
               </tr>
@@ -273,7 +272,13 @@ const UserListTable = () => {
                     </div>
                   </td>
 
+                  {/* ✅ ADDED SPONSOR ID CELL */}
+                 
+
                   <td className="px-4 py-2 border font-medium text-gray-800">{user.name}</td>
+                   <td className="px-4 py-2 border text-gray-600 font-medium">
+                    {user.sponsorId || "N/A"}
+                  </td>
                   <td className="px-4 py-2 border text-gray-600">{user.email}</td>
                   <td className="px-4 py-2 border text-gray-600">{user.mobile}</td>
                   

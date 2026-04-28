@@ -582,12 +582,11 @@ router.put("/transactions/reverse", verifyAdmin, reverseTransactions);
 // Backend Code (Node.js/Express)
 router.get('/users', verifyAdmin, async (req, res) => {
   try {
-    // .select() se sirf zaroori data aayega, jisse API ki speed 10x fast ho jayegi!
+    // 🔥 YAHAN MENE 'sponsorId' ADD KAR DIYA HAI (Agar aapke DB me spelling alag hai toh wo likhna)
     const users = await User.find()
-      .select('userId name email mobile depositAddress walletBalance topUpAmount createdAt') 
+      .select('userId sponsorId name email mobile depositAddress walletBalance topUpAmount createdAt') 
       .sort({ createdAt: -1 });
 
-    // Ye seedha array return karega, jo aapke frontend ke res.data me set ho jayega
     res.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
