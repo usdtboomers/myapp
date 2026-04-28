@@ -83,14 +83,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
             return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
         }
 
-        const allowedLimit = rule ? rule.limit : 5;
-        const totalRegisteredFromIP = await User.countDocuments({ ipAddress: userIP });
-
-        if (totalRegisteredFromIP >= allowedLimit) {
-            return res.status(403).json({ 
-                message: `Access Denied: You have reached the maximum limit of ${allowedLimit} accounts per device or network.` 
-            });
-        }
+       
     }
 
     // 🚀 NEW: DEVICE FINGERPRINT CHECK
@@ -101,11 +94,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
 return res.status(403).json({ message: "Access Denied: Your device has been blocked due to a policy violation." });
         }
         
-        // 2. Limit Accounts Per Device (Optional: Yahan main 2 laga raha hu, aap apne hisaab se change kar lena)
-        const accountsOnDevice = await User.countDocuments({ deviceId });
-        if (accountsOnDevice >= 2) { 
-            return res.status(403).json({ message: "Limit Exceeded: You cannot create more accounts from this device." });
-        }
+       
     }
 
     const userId = await generateUserId();
@@ -158,14 +147,7 @@ router.post('/login', async (req, res) => {
                 return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
             }
 
-            const allowedLimit = rule ? rule.limit : 5;
-            const uniqueUsersOnThisIP = await LoginHistory.distinct('userId', { ipAddress: userIP });
-
-            if (uniqueUsersOnThisIP.length >= allowedLimit && !uniqueUsersOnThisIP.includes(user.userId)) {
-                return res.status(403).json({ 
-                    message: `Access Denied: You have reached the maximum limit of ${allowedLimit} accounts per device or network.` 
-                });
-            }
+            
         }
     }
 
