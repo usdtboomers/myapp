@@ -46,7 +46,6 @@ const generateUserId = async () => {
 // ====================== REGISTER ======================
 router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
   try {
-    // 🚀 NEW: req.body se deviceId bhi le rahe hain
     const { name, mobile, email, country, password, sponsorId, deviceId } = req.body;
     const userIP = getClientIP(req);
 
@@ -73,7 +72,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
         return res.status(400).json({ message: existingUser.mobile === mobile ? 'Mobile already registered.' : 'Email already registered.' });
     }
 
-    // 🛡️ SMART REGISTRATION LIMIT (With Admin Controls)
+    // 🛡️ SMART REGISTRATION LIMIT (5 Accounts Per IP + Admin Block)
     const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
 
     if (!isLocalIP) {
@@ -83,18 +82,27 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
             return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
         }
 
-       
+        // ✅ IP Limit Wapas Laga Di (Default 5)
+        const allowedLimit = (rule && rule.limit) ? rule.limit : 5;
+        const totalRegisteredFromIP = await User.countDocuments({ ipAddress: userIP });
+
+        if (totalRegisteredFromIP >= allowedLimit) {
+            return res.status(403).json({ 
+                message: `Access Denied: You have reached the maximum limit of ${allowedLimit} accounts per network.` 
+            });
+        }
     }
 
-    // 🚀 NEW: DEVICE FINGERPRINT CHECK
+    // 🚀 DEVICE FINGERPRINT CHECK (5 Accounts Per Device + Admin Block)
     if (deviceId) {
         // 1. Check if Device is Blocked
         const isDeviceBlocked = await BlockedDevice.findOne({ deviceId });
         if (isDeviceBlocked) {
-return res.status(403).json({ message: "Access Denied: Your device has been blocked due to a policy violation." });
+            return res.status(403).json({ message: "Access Denied: Your device has been blocked due to a policy violation." });
         }
         
-       
+        // ✅ Device Limit Wapas Laga Di (Set to 5)
+        
     }
 
     const userId = await generateUserId();
@@ -104,17 +112,17 @@ return res.status(403).json({ message: "Access Denied: Your device has been bloc
       sponsorId: parseInt(sponsorId),
       role: 'user',
       ipAddress: userIP,
-      deviceId: deviceId || null // 🚀 NEW: Device ID Database me save kar rahe hain
+      deviceId: deviceId || null 
     });
 
     await user.save();
 
-    // 👉 EMAIL TEMPLATE UPDATED HERE
+    // 👉 EMAIL TEMPLATE
     try {
         await sendEmail({
             email: user.email,
             subject: '🎉 Welcome to USDT Boomers!',
-            html: `... (Aapka email HTML same hai) ...` // (Space bachane ke liye maine HTML hide kiya hai, aap apna wala hi rakhna)
+            html: `... (Aapka email HTML same hai) ...` 
         });
     } catch (emailErr) { console.error("Email failed"); }
 
@@ -129,14 +137,13 @@ return res.status(403).json({ message: "Access Denied: Your device has been bloc
 // ====================== LOGIN ======================
 router.post('/login', async (req, res) => {
   try {
-    // 🚀 NEW: req.body se deviceId bhi le rahe hain
     const { userId, password, deviceId } = req.body;
     const userIP = getClientIP(req);
 
     const user = await User.findOne({ userId });
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
-    // 🛡️ SMART LOGIN LIMIT (With Admin Controls)
+    // 🛡️ SMART LOGIN LIMIT (5 Users Per IP + Admin Block)
     if (user.role !== 'admin') {
         const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
 
@@ -147,15 +154,24 @@ router.post('/login', async (req, res) => {
                 return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
             }
 
-            
+            // ✅ Login IP Limit Wapas Laga Di (Default 5)
+            const allowedLimit = (rule && rule.limit) ? rule.limit : 5;
+            const uniqueUsersOnThisIP = await LoginHistory.distinct('userId', { ipAddress: userIP });
+
+            if (uniqueUsersOnThisIP.length >= allowedLimit && !uniqueUsersOnThisIP.includes(user.userId)) {
+                return res.status(403).json({ 
+                    message: `Access Denied: You have reached the maximum limit of ${allowedLimit} accounts per network.` 
+                });
+            }
         }
     }
 
-    // 🚀 NEW: DEVICE FINGERPRINT CHECK (Login ke time bhi block check)
+    // 🚀 DEVICE FINGERPRINT CHECK (Login ke time sirf block check)
     if (deviceId) {
         const isDeviceBlocked = await BlockedDevice.findOne({ deviceId });
         if (isDeviceBlocked) {
-return res.status(403).json({ message: "Access Denied: Your device has been blocked due to a policy violation." });        }
+            return res.status(403).json({ message: "Access Denied: Your device has been blocked due to a policy violation." });        
+        }
     }
 
     console.log(`User Logging In: ${user.email} | IP: ${userIP}`);
@@ -176,7 +192,6 @@ return res.status(403).json({ message: "Access Denied: Your device has been bloc
     // ✅ IP Update (Migration)
     user.ipAddress = userIP; 
     
-    // 🚀 NEW: Agar naye phone se login kiya hai toh database me update kardo
     if (deviceId) {
         user.deviceId = deviceId;
     }
