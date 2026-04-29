@@ -631,6 +631,7 @@ router.post('/promo-dummy-topup', authMiddleware, async (req, res) => {
       userId: currentUser.userId,
       generatedId: dummyId,
       amount: Number(amount),
+      type: "promo", // 🔥 BAS YEH LINE ADD KARNI HAI (Aap isko "plan" ya "dummy" bhi rakh sakte ho jo schema me allow ho)
       description: `Demo top-up generated for ID ${dummyId}`
     });
 
