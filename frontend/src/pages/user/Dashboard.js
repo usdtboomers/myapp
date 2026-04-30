@@ -19,6 +19,8 @@ import TeamPromoPopup from "../../components/TeamPromoPopup";
 import RewardProgress from "./RewardProgress"; 
 import TelegramPopup from "../../components/TelegramPopup";
 import { Send, ShieldCheck, CheckCircle, Loader2 } from 'lucide-react';
+import UpgradeWarning from "../../components/dashboard/UpgradeWarning"; // 🔥 NAYA PAGE IMPORT KIYA
+
 
 const Dashboard = () => {
   const { user, token, setUser, logout } = useAuth();
@@ -289,6 +291,23 @@ const Dashboard = () => {
             <section className="relative z-10">
                <WalletBalance userId={user.userId} refreshKey={walletRefreshKey} />
             </section>
+
+
+
+
+             {/* 🔥 NAYA ADD KIYA GAYA HISS: 10 DOLLAR UPGRADE WARNING */}
+            {/* Note: 'user.packageAmount' ko apne database field ke naam se replace karein jisme amount store hota hai */}
+            {/* ========================================== */}
+         {/* Agar user ka topUpAmount 10 hai (yani plan0), tabhi ye warning dikhegi */}
+{user?.topUpAmount === 10 && (
+   <section className="relative z-10">
+     <UpgradeWarning 
+        user={user} 
+        onUpgradeClick={() => setModalState((prev) => ({ ...prev, showTopUpForm: true }))} 
+     />
+   </section>
+)}
+
 
             {/* Quick Actions */}
             <section>

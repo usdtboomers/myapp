@@ -96,7 +96,7 @@ const PreLaunchPromo = () => {
 
       {/* 🔴 PRE-LAUNCH PROMO POPUP */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black backdrop-blur-sm p-4">
+        <div className="fixed inset-0 pt-10 z-50 flex items-center justify-center bg-black backdrop-blur-sm p-4">
           <Confetti width={window.innerWidth} height={window.innerHeight} numberOfPieces={200} gravity={0.1} style={{ position: 'absolute', zIndex: 0 }} />
           
           <div className="relative z-10 bg-slate-900 border-2 border-yellow-500 rounded-2xl w-full max-w-md p-6 shadow-[0_0_40px_rgba(234,179,8,0.3)] text-center">
@@ -109,9 +109,9 @@ const PreLaunchPromo = () => {
             
             <h2 className="text-2xl font-bold text-white mb-2">🎉 Pre-Launching Offer 🎉</h2>
             
-            <p className="text-gray-300 text-sm mb-4">
-              Valid only until <strong className="text-yellow-400">30th April</strong>! Activate your ID absolutely FREE and start your journey.
-            </p>
+          <p className="text-gray-300 text-sm mb-4">
+  Start your journey with a <strong className="text-green-400">FREE $10 ID!</strong> Make sure to top up with <strong className="text-yellow-400">$30 within 7 days</strong> of activation to avoid deactivation.
+</p>
 
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-6">
               <h3 className="text-white font-bold text-lg mb-1">🎁 FREE $10 Package</h3>

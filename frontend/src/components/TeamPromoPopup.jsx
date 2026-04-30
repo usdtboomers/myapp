@@ -140,14 +140,14 @@ const TeamPromoPopup = () => {
             <h2 className="tp-title">Build Your Network!</h2>
           </div>
 
-          <div className="tp-body">
+         <div className="tp-body">
             <div className="tp-free-tag">
-              🎁 $10 ID IS ABSOLUTELY FREE! 🎁
-              <span className="tp-sub-tag">Pre-Launching Offer Valid Till 30th April</span>
+              ⚠️ IMPORTANT NOTICE FOR FREE $10 ID ⚠️
+              <span className="tp-sub-tag">Action Required Within 7 Days of Activation</span>
             </div>
 
             <p className="tp-text">
-              Don't miss this massive opportunity! Grow your <strong style={{ color: '#38bdf8' }}>Direct</strong> and <strong style={{ color: '#38bdf8' }}>Level Team</strong> right now. Share your referral link, activate free IDs for your network, and maximize your earnings.
+              You are getting a <strong style={{ color: '#10b981' }}>free $10 ID</strong>. If you don’t top up your ID with <strong style={{ color: '#eab308' }}>$30 within 7 days of your ID activation</strong>, this $10 free ID will automatically be deactivated. After that, you will have to pay <strong style={{ color: '#ef4444' }}>$10 to activate it again</strong>.
             </p>
 
             <div>

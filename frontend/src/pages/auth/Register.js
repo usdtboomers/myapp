@@ -493,22 +493,22 @@ onChange={(e) => {
             </div>
 
             {/* 🔥 NAYA ADD KIYA GAYA OFFER BANNER 🔥 */}
-            <div style={{
-              background: 'linear-gradient(45deg, rgba(234, 179, 8, 0.1), rgba(234, 179, 8, 0.3))',
-              border: '1px solid #eab308',
-              borderRadius: '8px',
-              padding: '10px',
-              marginBottom: '15px',
-              textAlign: 'center',
-              animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
-            }}>
-              <h3 style={{ color: '#eab308', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase' }}>
-                🎁 Limited Time Pre Launching Offer!
-              </h3>
-             <p style={{ color: '#fff', fontSize: '12px', margin: 0, lineHeight: '1.4' }}>
-  Login now and activate your <strong style={{color: '#4ade80'}}>$10 Package absolutely FREE!</strong> Pramote your referral link, Expand your network and Earn sustanatial Rewards. Offer valid only till <strong style={{color: '#facc15'}}>30th April</strong>! 🚀
-</p>
-            </div>
+         <div style={{
+  background: 'linear-gradient(45deg, rgba(234, 179, 8, 0.1), rgba(234, 179, 8, 0.3))',
+  border: '1px solid #eab308',
+  borderRadius: '8px',
+  padding: '10px',
+  marginBottom: '15px',
+  textAlign: 'center',
+  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+}}>
+  <h3 style={{ color: '#eab308', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px', textTransform: 'uppercase' }}>
+    ⚠️ IMPORTANT NOTICE FOR FREE $10 ID!
+  </h3>
+  <p style={{ color: '#fff', fontSize: '12px', margin: 0, lineHeight: '1.5' }}>
+    You get a <strong style={{color: '#4ade80'}}>FREE $10 ID!</strong> 🚀 Expand your network and earn. But remember, you must top up with <strong style={{color: '#facc15'}}>$30 within 7 days of activation</strong>. If not, the ID will deactivate and you'll have to pay <strong style={{color: '#ef4444'}}>$10 to reactivate it</strong>.
+  </p>
+</div>
 
             <p className="font-bold" style={{ color: '#ff4d4d', fontSize: 14, marginBottom: 15 }}>
               📸 Please take a screenshot of this information for your records.
