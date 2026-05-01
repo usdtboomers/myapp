@@ -15,14 +15,14 @@ const startTelegramBot = () => {
     const bot = new TelegramBot(token, { polling: false });
 
     // Messages Array
-  const promoMessages = [
-        `🚀 <b>Claim Your FREE $10 ID Today!</b> 🚀\n\n👉 <i>Just add 5 direct members</i>\n👉 <i>Follow the same duplication</i>\n👉 <i>Grow your team & unlock rewards</i>\n\n⚠️ <b>IMPORTANT:</b> <i>Your FREE $10 ID must be upgraded to $30 within 7 days of activation!</i>\n👉 <b>If not, it will be deactivated and you will have to pay $10 to reactivate it.</b>\n\n✅ <u>No conditions for withdrawal after upgrade</u>\n🔐 <b>100% secure crowdfunding platform</b>\n\n🔥 <b>Want to earn rewards faster?</b>\n👉 <i>Share your referral link</i>\n👉 <i>Invite as many direct members as possible!</i>`,
+const promoMessages = [
+        `🚀 <b>Claim Your FREE $10 ID Today!</b> 🚀\n\n👉 <i>Just add 5 direct members</i>\n👉 <i>Follow the same duplication</i>\n👉 <i>Grow your team & earn rewards</i>\n\n💡 <b>IMPORTANT:</b> <i>Top up with a $30 package whenever you are ready to unlock and withdraw your earnings!</i>\n\n✅ <u>No conditions for withdrawal after upgrade</u>\n🔐 <b>100% secure crowdfunding platform</b>\n\n🔥 <b>Want to earn faster?</b>\n👉 <i>Share your referral link & invite as many as possible!</i>`,
         
-        `🚀 <b>$10 FREE ID – Limited Time Opportunity</b>\n\n👉 <i>Add 5 direct members</i>\n👉 <i>Follow duplication</i>\n👉 <i>Grow your team & unlock rewards</i>\n\n💡 <b>Action Required:</b> <i>Upgrade your ID with $30 within 7 days of activation to avoid deactivation.</i>\n⚠️ <i>(Reactivation will cost $10 later)</i>\n\n🔥 <u>Share your link & build your network now!</u>`,
+        `🚀 <b>$10 FREE ID – Massive Opportunity!</b>\n\n👉 <i>Add 5 direct members</i>\n👉 <i>Follow duplication</i>\n👉 <i>Grow your team effortlessly</i>\n\n💰 <b>Action Required for Withdrawals:</b> <i>Simply upgrade your ID with $30 to unlock full withdrawal access.</i>\n\n🔥 <u>Share your link & build your network today!</u>`,
         
-        `🎁 <b>Start FREE with a $10 ID!</b>\n\n👉 <i>Complete 5 directs</i>\n👉 <i>Help your team duplicate</i>\n👉 <i>Build a strong network</i>\n\n💰 <b>Upgrade to $30 within 7 days to keep your ID active & enable withdrawals!</b>\n⚠️ <i>Failure to upgrade in 7 days will deactivate your ID ($10 reactivation fee).</i>\n\n🚀 <u>More sharing = More growth</u> 📈`,
+        `🎁 <b>Start FREE with a $10 ID!</b>\n\n👉 <i>Complete 5 directs</i>\n👉 <i>Help your team duplicate</i>\n👉 <i>Build a strong network</i>\n\n💎 <b>Unlock Your Income:</b> <i>Upgrade to $30 to enable unlimited withdrawals whenever you want!</i>\n\n🚀 <u>More sharing = More growth & earnings</u> 📈`,
         
-        `🔥 <b>Massive Opportunity – $10 FREE ID</b>\n\n👉 <i>Just 5 directs needed</i>\n👉 <i>Same duplication system</i>\n👉 <i>Unlock all rewards</i>\n\n💡 <b>Must Upgrade:</b> <i>Top up with $30 within 7 days to secure your account and withdrawals.</i>\n❌ <i>Don't let it expire! (Deactivated IDs need $10 to unlock).</i>\n\n⏳ <u>Take action and grow your team today!</u>`
+        `🔥 <b>Massive Opportunity – $10 FREE ID</b>\n\n👉 <i>Just 5 directs needed</i>\n👉 <i>Same duplication system</i>\n👉 <i>Unlock all rewards</i>\n\n💡 <b>Ready to Withdraw?</b> <i>Just top up with $30 to secure full access to your earnings.</i>\n✅ <i>No time pressure, upgrade when you are ready!</i>\n\n⏳ <u>Take action and grow your team today!</u>`
     ];
 
     let currentMsgIndex = 0;

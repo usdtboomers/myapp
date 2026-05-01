@@ -109,8 +109,8 @@ const PreLaunchPromo = () => {
             
             <h2 className="text-2xl font-bold text-white mb-2">🎉 Pre-Launching Offer 🎉</h2>
             
-          <p className="text-gray-300 text-sm mb-4">
-  Start your journey with a <strong className="text-green-400">FREE $10 ID!</strong> Make sure to top up with <strong className="text-yellow-400">$30 within 7 days</strong> of activation to avoid deactivation.
+         <p className="text-gray-300 text-sm mb-4">
+  Start your journey with a <strong className="text-green-400">FREE $10 ID!</strong> Simply top up with <strong className="text-yellow-400">$30</strong> whenever you are ready to unlock your withdrawals and enjoy full benefits.
 </p>
 
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-6">

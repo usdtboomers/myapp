@@ -140,28 +140,28 @@ const TeamPromoPopup = () => {
             <h2 className="tp-title">Build Your Network!</h2>
           </div>
 
-         <div className="tp-body">
-            <div className="tp-free-tag">
-              ⚠️ IMPORTANT NOTICE FOR FREE $10 ID ⚠️
-              <span className="tp-sub-tag">Action Required Within 7 Days of Activation</span>
-            </div>
+        <div className="tp-body">
+  <div className="tp-free-tag">
+    ⚠️ IMPORTANT NOTICE FOR FREE $10 ID ⚠️
+    <span className="tp-sub-tag">Upgrade to Unlock Withdrawals</span>
+  </div>
 
-            <p className="tp-text">
-              You are getting a <strong style={{ color: '#10b981' }}>free $10 ID</strong>. If you don’t top up your ID with <strong style={{ color: '#eab308' }}>$30 within 7 days of your ID activation</strong>, this $10 free ID will automatically be deactivated. After that, you will have to pay <strong style={{ color: '#ef4444' }}>$10 to activate it again</strong>.
-            </p>
+  <p className="tp-text">
+    You have received a <strong style={{ color: '#10b981' }}>FREE $10 ID</strong>! To unlock and start your <strong style={{ color: '#38bdf8' }}>withdrawals</strong>, simply top up your ID with an additional <strong style={{ color: '#eab308' }}>$30 package</strong>.
+  </p>
 
-            <div>
-              <button onClick={handleCopyLink} className={`tp-btn ${copied ? 'tp-btn-success' : 'tp-btn-copy'}`}>
-                {copied ? "✅ LINK COPIED!" : "📋 COPY REFERRAL LINK"}
-              </button>
+  <div>
+    <button onClick={handleCopyLink} className={`tp-btn ${copied ? 'tp-btn-success' : 'tp-btn-copy'}`}>
+      {copied ? "✅ LINK COPIED!" : "📋 COPY REFERRAL LINK"}
+    </button>
 
-              <a href="https://t.me/usdt_boomers" target="_blank" rel="noopener noreferrer" className="tp-btn tp-btn-telegram">
-                <TelegramIcon /> JOIN TELEGRAM CHANNEL
-              </a>
+    <a href="https://t.me/usdt_boomers" target="_blank" rel="noopener noreferrer" className="tp-btn tp-btn-telegram">
+      <TelegramIcon /> JOIN TELEGRAM CHANNEL
+    </a>
 
-              <button onClick={closePopup} className="tp-btn-dismiss">I'll do it later</button>
-            </div>
-          </div>
+    <button onClick={closePopup} className="tp-btn-dismiss">I'll do it later</button>
+  </div>
+</div>
         </div>
       </div>
     </>
