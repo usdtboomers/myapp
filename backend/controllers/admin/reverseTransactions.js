@@ -1,151 +1,144 @@
-const mongoose = require("mongoose");
-const User = require("../../models/User");
-const Transaction = require("../../models/Transaction");
+const Transaction = require("../../models/Transaction"); 
+const User = require("../../models/User"); 
 
-const incomeFields = {
-  direct_income: "directIncome",
-  level_income: "levelIncome",
-  plan_income: "planIncome",
-  spin_income: "spinIncome",
- };
-
-exports.reverseTransactions = async (req, res) => {
+const reverseTransactions = async (req, res) => {
   try {
     const { txIds, reason } = req.body;
 
-    if (!txIds || !Array.isArray(txIds) || txIds.length === 0) {
-      return res.status(400).json({ message: "No transactions provided" });
+    if (!txIds || txIds.length === 0) {
+      return res.status(400).json({ message: "No transactions selected to reverse." });
     }
 
-    const transactions = await Transaction.find({ _id: { $in: txIds } });
-    if (!transactions.length) {
-      return res.status(404).json({ message: "No matching transactions found" });
-    }
+    const reversedTxs = [];
 
-    const reversedTxIds = [];
+    // Har ek selected transaction ko loop me check aur reverse karenge
+    for (let id of txIds) {
+      const tx = await Transaction.findById(id);
 
-    for (const tx of transactions) {
-      if (tx.reversed) continue;
+      // Agar transaction nahi mili ya pehle se reversed hai, toh skip karo
+      if (!tx || tx.reversed) continue;
 
-      const receiver = await User.findOne({ userId: tx.userId });
-      if (!receiver) continue;
-
-      // -------------------- TOPUP / DEBIT_TOPUP / CREDIT_TOPUP --------------------
-      if (["topup", "debit_topup", "credit_topup"].includes(tx.type)) {
-        // Reset topup flags for receiver
-        receiver.topUpAmount = 0;
-        receiver.topUpDate = null;
-        receiver.isToppedUp = false;
-        receiver.dailyROI = [];
-        receiver.lifetimeBonusROI = [];
-         receiver.hasReceivedTopupBonus = false;
-        await receiver.save();
-
-        if (tx.type === "topup" && tx.fromUserId) {
-          // Refund sender for a normal topup
-          const sender = await User.findOne({ userId: tx.fromUserId });
-          if (sender) {
-            sender.walletBalance = (Number(sender.walletBalance) || 0) + Number(tx.amount);
-            await sender.save();
-
-            const refundTx = new Transaction({
-              userId: sender.userId,
-              type: "refund",
-              amount: tx.amount,
-              description: `Refund for reversed topup (original topup to ${receiver.userId})`,
-              relatedTo: tx._id,
-              createdAt: new Date(),
-            });
-            await refundTx.save();
-            reversedTxIds.push(refundTx._id);
-          }
-        } else if (tx.type === "debit_topup") {
-          // Refund the user who was debited instead of deducting
-          receiver.walletBalance = (Number(receiver.walletBalance) || 0) + Number(tx.amount);
-          await receiver.save();
-        } else if (tx.type === "credit_topup") {
-          // Deduct credited amount
-          receiver.walletBalance = (Number(receiver.walletBalance) || 0) - Number(tx.amount);
-          await receiver.save();
-        }
-
-        // Reverse related income transactions
-        const relatedTxs = await Transaction.find({ relatedTo: tx._id, reversed: false });
-        for (const rtx of relatedTxs) {
-          if (tx.fromUserId && rtx.userId === tx.fromUserId) continue; // skip sender
-
-          const rUser = await User.findOne({ userId: rtx.userId });
-          if (!rUser) continue;
-
-          const field = incomeFields[rtx.type];
-          if (field) rUser[field] = (Number(rUser[field]) || 0) - Number(rtx.amount);
-
-         
-
-          rtx.reversed = true;
-          rtx.reversalReason = reason || "Admin reversal";
-          rtx.reversedAt = new Date();
-
-          await rUser.save();
-          await rtx.save();
-          reversedTxIds.push(rtx._id);
-        }
-      } else {
-        // -------------------- OTHER TRANSACTIONS --------------------
-        switch (tx.type) {
-          case "deposit":
-          case "credit_to_wallet":
-            receiver.walletBalance = (Number(receiver.walletBalance) || 0) - Number(tx.amount);
-            break;
-
-          case "withdrawal":
-            receiver.walletBalance = (Number(receiver.walletBalance) || 0) + Number(tx.amount);
-            break;
-
-          case "transfer":
-            if (tx.fromUserId) {
-              const fromUser = await User.findOne({ userId: tx.fromUserId });
-              if (fromUser) {
-                fromUser.walletBalance = (Number(fromUser.walletBalance) || 0) + Number(tx.amount);
-                await fromUser.save();
-              }
-            }
-            if (tx.toUserId) {
-              const toUser = await User.findOne({ userId: tx.toUserId });
-              if (toUser) {
-                toUser.walletBalance = (Number(toUser.walletBalance) || 0) - Number(tx.amount);
-                await toUser.save();
-              }
-            }
-            break;
-
-          default:
-            if (incomeFields[tx.type]) {
-              const field = incomeFields[tx.type];
-              receiver[field] = (Number(receiver[field]) || 0) - Number(tx.amount);
-              receiver.walletBalance = (Number(receiver.walletBalance) || 0) - Number(tx.amount);
-            } else {
-              receiver.walletBalance = (Number(receiver.walletBalance) || 0) - Number(tx.amount);
-            }
-        }
-        await receiver.save();
-      }
-
-      // -------------------- MARK MAIN TX AS REVERSED --------------------
+      // 🔴 STEP 1: Transaction ko Reversed mark karna
       tx.reversed = true;
-      tx.reversalReason = reason || "Admin reversal";
+      tx.reversedReason = reason || "Reversed by Admin";
       tx.reversedAt = new Date();
       await tx.save();
-      reversedTxIds.push(tx._id);
+
+      // 🔥 SABSE BADA FIX: Amount ko yahan strictly NUMBER bana diya 
+      // Taaki aage chalkar "40" + "20" = "4020" wala jhol na ho.
+      const numAmount = Number(tx.amount) || 0;
+
+      // 🔴 STEP 2: Main Logic - Transaction Type ke hisaab se Action lena
+      
+      // ============================================
+      // 1️⃣ AGAR TOP-UP REVERSE HUA HAI
+      // ============================================
+      if (tx.type === "topup") {
+        
+        // Double Counting Fix: Agar description me "received" hai, skip karo.
+        if (tx.description && tx.description.includes("received")) {
+            reversedTxs.push(tx._id);
+            continue; 
+        }
+
+        const targetUser = await User.findOne({ userId: tx.toUserId || tx.userId });
+        const funderUser = await User.findOne({ userId: tx.fromUserId });
+
+        const isFree10 = numAmount === 10 && tx.description && tx.description.includes("FREE");
+
+        // --- A. Target User ka Package Delete Karna ---
+        if (targetUser) {
+          if (targetUser.packages && targetUser.packages.length > 0) {
+            targetUser.packages = targetUser.packages.filter(
+              (pkg) => Number(pkg.amount) !== numAmount
+            );
+          }
+
+          if (targetUser.purchasedPackages && targetUser.purchasedPackages.length > 0) {
+             targetUser.purchasedPackages = targetUser.purchasedPackages.filter(
+                (pkgAmount) => Number(pkgAmount) !== numAmount
+             );
+          }
+
+          let previousHighestPackage = 0;
+          if (targetUser.packages && targetUser.packages.length > 0) {
+             previousHighestPackage = Math.max(...targetUser.packages.map(p => Number(p.amount)));
+          }
+
+          targetUser.topUpAmount = previousHighestPackage;
+          if (previousHighestPackage === 0) {
+             targetUser.isActive = false; 
+             targetUser.isToppedUp = false;
+          }
+          await targetUser.save();
+        }
+
+        // --- B. Funder User ko paise wapas dena ---
+        if (funderUser && !isFree10) {
+           // 🔥 String Judne se rokne ke liye dono taraf Number() ensure kiya
+           funderUser.walletBalance = Number(funderUser.walletBalance || 0) + numAmount;
+           await funderUser.save();
+        }
+      }
+
+      // ============================================
+      // 2️⃣ AGAR INCOME REVERSE HUI HAI (Direct/Level/Spin)
+      // ============================================
+      else if (["direct_income", "level_income", "spin_income"].includes(tx.type)) {
+        const user = await User.findOne({ userId: tx.userId });
+        if (user) {
+           // Har jagah strictly Number() lagaya gaya hai
+           user.totalIncome = Number(user.totalIncome || 0) - numAmount;
+
+           if (tx.type === "direct_income") {
+               user.directIncome = Number(user.directIncome || 0) - numAmount;
+               user.totalDirectIncome = Number(user.totalDirectIncome || 0) - numAmount; 
+           } else if (tx.type === "level_income") {
+               user.levelIncome = Number(user.levelIncome || 0) - numAmount;
+           } else if (tx.type === "spin_income") {
+               user.spinIncome = Number(user.spinIncome || 0) - numAmount;
+           }
+           await user.save();
+        }
+      }
+
+      // ============================================
+      // 3️⃣ AGAR P2P TRANSFER REVERSE HUA HAI
+      // ============================================
+      else if (tx.type === "transfer") {
+        const senderId = tx.fromUserId || tx.userId; 
+        const receiverId = tx.toUserId;              
+
+        if (senderId) {
+          const sender = await User.findOne({ userId: senderId });
+          if (sender) {
+            // 🔥 YAHI THA 4020 WALA BUG! Ab ye strictly Number me plus hoga
+            sender.walletBalance = Number(sender.walletBalance || 0) + numAmount;
+            await sender.save();
+          }
+        }
+
+        if (receiverId) {
+          const receiver = await User.findOne({ userId: receiverId });
+          if (receiver) {
+            receiver.walletBalance = Number(receiver.walletBalance || 0) - numAmount;
+            await receiver.save();
+          }
+        }
+      }
+
+      reversedTxs.push(tx._id);
     }
 
-    return res.json({
-      success: true,
-      message: `${reversedTxIds.length} transaction(s) reversed successfully`,
-      reversedTxs: reversedTxIds,
+    return res.status(200).json({ 
+      message: "Transactions reversed successfully", 
+      reversedTxs 
     });
-  } catch (err) {
-    console.error("Reverse Transactions Error:", err);
-    return res.status(500).json({ success: false, message: "Server error during reversal" });
+
+  } catch (error) {
+    console.error("Reverse Transaction Error:", error);
+    res.status(500).json({ message: "Server error while reversing transactions." });
   }
 };
+
+module.exports = { reverseTransactions };

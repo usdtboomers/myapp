@@ -147,7 +147,7 @@ const IncomeSummary = ({ income = {}, user = {} }) => {
               <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
                 {item.label}
               </p>
-              <h3 className={`text-2xl font-bold ${item.color} font-mono tracking-tight`}>
+              <h3 className={`text-xl font-bold ${item.color} font-mono tracking-tight`}>
                 {item.value}
               </h3>
             </div>

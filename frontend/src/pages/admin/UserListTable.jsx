@@ -231,7 +231,7 @@ const UserListTable = () => {
             <tr>
               <th className="px-4 py-3 border">User ID</th>
               <th className="px-4 py-3 border">User Name</th>
-              <th className="px-4 py-3 border">Sponsor ID</th> {/* ✅ ADDED SPONSOR ID HEADER */}
+              <th className="px-4 py-3 border">Sponsor ID</th>  
               <th className="px-4 py-3 border">Email</th>
               <th className="px-4 py-3 border">Mobile</th>
               <th className="px-4 py-3 border">Deposit Address</th>

@@ -455,7 +455,6 @@ if (!value) return 'Transaction hash is required!';
     <table className="min-w-full text-sm table-auto">
       <thead className="bg-gray-100 text-left text-gray-700">
         <tr>
-          {/* Header mein 'Source' add kiya */}
           {['Sr.', 'User ID', 'Name', 'Source', 'Gross', 'Fee', 'Net', 'Wallet', 'Status', 'Date', 'Actions'].map(h => (
             <th key={h} className="px-4 py-3 border-b font-bold uppercase tracking-wider">{h}</th>
           ))}
@@ -487,7 +486,8 @@ if (!value) return 'Transaction hash is required!';
                     title="Copy User ID"
                   />
                 </div>
-              </td>              <td className="px-4 py-3">{w.name}</td>
+              </td> 
+                           <td className="px-4 py-3">{w.name}</td>
               
               {/* Source Data Row */}
               <td className="px-4 py-3">
