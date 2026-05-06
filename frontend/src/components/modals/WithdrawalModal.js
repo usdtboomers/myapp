@@ -386,11 +386,11 @@ const WithdrawalModal = ({ userId, onClose }) => {
                        <span style={{fontSize: '11px', color: '#a855f7'}}>Available: ${balances.rewardIncome || 0}</span>
                     </div>
                     <div style={{display: 'flex', alignItems: 'center'}}>
-                      <input type="number" placeholder="Enter Amount" style={styles.levelInput} 
-                        value={otherWithdrawals.reward || ""} 
-                        onChange={e => handleOtherInputChange(e, "reward")} 
-                        max={balances.rewardIncome} 
-                      />
+                   <input type="number" name="reward_amount_box" autoComplete="off" placeholder="Enter Amount" style={styles.levelInput} 
+  value={otherWithdrawals.reward || ""} 
+  onChange={e => handleOtherInputChange(e, "reward")} 
+  max={balances.rewardIncome} 
+/>
                     </div>
                   </div>
 
@@ -401,11 +401,11 @@ const WithdrawalModal = ({ userId, onClose }) => {
                        <span style={{fontSize: '11px', color: '#f59e0b'}}>Available: ${balances.directIncome || 0}</span>
                     </div>
                     <div style={{display: 'flex', alignItems: 'center'}}>
-                      <input type="number" placeholder="Enter Amount" style={styles.levelInput} 
-                        value={otherWithdrawals.direct || ""} 
-                        onChange={e => handleOtherInputChange(e, "direct")} 
-                        max={balances.directIncome} 
-                      />
+                   <input type="number" name="direct_amount_box" autoComplete="off" placeholder="Enter Amount" style={styles.levelInput} 
+  value={otherWithdrawals.direct || ""} 
+  onChange={e => handleOtherInputChange(e, "direct")} 
+  max={balances.directIncome} 
+/>
                     </div>
                   </div>
 
@@ -573,17 +573,19 @@ const WithdrawalModal = ({ userId, onClose }) => {
 
       <div style={{ width: '100%' }}>
            <input 
-             type="number" 
-             placeholder="0.00" 
-             style={{
-               ...styles.levelInput, 
-               width: '100%', 
-               opacity: 1 
-             }} 
-             value={levelWithdrawals[`${planKey}_${originalIdx}`] || ""} 
-             onChange={e => handleLevelInputChange(e, planKey, originalIdx)} 
-             max={data.earning}
-           />
+  type="number" 
+  name={`level_input_${planKey}_${originalIdx}`}
+  autoComplete="off"
+  placeholder="0.00" 
+  style={{
+    ...styles.levelInput, 
+    width: '100%', 
+    opacity: 1 
+  }} 
+  value={levelWithdrawals[`${planKey}_${originalIdx}`] || ""} 
+  onChange={e => handleLevelInputChange(e, planKey, originalIdx)} 
+  max={data.earning}
+/>
       </div>
 
     </div>
@@ -623,13 +625,15 @@ const WithdrawalModal = ({ userId, onClose }) => {
               </div>
                 <div>
                   <label style={{fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '5px', fontWeight: 'bold'}}>SECURITY PASSWORD</label>
-                  <input 
-                    type="password" 
-                    placeholder="Enter Transaction Password" 
-                    style={styles.mainInput} 
-                    value={transactionPassword} 
-                    onChange={e => setTransactionPassword(e.target.value)} 
-                  />
+                 <input 
+  type="password" 
+  name="secure_txn_pass"
+  autoComplete="new-password"
+  placeholder="Enter Transaction Password" 
+  style={styles.mainInput} 
+  value={transactionPassword} 
+  onChange={e => setTransactionPassword(e.target.value)} 
+/>
                 </div>
               </div>
 

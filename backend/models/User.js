@@ -70,6 +70,11 @@ ipAddress: { type: String}, // IP save karne ke liye field
     type: [Number], 
     default: [] 
   },
+  // Add this inside your User schema
+boosterRewardPaid: {
+    type: Boolean,
+    default: false
+},
 
   // 💰 Incomes
   directIncome: { type: Number, default: 0 },

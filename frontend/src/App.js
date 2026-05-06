@@ -68,7 +68,7 @@ import ManualDeposit from './pages/admin/ManualDeposit';
  import AdminLoginStats from './pages/admin/AdminLoginStats'; // Apne folder ke hisab se path likhna
 import AdminSecurity from './pages/admin/AdminSecurity'; // (Aapne jahan file save ki hai uska path)
  import DeviceManager from './pages/admin/DeviceManager';
- 
+ import BoosterOfferPage from './pages/admin/BoosterOfferPage';
 // 📜 Scroll Restoration
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -156,6 +156,8 @@ function AppContent() {
               <Route path="users" element={<UserListTable />} />
               <Route path="topups" element={<TotalTopUpPage />} />
               <Route path="deposits" element={<DepositTable />} />
+              <Route path="booster-offer" element={<BoosterOfferPage />} />
+              
               <Route path="security" element={<AdminSecurity />} />
               <Route path="withdrawals/request" element={<RequestWithdrawalPage />} />
               <Route path="withdrawals/all" element={<AllWithdrawalsPage />} />

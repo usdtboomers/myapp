@@ -16,14 +16,12 @@ const startTelegramBot = () => {
 
     // Messages Array
 const promoMessages = [
-        `🚀 <b>Claim Your FREE $10 ID Today!</b> 🚀\n\n👉 <i>Just add 5 direct members</i>\n👉 <i>Follow the same duplication</i>\n👉 <i>Grow your team & earn rewards</i>\n\n💡 <b>IMPORTANT:</b> <i>Top up with a $30 package whenever you are ready to unlock and withdraw your earnings!</i>\n\n✅ <u>No conditions for withdrawal after upgrade</u>\n🔐 <b>100% secure crowdfunding platform</b>\n\n🔥 <b>Want to earn faster?</b>\n👉 <i>Share your referral link & invite as many as possible!</i>`,
-        
-        `🚀 <b>$10 FREE ID – Massive Opportunity!</b>\n\n👉 <i>Add 5 direct members</i>\n👉 <i>Follow duplication</i>\n👉 <i>Grow your team effortlessly</i>\n\n💰 <b>Action Required for Withdrawals:</b> <i>Simply upgrade your ID with $30 to unlock full withdrawal access.</i>\n\n🔥 <u>Share your link & build your network today!</u>`,
-        
-        `🎁 <b>Start FREE with a $10 ID!</b>\n\n👉 <i>Complete 5 directs</i>\n👉 <i>Help your team duplicate</i>\n👉 <i>Build a strong network</i>\n\n💎 <b>Unlock Your Income:</b> <i>Upgrade to $30 to enable unlimited withdrawals whenever you want!</i>\n\n🚀 <u>More sharing = More growth & earnings</u> 📈`,
-        
-        `🔥 <b>Massive Opportunity – $10 FREE ID</b>\n\n👉 <i>Just 5 directs needed</i>\n👉 <i>Same duplication system</i>\n👉 <i>Unlock all rewards</i>\n\n💡 <b>Ready to Withdraw?</b> <i>Just top up with $30 to secure full access to your earnings.</i>\n✅ <i>No time pressure, upgrade when you are ready!</i>\n\n⏳ <u>Take action and grow your team today!</u>`
-    ];
+    `🚀 <b>Claim Your FREE $10 ID Today!</b> 🚀\n\n👉 <i>Register & start building your team effortlessly!</i>\n👉 <i>Grow your network & earn rewards</i>\n\n💡 <b>IMPORTANT:</b> <i>Top up with a $30 package whenever you are ready to unlock and withdraw your earnings!</i>\n\n🔥 <b>BOOSTER OFFER (May 6 to May 15, 2026)</b> 🔥\n💰 <i>Do 5 Direct Top-Ups of $30</i>\n🎁 <b>Get $30 Gift Reward!</b>\n🎉 <u>Special Benefit: $10 Package Users Can Also Participate!</u>\n\n👉 <i>Start Now & Claim Your Bonus!</i>`,
+
+    `🎁 <b>Double Bonanza: FREE $10 ID + Booster Offer!</b> 🎁\n\n👉 <i>Start your journey with a 100% FREE $10 Package</i>\n👉 <i>Share your link and build a strong network</i>\n💎 <b>Unlock Income:</b> <i>Upgrade to $30 anytime to enable unlimited withdrawals!</i>\n\n🚀 <b>LIMITED TIME BOOSTER (Valid till May 15)</b> 🚀\n💰 <i>Bring 5 Direct $30 Top-Ups & Earn an extra $30 Reward!</i>\n✅ <i>Yes, $10 Free ID users are eligible for this offer too!</i>\n\n⏳ <u>Don't wait, take action and grow your team today!</u>`,
+
+    `🔥 <b>Massive Opportunity – Start FREE, Earn BIG!</b> 🔥\n\n👉 <i>Get your $10 ID absolutely FREE!</i>\n👉 <i>No conditions to build your team – just share & grow</i>\n✅ <i>Top up with $30 when you're ready to withdraw your funds.</i>\n\n🎁 <b>EXCLUSIVE BOOSTER REWARD (May 6 - May 15, 2026)</b> 🎁\n💰 <i>Complete 5 Direct Top-Ups of $30</i>\n🎉 <b>Get an instant $30 Gift Reward!</b>\n💡 <i>$10 Package Users can also participate and earn this bonus!</i>\n\n👉 <u>Start Now & Claim Your Rewards!</u>`
+];
 
     let currentMsgIndex = 0;
     const isTesting = false;

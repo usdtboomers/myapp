@@ -21,6 +21,7 @@ const WalletHistory = () => {
     "credit_to_wallet",
     "transfer",
     "topup",
+    "credit",  
   ];
   const types = ["all", ...allTypes];
 
@@ -90,6 +91,7 @@ const WalletHistory = () => {
         case "deposit":
         case "manual_credit":
         case "credit_to_wallet": 
+        case "credit":  
           mathImpact = amount;
           colorStyle = { color: "#16a34a", fontWeight: "bold" }; 
           operator = "+";
@@ -157,6 +159,7 @@ const WalletHistory = () => {
       let displayTypeUI = (txn.type || "unknown").replace(/_/g, " ").toUpperCase();
       if (txn.type === "manual_credit") displayTypeUI = "DEPOSIT";
       if (txn.type === "manual_debit") displayTypeUI = "DEDUCTION";
+      if (txn.type === "credit") displayTypeUI = "REWARD"; // 🔥 3. YAHAN ADD KIYA (Taaki UI par 'Type' column me REWARD dikhe)
 
       return {
         ...txn, 
@@ -169,7 +172,7 @@ const WalletHistory = () => {
     });
   };
 
-  const allowedDisplayTypes = ["deposit", "manual_credit", "manual_debit", "credit_to_wallet", "transfer", "topup", "debit_topup"];
+const allowedDisplayTypes = ["deposit", "manual_credit", "manual_debit", "credit_to_wallet", "transfer", "topup", "debit_topup", "credit"];
 
   const filtered = calculateBalances().filter(txn => {
     if (!allowedDisplayTypes.includes(txn.type)) return false;

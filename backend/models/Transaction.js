@@ -25,7 +25,8 @@ const transactionSchema = new mongoose.Schema(
         "manual_credit",
         "manual_debit",
         "refund",
-        "reward_income" 
+        "reward_income",
+        "credit"
       ],
       required: true,
     },
@@ -54,6 +55,7 @@ const transactionSchema = new mongoose.Schema(
         "manual",
         "mixed",
         "reward", 
+        "booster_reward", 
         "manager_level_1", 
         "manager_level_2",
         "manager_level_3",

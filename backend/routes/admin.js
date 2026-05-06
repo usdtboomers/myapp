@@ -276,8 +276,174 @@ router.get("/stats", verifyAdmin, async (req, res) => {
   }
 });
 
+// 1. Get Booster Offer Progress List (UPDATED WITH TRANSACTION LOGIC & verifyAdmin)
+router.get('/booster-list', verifyAdmin, async (req, res) => {
+    try {
+        const startDate = new Date('2026-05-06T00:00:00.000Z');
 
+        // STEP 1: Transaction table se 6 May ke baad wale sabhi $30 ke valid top-ups nikalo
+        const recentTopups = await Transaction.aggregate([
+            { 
+                $match: { 
+                    type: 'topup',
+                    amount: { $in: [30, "30"] }, // Handle both number and string types
+                    $expr: { $eq: ["$userId", "$toUserId"] }, // Sirf valid receiver uthao
+                    $or: [
+                        { date: { $gte: startDate } },
+                        { createdAt: { $gte: startDate } }
+                    ]
+                } 
+            },
+            { $sort: { date: 1, createdAt: 1 } } // Purana pehle taaki 5th direct ka sahi time mile
+        ]);
 
+        // STEP 2: Un sabhi users ki ID nikalo jinhone $30 ka topup kiya
+        const toppedUpUserIds = [...new Set(recentTopups.map(tx => tx.userId))];
+
+        if (toppedUpUserIds.length === 0) {
+            return res.status(200).json({ success: true, data: [] });
+        }
+
+        // STEP 3: User table se un topup karne wale directs ki details nikalo
+        const directs = await User.find({ userId: { $in: toppedUpUserIds } });
+
+        const progressMap = {};
+
+        // STEP 4: Har direct ke sponsor (upline) ko count do
+        directs.forEach(direct => {
+            if (direct.sponsorId) {
+                if (!progressMap[direct.sponsorId]) {
+                    progressMap[direct.sponsorId] = { directs: [] };
+                }
+
+                // Is direct ka transaction find karo date dikhane ke liye
+                const tx = recentTopups.find(t => t.userId === direct.userId);
+
+                progressMap[direct.sponsorId].directs.push({
+                    userId: direct.userId,
+                    name: direct.name,
+                    activationDate: tx ? (tx.date || tx.createdAt) : null
+                });
+            }
+        });
+
+        // STEP 5: Un sabhi Sponsors ka data nikalo jinke paas yeh directs aaye hain
+        const sponsorIds = Object.keys(progressMap);
+        const sponsors = await User.find({ userId: { $in: sponsorIds } });
+
+        const result = sponsors.map(sponsor => {
+            const userDirects = progressMap[sponsor.userId].directs;
+            let achievedDate = null;
+
+            // Directs ko date ke hisaab se sort karo
+            userDirects.sort((a, b) => new Date(a.activationDate) - new Date(b.activationDate));
+
+            // Agar 5 ya usse zyada hain, toh 5th number wale ki date utha lo
+            if (userDirects.length >= 5) {
+                achievedDate = userDirects[4].activationDate; 
+            }
+
+            return {
+                _id: sponsor._id,
+                userId: sponsor.userId,
+                name: sponsor.name,
+                directCount: userDirects.length,
+                directsList: userDirects, // Box me dikhane ke liye directs ki detail
+                achievedDate: achievedDate,
+                boosterRewardPaid: sponsor.boosterRewardPaid || false
+            };
+        });
+
+        res.status(200).json({ success: true, data: result });
+    } catch (error) {
+        console.error("Booster List Error:", error);
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+});
+
+// 2. Reward Send API (UPDATED WITH verifyAdmin)
+// Upar file mein bcrypt zaroor import karein agar pehle se nahi hai:
+// const bcrypt = require('bcrypt'); ya const bcrypt = require('bcryptjs');
+ 
+// Dhyan rakhein ki aapki file me upar yeh imports hone chahiye:
+// const Admin = require('../models/Admin'); 
+// const Transaction = require('../models/Transaction');
+// const bcrypt = require('bcryptjs');
+
+router.post('/send-booster-reward', verifyAdmin, async (req, res) => {
+    try {
+        console.log("\n--- 👉 Sending Booster Reward Processing ---");
+
+        // 1. Data Extract karo (password dono naam se handle kar rahe hain)
+        const { id, password, adminPassword } = req.body; 
+        const finalPassword = adminPassword || password;
+
+        if (!finalPassword) {
+            return res.status(400).json({ success: false, message: 'Admin password is required!' });
+        }
+
+        // 2. Token se Admin ID nikalo (Bilkul manual-transaction ki tarah)
+        const tokenData = req.admin || req.user;
+        const adminDbId = tokenData.adminId || tokenData.id || tokenData._id;
+
+        // 3. Database me Admin find karo
+        const admin = await Admin.findById(adminDbId); 
+        if (!admin) {
+            console.log("❌ Admin Record Not Found.");
+            return res.status(404).json({ success: false, message: 'Admin account not found. Please Re-Login.' });
+        }
+
+        // 4. Password Verification (Bcrypt)
+        const isMatch = await bcrypt.compare(finalPassword, admin.password);
+        if (!isMatch) {
+            console.log("❌ Password Mismatch");
+            return res.status(403).json({ success: false, message: 'Incorrect Admin Password! Access Denied.' });
+        }
+
+        console.log("✅ Password Matched & Admin Verified for Booster!");
+
+        // --- ⬇️ REWARD & TRANSACTION LOGIC START ---
+
+        // User dhundo jisko reward dena hai (yahan 'id' MongoDB ki _id hai)
+        const user = await User.findById(id);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+        
+        if (user.boosterRewardPaid) {
+            return res.status(400).json({ success: false, message: 'Reward already paid to this user!' });
+        }
+
+        // A. Wallet mein $30 add karna
+        user.walletBalance = (user.walletBalance || 0) + 30;
+        user.boosterRewardPaid = true; 
+        await user.save();
+
+        // B. 🎯 TRANSACTION HISTORY ME ENTRY (Taaki user ko dikhe)
+        const transaction = new Transaction({
+            userId: user.userId, // Target user ki actual ID (e.g., BOOM12345)
+            type: "credit", // System me jo bhi credit type chalta hai (income/credit)
+            amount: 30,
+            txHash: `BOOSTER-${Date.now()}-${Math.floor(Math.random() * 1000)}`, 
+            description: "🎉 Direct Achiever Reward - Booster Offer", // ✅ FIX: Admin ka naam hide kiya aur Achiever likha
+            source: "booster_reward",
+            status: "completed",
+        });
+
+        await transaction.save();
+
+        console.log(`✅ Successfully rewarded $30 to ${user.userId}`);
+
+        res.status(200).json({ 
+            success: true, 
+            message: '$30 Booster Reward sent successfully!',
+            transaction 
+        });
+
+    } catch (error) {
+        console.error("❌ Reward Send Error:", error);
+        res.status(500).json({ success: false, message: "Server Error: " + error.message });
+    }
+});
+ 
 
 // 🔹 GET /login-stats (For Advanced Login Analytics)
  router.get("/login-stats", verifyAdmin, async (req, res) => {

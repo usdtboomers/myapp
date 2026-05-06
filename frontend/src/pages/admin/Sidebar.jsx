@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   FaHome, FaUsers, FaMoneyBill, FaWallet, FaListAlt, FaCog, FaSignOutAlt,
-  FaSitemap, FaProjectDiagram, FaExchangeAlt, FaFileAlt, FaUserPlus,
+  FaSitemap, FaProjectDiagram, FaExchangeAlt, FaFileAlt, FaUserPlus,FaGift,
   FaArrowCircleUp, FaArrowCircleDown, FaBell, FaClipboardList, FaCoins,
   FaUserSlash, FaBars, FaTimes, FaHistory, FaShieldAlt, FaBan // 🔥 NAYA ICON ADD KIYA: FaBan
 } from 'react-icons/fa';
@@ -123,6 +123,9 @@ const Sidebar = () => {
             <NavLink to={`${BASE_PATH}/deposits`} className={linkClass} onClick={toggleSidebar}>
               <FaMoneyBill className="inline-block mr-2" /> Deposit Log
             </NavLink>
+            <NavLink to={`${BASE_PATH}/booster-offer`} className={linkClass} onClick={toggleSidebar}>
+  <FaGift className="inline-block mr-2 text-orange-500" /> Booster Offer
+</NavLink>
             <NavLink to={`${BASE_PATH}/withdrawals/request`} className={linkClass} onClick={toggleSidebar}>
               <FaArrowCircleDown className="inline-block mr-2" /> Pending Withdrawals
             </NavLink>
