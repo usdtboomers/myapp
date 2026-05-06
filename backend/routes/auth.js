@@ -118,13 +118,61 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     await user.save();
 
     // 👉 EMAIL TEMPLATE
+  // 👉 EMAIL TEMPLATE
     try {
         await sendEmail({
             email: user.email,
             subject: '🎉 Welcome to USDT Boomers!',
-            html: `... (Aapka email HTML same hai) ...` 
+            html: `
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #eaeaea;">
+                
+                <!-- Header part -->
+                <div style="background-color: #2b4450; padding: 40px 20px; text-align: center; color: #ffffff;">
+                    <h1 style="margin: 0; font-size: 28px; font-weight: bold;">🚀 Welcome to USDT Boomers</h1>
+                    <p style="margin: 10px 0 0 0; font-size: 15px; color: #cccccc;">Your journey starts here</p>
+                </div>
+                
+                <!-- Body part -->
+                <div style="padding: 40px 30px; color: #333333;">
+                    <p style="font-size: 16px; margin-top: 0; margin-bottom: 20px;">Hello <strong>${user.name}</strong>,</p>
+                    <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 30px;">
+                        Congratulations! Your account has been successfully created. Please find your login details below.
+                    </p>
+                    
+                    <!-- Details Box -->
+                    <div style="background-color: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 35px;">
+                        <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">
+                            <span style="display: inline-block; width: 25px;">👤</span> <strong>User ID:</strong> ${user.userId}
+                        </p>
+                        <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">
+                            <span style="display: inline-block; width: 25px;">🔑</span> <strong>Password:</strong> ${user.password}
+                        </p>
+                        <p style="margin: 0; font-size: 16px; color: #333;">
+                            <span style="display: inline-block; width: 25px;">🔑</span> <strong>Transaction Password:</strong> ${user.transactionPassword}
+                        </p>
+                    </div>
+                    
+                    <!-- Login Button -->
+                    <div style="text-align: center; margin-bottom: 40px;">
+                        <a href="https://usdtboomers.com/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold;">🔐 Login to Dashboard</a>
+                    </div>
+                    
+                    <!-- Security Warning -->
+                    <p style="font-size: 14px; color: #d32f2f; margin: 0; display: flex; align-items: center;">
+                        ⚠️ Please do not share your login details with anyone for security reasons.
+                    </p>
+                </div>
+                
+                <!-- Footer part -->
+                <div style="background-color: #1a1a1a; padding: 20px; text-align: center; color: #888888; font-size: 13px;">
+                    © 2026 USDT Boomers. All rights reserved.
+                </div>
+            </div>
+            ` 
         });
-    } catch (emailErr) { console.error("Email failed"); }
+    } catch (emailErr) { 
+        console.error("Email failed:", emailErr); 
+    }
 
     res.status(201).json({ message: 'User registered successfully.', userId: user.userId, name: user.name, password: user.password });
 
