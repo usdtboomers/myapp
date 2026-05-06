@@ -279,7 +279,7 @@ router.get("/stats", verifyAdmin, async (req, res) => {
 // 1. Get Booster Offer Progress List (UPDATED WITH TRANSACTION LOGIC & verifyAdmin)
 router.get('/booster-list', verifyAdmin, async (req, res) => {
     try {
-        const startDate = new Date('2026-05-06T00:00:00.000Z');
+const startDate = new Date('2026-05-06T21:00:00+05:30');
 
         // STEP 1: Transaction table se 6 May ke baad wale sabhi $30 ke valid top-ups nikalo
         const recentTopups = await Transaction.aggregate([
