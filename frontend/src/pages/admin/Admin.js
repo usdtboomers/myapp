@@ -6,19 +6,32 @@ import ReferralTree from '../../components/ReferralTree';
 import AdminWithdrawalTable from './AdminWithdrawalTable';
 
 const AdminDashboard = () => {
-  // Expanded state to handle all new metrics
+  // ✅ UPDATE 1: Yahan naye variables ko add kar diya gaya hai
   const [stats, setStats] = useState({
     totalUsers: 0,
     todayUsers: 0,
     paidUsers: 0,
+    
     totalDeposit: 0,
     todayDeposit: 0,
     pendingDepositToday: 0,
+    
     totalWithdrawal: 0,
     approvedWithdrawalTotal: 0,
     approvedWithdrawalToday: 0,
     pendingWithdrawalTotal: 0,
     pendingWithdrawalToday: 0,
+
+    // Naye Top-up aur Packages variables
+    totalTopupBusiness: 0,
+    todayTopupBusiness: 0,
+    totalPlan10: 0,
+    totalPlan30: 0,
+    totalPlan60: 0,
+    totalPlan120: 0,
+    totalPlan240: 0,
+    totalPlan480: 0,
+    totalPlan960: 0,
   });
 
   const [withdrawals, setWithdrawals] = useState([]);
@@ -35,7 +48,7 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Mapping all new fields from the backend response
+      // ✅ UPDATE 2: Backend se aane wale naye data ko state mein save kar rahe hain
       setStats({
         totalUsers: statsRes.data.totalUsers || 0,
         todayUsers: statsRes.data.todayUsers || 0,
@@ -50,6 +63,17 @@ const AdminDashboard = () => {
         approvedWithdrawalToday: statsRes.data.approvedWithdrawalToday || 0,
         pendingWithdrawalTotal: statsRes.data.pendingWithdrawalTotal || 0,
         pendingWithdrawalToday: statsRes.data.pendingWithdrawalToday || 0,
+
+        // Naye Top-up aur Packages ko receive karna
+        totalTopupBusiness: statsRes.data.totalTopupBusiness || 0,
+        todayTopupBusiness: statsRes.data.todayTopupBusiness || 0,
+        totalPlan10: statsRes.data.totalPlan10 || 0,
+        totalPlan30: statsRes.data.totalPlan30 || 0,
+        totalPlan60: statsRes.data.totalPlan60 || 0,
+        totalPlan120: statsRes.data.totalPlan120 || 0,
+        totalPlan240: statsRes.data.totalPlan240 || 0,
+        totalPlan480: statsRes.data.totalPlan480 || 0,
+        totalPlan960: statsRes.data.totalPlan960 || 0,
       });
     } catch (error) {
       console.error('Error loading dashboard data:', error);

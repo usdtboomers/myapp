@@ -50,6 +50,10 @@ const ReverseTransaction = () => {
   const [reason, setReason] = useState("");
   const [reversing, setReversing] = useState(false);
 
+  // 🔹 Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const [filters, setFilters] = useState({
     userId: "",
     type: "",
@@ -105,6 +109,7 @@ const ReverseTransaction = () => {
     }
 
     setFiltered(result);
+    setCurrentPage(1); // Reset to page 1 whenever filters change
   }, [filters, transactions]);
 
   // ------------------ Multi/Single Select ------------------
@@ -144,15 +149,16 @@ const ReverseTransaction = () => {
       const token = localStorage.getItem("adminToken");
       if (!token) throw new Error("Admin token missing. Please login.");
 
-    const res = await api.put(
-  "/admin/transactions/reverse",
-  { txIds, reason: reason.trim() },
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-);
+      const res = await api.put(
+        "/admin/transactions/reverse",
+        { txIds, reason: reason.trim() },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
       const reversedTxIds = res.data?.reversedTxs || [];
 
       setTransactions(prev =>
@@ -162,7 +168,7 @@ const ReverseTransaction = () => {
         prev.map(tx => reversedTxIds.includes(tx._id) ? { ...tx, reversed: true } : tx)
       );
 
-alert(`✅ ${reversedTxIds.length} Transaction(s) Reversed Successfully`);
+      alert(`✅ ${reversedTxIds.length} Transaction(s) Reversed Successfully`);
     } catch (err) {
       console.error("Reverse error:", err);
       alert(err.response?.data?.message || err.message || "Failed to reverse transactions");
@@ -176,6 +182,12 @@ alert(`✅ ${reversedTxIds.length} Transaction(s) Reversed Successfully`);
   };
 
   const isRelatedTransaction = (tx) => !!tx.relatedTo;
+
+  // ------------------ Pagination Logic ------------------
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
   if (loading) return <p className="p-4">Loading transactions...</p>;
   if (error) return <p className="p-4 text-red-600">{error}</p>;
@@ -251,104 +263,149 @@ alert(`✅ ${reversedTxIds.length} Transaction(s) Reversed Successfully`);
             </tr>
           </thead>
           <tbody>
-  {filtered.length === 0 ? (
-    <tr>
-      <td colSpan="13" className="text-center p-4">
-        No transactions found.
-      </td>
-    </tr>
-  ) : (
-    filtered.map((tx, index) => {
-      const isSelected =
-        selectedTxs.includes(tx._id) || selectedTxForSingle?._id === tx._id;
-
-      return (
-        <tr
-          key={tx._id}
-          className={`text-center transition-all duration-200 ${
-            tx.reversed
-              ? "bg-green-100 text-green-800 font-semibold"
-              : isRelatedTransaction(tx)
-              ? "bg-yellow-50 text-yellow-800"
-              : isSelected
-              ? "bg-red-50 text-red-800"
-              : ""
-          }`}
-        >
-          <td className="border p-2">
-            {!tx.reversed && (
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={() => toggleSelect(tx)}
-              />
-            )}
-          </td>
-
-          <td className="border p-2">{index + 1}</td>
-          <td className="border p-2">{tx.userId}</td>
-          <td className="border p-2">{tx.name || "-"}</td>
-
-          <td className="border p-2 capitalize">
-            {tx.type.replace("_", " ")}
-          </td>
-
-          <td className="border p-2 font-bold">
-            ₹ {formatAmount(tx.amount)}
-          </td>
-
-          <td className="border p-2">{tx.fromUserId || "-"}</td>
-          <td className="border p-2">{tx.toUserId || "-"}</td>
-
-          <td className="border p-2">
-            {tx.date
-              ? new Date(tx.date).toLocaleString("en-IN")
-              : tx.createdAt
-              ? new Date(tx.createdAt).toLocaleString("en-IN")
-              : "N/A"}
-          </td>
-
-          <td className="border p-2">{tx.source || "-"}</td>
-          <td className="border p-2">{tx.description || "-"}</td>
-
-          {/* ✅ STATUS COLUMN */}
-          <td className="border p-2">
-            {tx.reversed ? (
-              <span className="px-2 py-1 bg-green-500 text-white rounded text-xs">
-                ✔ Reversed
-              </span>
+            {currentItems.length === 0 ? (
+              <tr>
+                <td colSpan="13" className="text-center p-4">
+                  No transactions found.
+                </td>
+              </tr>
             ) : (
-              <span className="px-2 py-1 bg-gray-300 rounded text-xs">
-                Active
-              </span>
-            )}
-          </td>
+              currentItems.map((tx, index) => {
+                const isSelected =
+                  selectedTxs.includes(tx._id) || selectedTxForSingle?._id === tx._id;
+                
+                // Real Index Numbering
+                const actualIndex = indexOfFirstItem + index + 1;
 
-          {/* ✅ ACTION */}
-          <td className="border p-2">
-            {tx.reversed ? (
-              <span className="text-green-600 font-semibold">
-                Done
-              </span>
-            ) : (
-              <button
-                onClick={() => {
-                  setSelectedTxForSingle(tx);
-                  setModalOpen(true);
-                }}
-                className="flex items-center px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
-              >
-                <FaUndo className="mr-1" /> Reverse
-              </button>
+                return (
+                  <tr
+                    key={tx._id}
+                    className={`text-center transition-all duration-200 ${
+                      tx.reversed
+                        ? "bg-green-100 text-green-800 font-semibold"
+                        : isRelatedTransaction(tx)
+                        ? "bg-yellow-50 text-yellow-800"
+                        : isSelected
+                        ? "bg-red-50 text-red-800"
+                        : ""
+                    }`}
+                  >
+                    <td className="border p-2">
+                      {!tx.reversed && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(tx)}
+                        />
+                      )}
+                    </td>
+
+                    <td className="border p-2">{actualIndex}</td>
+                    <td className="border p-2">{tx.userId}</td>
+                    <td className="border p-2">{tx.name || "-"}</td>
+
+                    <td className="border p-2 capitalize">
+                      {tx.type.replace("_", " ")}
+                    </td>
+
+                    <td className="border p-2 font-bold">
+                      ₹ {formatAmount(tx.amount)}
+                    </td>
+
+                    <td className="border p-2">{tx.fromUserId || "-"}</td>
+                    <td className="border p-2">{tx.toUserId || "-"}</td>
+
+                    <td className="border p-2">
+                      {tx.date
+                        ? new Date(tx.date).toLocaleString("en-IN")
+                        : tx.createdAt
+                        ? new Date(tx.createdAt).toLocaleString("en-IN")
+                        : "N/A"}
+                    </td>
+
+                    <td className="border p-2">{tx.source || "-"}</td>
+                    <td className="border p-2">{tx.description || "-"}</td>
+
+                    {/* ✅ STATUS COLUMN */}
+                    <td className="border p-2">
+                      {tx.reversed ? (
+                        <span className="px-2 py-1 bg-green-500 text-white rounded text-xs">
+                          ✔ Reversed
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-300 rounded text-xs">
+                          Active
+                        </span>
+                      )}
+                    </td>
+
+                    {/* ✅ ACTION */}
+                    <td className="border p-2">
+                      {tx.reversed ? (
+                        <span className="text-green-600 font-semibold">
+                          Done
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setSelectedTxForSingle(tx);
+                            setModalOpen(true);
+                          }}
+                          className="flex items-center px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+                        >
+                          <FaUndo className="mr-1" /> Reverse
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
-          </td>
-        </tr>
-      );
-    })
-  )}
-</tbody>
+          </tbody>
         </table>
       </div>
+
+      {/* ✅ Pagination Controls */}
+      {filtered.length > 0 && (
+        <div className="flex flex-col md:flex-row justify-between items-center mt-4 p-3 bg-gray-50 border rounded shadow-sm">
+          <div className="mb-2 md:mb-0">
+            <span className="mr-2 text-sm text-gray-700">Rows per page:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1); // Reset to page 1 on limit change
+              }}
+              className="border p-1 rounded text-sm bg-white"
+            >
+              <option value={10}>10</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+          
+          <div className="flex items-center gap-4 text-sm">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => prev - 1)}
+              className="px-3 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="font-semibold text-gray-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((prev) => prev + 1)}
+              className="px-3 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {modalOpen && (

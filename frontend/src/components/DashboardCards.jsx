@@ -2,7 +2,8 @@ import React from 'react';
 import { 
   Users, UserPlus, UserCheck, 
   Wallet, ArrowDownToLine, Clock, 
-  DollarSign, CheckCircle, AlertCircle 
+  DollarSign, CheckCircle, AlertCircle,
+  Briefcase, TrendingUp, Star, Award, Zap, Layers, Package, Activity, Crown
 } from 'lucide-react';
 
 function DashboardCards({ stats }) {
@@ -89,6 +90,71 @@ function DashboardCards({ stats }) {
       icon: <Clock className="text-pink-600" size={28} />,
       bg: 'bg-pink-100',
       border: 'border-pink-200'
+    },
+
+    // --- TOP-UP & BUSINESS STATS (Purple/Mix) ---
+    {
+      title: 'Total Top-Up Business',
+      value: `$${stats.totalTopupBusiness?.toLocaleString() || 0}`,
+      icon: <Briefcase className="text-purple-600" size={28} />,
+      bg: 'bg-purple-100',
+      border: 'border-purple-200'
+    },
+    {
+      title: "Today's Top-Up Business",
+      value: `$${stats.todayTopupBusiness?.toLocaleString() || 0}`,
+      icon: <TrendingUp className="text-violet-600" size={28} />,
+      bg: 'bg-violet-100',
+      border: 'border-violet-200'
+    },
+    {
+      title: 'Total $10 Packages',
+      value: stats.totalPlan10?.toLocaleString() || 0,
+      icon: <Star className="text-fuchsia-600" size={28} />,
+      bg: 'bg-fuchsia-100',
+      border: 'border-fuchsia-200'
+    },
+    {
+      title: 'Total $30 Packages',
+      value: stats.totalPlan30?.toLocaleString() || 0,
+      icon: <Award className="text-yellow-600" size={28} />,
+      bg: 'bg-yellow-100',
+      border: 'border-yellow-200'
+    },
+    {
+      title: 'Total $60 Packages',
+      value: stats.totalPlan60?.toLocaleString() || 0,
+      icon: <Zap className="text-cyan-600" size={28} />,
+      bg: 'bg-cyan-100',
+      border: 'border-cyan-200'
+    },
+    {
+      title: 'Total $120 Packages',
+      value: stats.totalPlan120?.toLocaleString() || 0,
+      icon: <Layers className="text-indigo-600" size={28} />,
+      bg: 'bg-indigo-100',
+      border: 'border-indigo-200'
+    },
+    {
+      title: 'Total $240 Packages',
+      value: stats.totalPlan240?.toLocaleString() || 0,
+      icon: <Package className="text-blue-600" size={28} />,
+      bg: 'bg-blue-100',
+      border: 'border-blue-200'
+    },
+    {
+      title: 'Total $480 Packages',
+      value: stats.totalPlan480?.toLocaleString() || 0,
+      icon: <Activity className="text-emerald-600" size={28} />,
+      bg: 'bg-emerald-100',
+      border: 'border-emerald-200'
+    },
+    {
+      title: 'Total $960 Packages',
+      value: stats.totalPlan960?.toLocaleString() || 0,
+      icon: <Crown className="text-amber-600" size={28} />,
+      bg: 'bg-amber-100',
+      border: 'border-amber-200'
     }
   ];
 

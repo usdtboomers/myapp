@@ -87,15 +87,39 @@ const packageEarnings = {
 const unlockDays = [3, 13, 43, 73, 103];
 
 // ✅ NEW FUNCTION
+// ✅ UPDATED FUNCTION 1: calculatePackageEarnings
+// 🔥 Aaj ki date set kar di (Cut-off date)
+const RULE_CHANGE_DATE = new Date("2026-05-06T14:30:00+05:30").getTime();
+
+// ✅ UPDATED FUNCTION 1: calculatePackageEarnings
 const calculatePackageEarnings = (packages, planKey) => {
   const filtered = (packages || []).filter(p => p.plan === planKey);
   let total = 0;
+
+  const package30 = (packages || []).find(p => p.amount === 30);
 
   filtered.forEach(pkg => {
     const earningsArray = packageEarnings[pkg.amount];
     if (!earningsArray) return;
 
-    const diffDays = Math.floor((Date.now() - new Date(pkg.startDate)) / (1000 * 60 * 60 * 24));
+    let effectiveStartDate = pkg.startDate; // Default: Original Date
+
+    if (pkg.amount === 10) {
+      if (!package30) {
+        // Agar 30 nahi liya toh income 0 (Timer ruka hua hai)
+        return; 
+      } else {
+        // Agar 30 liya hai, toh check karo kab liya?
+        const pkg30Time = new Date(package30.startDate).getTime();
+        if (pkg30Time >= RULE_CHANGE_DATE) {
+          // Naya user: Aaj ya aaj ke baad 30 liya hai, toh 30 ki date use hogi
+          effectiveStartDate = package30.startDate;
+        }
+        // Purane users ke liye else ki zaroorat nahi, wo original date hi use karenge
+      }
+    }
+
+    const diffDays = Math.floor((Date.now() - new Date(effectiveStartDate)) / (1000 * 60 * 60 * 24));
 
     if (diffDays >= unlockDays[0]) total += earningsArray[0];
     if (diffDays >= unlockDays[1]) total += earningsArray[1];
@@ -106,17 +130,28 @@ const calculatePackageEarnings = (packages, planKey) => {
 
   return total;
 };
- 
 
-// ✅ NEW FUNCTION: Check if a specific level is unlocked for withdrawal
-const getLevelUnlockData = (pkg, level) => {
-  // Check how many days have passed since the package was bought
-  const diffDays = Math.floor((Date.now() - new Date(pkg.startDate)) / (1000 * 60 * 60 * 24));
-  
-  // Get required days from the unlockDays array based on the level requested (0 to 4)
+
+// ✅ UPDATED FUNCTION 2: getLevelUnlockData
+const getLevelUnlockData = (pkg, level, packages) => {
+  let effectiveStartDate = pkg.startDate; 
+
+  if (pkg.amount === 10) {
+    const package30 = (packages || []).find(p => p.amount === 30);
+    if (!package30) {
+      return { isUnlocked: false, timeLeft: "Activate the $30 package to start your timer." };
+    } else {
+      const pkg30Time = new Date(package30.startDate).getTime();
+      if (pkg30Time >= RULE_CHANGE_DATE) {
+         // Naya user
+         effectiveStartDate = package30.startDate;
+      }
+    }
+  }
+
+  const diffDays = Math.floor((Date.now() - new Date(effectiveStartDate)) / (1000 * 60 * 60 * 24));
   const requiredDays = unlockDays[level];
 
-  // If level is invalid
   if (requiredDays === undefined) {
     return { isUnlocked: false, timeLeft: "Invalid Level" };
   }
@@ -131,7 +166,6 @@ const getLevelUnlockData = (pkg, level) => {
 
   return { isUnlocked, timeLeft };
 };
-
  
  
 // 🧾 GET /wallet/deposit-history/:userId
@@ -369,7 +403,7 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
 
         // Ensure packageEarnings and getLevelUnlockData exist in your scope
         const earningsArray = packageEarnings[pkgAmt];
-        const { isUnlocked } = getLevelUnlockData(pkg, item.level);
+const { isUnlocked } = getLevelUnlockData(pkg, item.level, user.packages);
         if (!isUnlocked) return res.status(400).json({ message: `Level ${item.level} is locked for ${item.source}. Wait for the timer to complete.` });
 
         // Calculate Available Balance for this Level

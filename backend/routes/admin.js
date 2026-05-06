@@ -73,43 +73,54 @@ router.post('/impersonate', adminAuth, async (req, res) => {
 // Dashboard summary (UPDATED FOR ALL CARDS - WITH FIX FOR STRINGS & GROSSAMOUNT)
 router.get('/dashboard', verifyAdmin, async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // 🔥 INDIA TIMEZONE FIX
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', { 
+        timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' 
+    });
+    
+    const parts = formatter.formatToParts(now);
+    let month, day, year;
+    for (let p of parts) {
+      if (p.type === 'month') month = p.value;
+      if (p.type === 'day') day = p.value;
+      if (p.type === 'year') year = p.value;
+    }
+    
+    // Exactly raat 12:00 AM IST
+    const startOfTodayIST = new Date(`${year}-${month}-${day}T00:00:00+05:30`);
 
     const [
       totalUsers,
       todayUsers,
       paidUsers,
       depositStats,
-      withdrawalStats
+      withdrawalStats,
+      businessStats, // ✅ NAYA: Business total ke liye
+      planStats      // ✅ NAYA: Array ke andar se count ke liye
     ] = await Promise.all([
-      // 1. Total Users
       User.countDocuments(),
-      
-      // 2. Today's New Users
-      User.countDocuments({ createdAt: { $gte: today } }),
-      
-      // 3. Total Paid Users
+      User.countDocuments({ createdAt: { $gte: startOfTodayIST } }),
       User.countDocuments({ topUpAmount: { $gt: 0 } }),
       
-      // 4. DEPOSIT STATS (String to Double conversion added)
+      // DEPOSIT STATS
       Deposit.aggregate([
         {
           $facet: {
             total: [{ $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }],
             today: [
-              { $match: { createdAt: { $gte: today } } },
+              { $match: { createdAt: { $gte: startOfTodayIST } } },
               { $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }
             ],
             pendingToday: [
-              { $match: { createdAt: { $gte: today }, status: "pending" } },
+              { $match: { createdAt: { $gte: startOfTodayIST }, status: "pending" } },
               { $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }
             ]
           }
         }
       ]),
 
-      // 5. WITHDRAWAL STATS (Using grossAmount and String to Double conversion)
+      // WITHDRAWAL STATS
       Withdrawal.aggregate([
         {
           $facet: {
@@ -119,7 +130,7 @@ router.get('/dashboard', verifyAdmin, async (req, res) => {
               { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }
             ],
             approvedToday: [
-              { $match: { createdAt: { $gte: today }, status: "approved" } },
+              { $match: { createdAt: { $gte: startOfTodayIST }, status: "approved" } },
               { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }
             ],
             pendingTotal: [
@@ -127,16 +138,49 @@ router.get('/dashboard', verifyAdmin, async (req, res) => {
               { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }
             ],
             pendingToday: [
-              { $match: { createdAt: { $gte: today }, status: "pending" } },
+              { $match: { createdAt: { $gte: startOfTodayIST }, status: "pending" } },
               { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }
             ]
           }
+        }
+      ]),
+
+      // 🔥 TOP-UP BUSINESS TOTAL
+      User.aggregate([
+        {
+          $facet: {
+            totalBusiness: [
+              { $group: { _id: null, sum: { $sum: { $convert: { input: "$topUpAmount", to: "double", onError: 0, onNull: 0 } } } } }
+            ],
+            todayBusiness: [
+              { $match: { topUpDate: { $gte: startOfTodayIST } } },
+              { $group: { _id: null, sum: { $sum: { $convert: { input: "$topUpAmount", to: "double", onError: 0, onNull: 0 } } } } }
+            ]
+          }
+        }
+      ]),
+
+      // 🔥 PRECISE PLAN COUNT (Array ko Unwind karke)
+      User.aggregate([
+        { $unwind: { path: "$packages", preserveNullAndEmptyArrays: false } },
+        { 
+          $group: { 
+            _id: { $convert: { input: "$packages.amount", to: "double", onError: 0, onNull: 0 } }, 
+            count: { $sum: 1 } 
+          } 
         }
       ])
     ]);
 
     const dep = depositStats[0];
     const withD = withdrawalStats[0];
+    const biz = businessStats[0];
+
+    // Helper function to get exact count
+    const getPlanCount = (amount) => {
+      const plan = planStats.find(p => p._id === amount);
+      return plan ? plan.count : 0;
+    };
 
     res.json({
       totalUsers,
@@ -152,34 +196,85 @@ router.get('/dashboard', verifyAdmin, async (req, res) => {
       approvedWithdrawalToday: withD.approvedToday[0]?.sum || 0,
       pendingWithdrawalTotal: withD.pendingTotal[0]?.sum || 0,
       pendingWithdrawalToday: withD.pendingToday[0]?.sum || 0,
+
+      // ✅ FRONTEND KE LIYE NAYE VARIABLES 
+      totalTopupBusiness: biz.totalBusiness[0]?.sum || 0,
+      todayTopupBusiness: biz.todayBusiness[0]?.sum || 0,
+      totalPlan10: getPlanCount(10),
+      totalPlan30: getPlanCount(30),
+      totalPlan60: getPlanCount(60),
+      totalPlan120: getPlanCount(120),
+      totalPlan240: getPlanCount(240),
+      totalPlan480: getPlanCount(480),
+      totalPlan960: getPlanCount(960),
     });
   } catch (error) {
     console.error('Dashboard error:', error);
     res.status(500).json({ message: 'Dashboard data fetch failed' });
   }
 });
+
 // GET /api/admin/stats
 router.get("/stats", verifyAdmin, async (req, res) => {
-  const totalUsers = await User.countDocuments();
-  const today = new Date().toISOString().split('T')[0];
-  const todayUsers = await User.countDocuments({
-    createdAt: { $gte: new Date(today) }
-  });
-  const totalDeposit = await Deposit.aggregate([
-    { $group: { _id: null, total: { $sum: "$amount" } } }
-  ]);
-  const totalWithdrawal = await Withdrawal.aggregate([
-    { $group: { _id: null, total: { $sum: "$amount" } } }
-  ]);
+  try {
+    // 1. 🔥 INDIA (IST) TIMEZONE FIX FOR "TODAY"
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', { 
+        timeZone: 'Asia/Kolkata', 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit' 
+    });
+    
+    const parts = formatter.formatToParts(now);
+    let month, day, year;
+    for (let p of parts) {
+      if (p.type === 'month') month = p.value;
+      if (p.type === 'day') day = p.value;
+      if (p.type === 'year') year = p.value;
+    }
+    
+    // Exactly raat 12:00 AM IST
+    const startOfTodayIST = new Date(`${year}-${month}-${day}T00:00:00+05:30`);
 
-  res.json({
-    totalUsers,
-    todayUsers,
-    totalDeposit: totalDeposit[0]?.total || 0,
-    totalWithdrawal: totalWithdrawal[0]?.total || 0
-  });
+    // 2. 🔥 DATA FETCH WITH STRING-TO-NUMBER SAFETY
+    const totalUsers = await User.countDocuments();
+    
+    const todayUsers = await User.countDocuments({
+      createdAt: { $gte: startOfTodayIST }
+    });
+
+    const totalDeposit = await Deposit.aggregate([
+      { 
+        $group: { 
+          _id: null, 
+          total: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } 
+        } 
+      }
+    ]);
+
+    const totalWithdrawal = await Withdrawal.aggregate([
+      { 
+        $group: { 
+          _id: null, 
+          // grossAmount aur amount dono ko safely check karega
+          total: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } 
+        } 
+      }
+    ]);
+
+    res.json({
+      totalUsers,
+      todayUsers,
+      totalDeposit: totalDeposit[0]?.total || 0,
+      totalWithdrawal: totalWithdrawal[0]?.total || 0
+    });
+
+  } catch (error) {
+    console.error('Stats error:', error);
+    res.status(500).json({ message: 'Stats data fetch failed' });
+  }
 });
-
 
 
 

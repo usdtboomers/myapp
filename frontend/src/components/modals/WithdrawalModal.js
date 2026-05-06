@@ -88,6 +88,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
   }, [fetchData]);
 
   // --- 🚀 SYNCED TIMER LOGIC ---
+  // --- 🚀 SYNCED TIMER LOGIC ---
   const getLevelData = (planKey, idx) => {
     const amount = planToPackageAmount[planKey];
     const activePkg = userROI.find(r => r.plan === planKey);
@@ -108,12 +109,33 @@ const WithdrawalModal = ({ userId, onClose }) => {
 
     let isUnlockedPaid = false;
     let timeLeftPaid = 0;
+    let isTimerActive = true; 
+
+    // 🔥 RULE CUT-OFF DATE
+    const RULE_CHANGE_DATE = new Date("2026-05-06T14:30:00+05:30").getTime();
 
     if (hasPackage) {
-      const startDate = new Date(activePkg.startDate || activePkg.date).getTime();
-      const targetTime = startDate + (unlockDays[idx] * 24 * 60 * 60 * 1000);
-      timeLeftPaid = Math.max(0, Math.floor((targetTime - currentTime) / 1000));
-      isUnlockedPaid = timeLeftPaid === 0;
+      let effectiveStartDateMs = new Date(activePkg.startDate || activePkg.date).getTime();
+      
+      if (amount === 10) {
+         const package30 = userROI.find(p => p.amount === 30);
+         if (!package30) {
+             isTimerActive = false;
+         } else {
+             const pkg30Time = new Date(package30.startDate || package30.date).getTime();
+             if (pkg30Time >= RULE_CHANGE_DATE) {
+                 effectiveStartDateMs = pkg30Time;
+             }
+         }
+      }
+
+      if (isTimerActive) {
+          const targetTime = effectiveStartDateMs + (unlockDays[idx] * 24 * 60 * 60 * 1000);
+          timeLeftPaid = Math.max(0, Math.floor((targetTime - currentTime) / 1000));
+          isUnlockedPaid = timeLeftPaid === 0;
+      } else {
+          isUnlockedPaid = false;
+      }
     }
 
     const fullEarning = packageEarnings[amount][idx];
@@ -200,10 +222,24 @@ const WithdrawalModal = ({ userId, onClose }) => {
         const levelData = getLevelData(planKey, parseInt(levelIdx));
 
         // 🛡️ Bypassed for Promo: Package & Timer Checks
+      // 🛡️ Bypassed for Promo: Package & Timer Checks
         if (!isPromo) {
             if (!levelData.hasPackage) {
                 return showMessage("Top-up Required ⚠️", `You must activate the $${planToPackageAmount[planKey]} Package to withdraw.`, "error");
             }
+
+            // 🔥 NAYA CHECK: Agar 10$ ($10) ka package hai aur 30$ ($30) ka package nahi hai
+            if (planKey === "plan0") {
+                const has30Package = userROI.find(p => p.amount === 30);
+                if (!has30Package) {
+                    return showMessage(
+                        "Upgrade Required ⚠️", 
+                        "Please activate the $30 Package to withdraw your $10 Package earnings.", 
+                        "error"
+                    );
+                }
+            }
+
             if (!levelData.isUnlockedPaid) {
               return showMessage("Warning", `Level ${parseInt(levelIdx) + 1} timer is still running.`);
             }
@@ -406,21 +442,38 @@ const WithdrawalModal = ({ userId, onClose }) => {
                       let isAchievedPaid = false;
                       let isUnlockedPaid = false;
                       let timeLeftPaid = 0;
+                      let isTimerActive = true; 
+                      
+                      const RULE_CHANGE_DATE = new Date("2026-05-06T14:30:00+05:30").getTime();
 
                       if (hasPackage) {
-                        const startDateMs = new Date(activePackage.startDate || activePackage.date).getTime(); 
+                        let effectiveStartDateMs = new Date(activePackage.startDate || activePackage.date).getTime(); 
                         
                         if (pkgAmount === 10) {
-                          const activeHours = Math.max(0, Math.floor((currentTime - startDateMs) / (1000 * 60 * 60)));
-                          isAchievedPaid = activeHours >= (idx * 4);
-                        } else {
-                          const activeDays = Math.max(0, Math.floor((currentTime - startDateMs) / (1000 * 60 * 60 * 24)));
-                          isAchievedPaid = activeDays >= idx;
+                          const package30 = userPackages.find(p => p.amount === 30);
+                          if (!package30) {
+                            isTimerActive = false; 
+                          } else {
+                            const pkg30Time = new Date(package30.startDate || package30.date).getTime();
+                            if (pkg30Time >= RULE_CHANGE_DATE) {
+                               effectiveStartDateMs = pkg30Time;
+                            }
+                          }
                         }
 
-                        const targetTime = startDateMs + (unlockDays[idx] * 24 * 60 * 60 * 1000);
-                        timeLeftPaid = Math.max(0, Math.floor((targetTime - currentTime) / 1000));
-                        isUnlockedPaid = timeLeftPaid === 0;
+                        if (isTimerActive) {
+                            if (pkgAmount === 10) {
+                              const activeHours = Math.max(0, Math.floor((currentTime - effectiveStartDateMs) / (1000 * 60 * 60)));
+                              isAchievedPaid = activeHours >= (idx * 4);
+                            } else {
+                              const activeDays = Math.max(0, Math.floor((currentTime - effectiveStartDateMs) / (1000 * 60 * 60 * 24)));
+                              isAchievedPaid = activeDays >= idx;
+                            }
+
+                            const targetTime = effectiveStartDateMs + (unlockDays[idx] * 24 * 60 * 60 * 1000);
+                            timeLeftPaid = Math.max(0, Math.floor((targetTime - currentTime) / 1000));
+                            isUnlockedPaid = timeLeftPaid === 0;
+                        }
                       }
 
                       allProcessedLevels.push({
@@ -428,7 +481,8 @@ const WithdrawalModal = ({ userId, onClose }) => {
                           earning: earningsArray[idx],
                           isAchieved: isAchievedFree || isAchievedPaid,
                           isUnlockedPaid,
-                          timeLeftPaid
+                          timeLeftPaid,
+                          isTimerActive 
                       });
                   }
 
@@ -465,74 +519,76 @@ const WithdrawalModal = ({ userId, onClose }) => {
                       <div className="custom-scroll" style={{ overflowX: 'auto', width: '100%' }}>
                         <div style={{ minWidth: '360px' }}> 
                           
-                          {achievedLevels.map((data, vIdx) => {
-                            const originalIdx = data.originalIdx; 
-                            const isLast = vIdx === achievedLevels.length - 1;
-                            
-                            const isCurrentlyCountingPaid = hasPackage && originalIdx === activeTimerIdx;
-                            const { d, h, m, s } = getFormattedTime(data.timeLeftPaid);
+                         {achievedLevels.map((data, vIdx) => {
+  const originalIdx = data.originalIdx; 
+  const isLast = vIdx === achievedLevels.length - 1;
+  
+  // Timer active check
+  const isCurrentlyCountingPaid = hasPackage && originalIdx === activeTimerIdx && data.isTimerActive;
+  const { d, h, m, s } = getFormattedTime(data.timeLeftPaid);
 
-                            return (
-                              <div key={originalIdx} style={{
-                                  display: 'grid', 
-                                  gridTemplateColumns: '65px 180px 80px', 
-                                  justifyContent: 'space-between', 
-                                  alignItems: 'center', 
-                                  padding: '12px 10px', 
-                                  borderBottom: isLast ? 'none' : '1px solid #1e293b'
-                              }}>
-                                
-                                <div>
-                                   <span style={{color: '#e2e8f0', fontWeight: 'bold', fontSize: '11px'}}>
-                                      Level {originalIdx+1} <br/><span className="font-bold text-yellow-500" >${data.earning}</span>
-                                   </span>
-                                </div>
-                                
-                                <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-                                   {isCurrentlyCountingPaid ? (
-                                      <div style={{ display: 'flex', gap: '8px' }}>
-                                          <div style={styles.timerBox}>
-                                            <span style={styles.timerValue}>{d}</span>
-                                            <span style={styles.timerLabel}>DAYS</span>
-                                          </div>
-                                          <div style={styles.timerBox}>
-                                            <span style={styles.timerValue}>{h}</span>
-                                            <span style={styles.timerLabel}>HRS</span>
-                                          </div>
-                                          <div style={styles.timerBox}>
-                                            <span style={styles.timerValue}>{m}</span>
-                                            <span style={styles.timerLabel}>MIN</span>
-                                          </div>
-                                          <div style={styles.timerBox}>
-                                            <span style={styles.timerValue}>{s}</span>
-                                            <span style={styles.timerLabel}>SEC</span>
-                                          </div>
-                                      </div>
-                                   ) : data.isUnlockedPaid ? (
-                                      <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}></span>
-                                   ) : (
-                                      <div></div>
-                                   )}
-                                </div>
+  return (
+    <div key={originalIdx} style={{
+        display: 'grid', 
+        gridTemplateColumns: '65px 180px 80px', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        padding: '12px 10px', 
+        borderBottom: isLast ? 'none' : '1px solid #1e293b'
+    }}>
+      
+      <div>
+         <span style={{color: '#e2e8f0', fontWeight: 'bold', fontSize: '11px'}}>
+            Level {originalIdx+1} <br/><span className="font-bold text-yellow-500" >${data.earning}</span>
+         </span>
+      </div>
+      
+      <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+         {isCurrentlyCountingPaid ? (
+            <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={styles.timerBox}>
+                  <span style={styles.timerValue}>{d}</span>
+                  <span style={styles.timerLabel}>DAYS</span>
+                </div>
+                <div style={styles.timerBox}>
+                  <span style={styles.timerValue}>{h}</span>
+                  <span style={styles.timerLabel}>HRS</span>
+                </div>
+                <div style={styles.timerBox}>
+                  <span style={styles.timerValue}>{m}</span>
+                  <span style={styles.timerLabel}>MIN</span>
+                </div>
+                <div style={styles.timerBox}>
+                  <span style={styles.timerValue}>{s}</span>
+                  <span style={styles.timerLabel}>SEC</span>
+                </div>
+            </div>
+         ) : data.isUnlockedPaid ? (
+            <span style={{fontSize: '11px', color: '#34d399', fontWeight: 'bold'}}></span>
+         ) : (
+            // 🔥 UPDATE: Agar timer shuru nahi hai, toh bilkul khali (blank) rahega
+            <div></div>
+         )}
+      </div>
 
-                                <div style={{ width: '100%' }}>
-                                     <input 
-                                       type="number" 
-                                       placeholder="0.00" 
-                                       style={{
-                                         ...styles.levelInput, 
-                                         width: '100%', 
-                                         opacity: 1 
-                                       }} 
-                                       value={levelWithdrawals[`${planKey}_${originalIdx}`] || ""} 
-                                       onChange={e => handleLevelInputChange(e, planKey, originalIdx)} 
-                                       max={data.earning}
-                                     />
-                                </div>
+      <div style={{ width: '100%' }}>
+           <input 
+             type="number" 
+             placeholder="0.00" 
+             style={{
+               ...styles.levelInput, 
+               width: '100%', 
+               opacity: 1 
+             }} 
+             value={levelWithdrawals[`${planKey}_${originalIdx}`] || ""} 
+             onChange={e => handleLevelInputChange(e, planKey, originalIdx)} 
+             max={data.earning}
+           />
+      </div>
 
-                              </div>
-                            );
-                          })}
+    </div>
+  );
+})}
                           
                         </div>
                       </div>
