@@ -27,7 +27,12 @@ const DepositHistory = () => {
         const res = await api.get("/transactions/deposits/live-feed", {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setDeposits(res.data.deposits || []);
+        
+        // 🟢 FIX: Yahan humne filter laga diya hai. Sirf wahi array me jayega jiska amount 1 ya usse bada hai.
+        const allDeposits = res.data.deposits || [];
+        const validDeposits = allDeposits.filter(dep => Number(dep.amount) >= 1);
+        
+        setDeposits(validDeposits);
       } catch (err) {
         console.error("Error fetching live deposits", err);
       } finally {
@@ -110,7 +115,7 @@ const DepositHistory = () => {
                       {currentItems.map((dep, idx) => {
                         const dateObj = new Date(dep.createdAt);
                         const formattedDate = dateObj.toLocaleDateString('en-GB'); // Ex: 25/12/2026
- 
+
                         return (
                           <tr key={idx} className="border-b border-slate-700/50 text-sm hover:bg-slate-800/30 transition-colors">
                             
