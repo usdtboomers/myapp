@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import api from "../../api/axios"; 
-import BASE_URL from "../../config";
 
 const WalletHistory = () => {
   const [transactions, setTransactions] = useState([]);
@@ -79,7 +78,6 @@ const WalletHistory = () => {
       let colorStyle = { color: "#333" }; 
       let operator = "";
       
-      // ✅ Naya Variable: Har baar fresh description lega
       let finalDescription = txn.description; 
 
       const fromId = String(txn.fromUserId);
@@ -91,7 +89,7 @@ const WalletHistory = () => {
         case "deposit":
         case "manual_credit":
         case "credit_to_wallet": 
-        case "credit":  
+        case "credit":  // 🔥 WITHDRAWAL SPLIT KA PAISA YAHAN ADD HOGA
           mathImpact = amount;
           colorStyle = { color: "#16a34a", fontWeight: "bold" }; 
           operator = "+";
@@ -119,14 +117,11 @@ const WalletHistory = () => {
         case "debit_topup":
         case "buy_spin": 
           if (fromId === myId) { 
-            
-            // 🔥 YAHAN FIX KIYA HAI
             if (amount === 10 && (txn.type === "topup" || txn.type === "debit_topup")) {
               mathImpact = 0; 
               colorStyle = { color: "#d97706", fontWeight: "bold" }; 
               operator = ""; 
               
-              // ✅ Check karega: Agar pehle se likha hai, toh wapas nahi jodega
               if (!finalDescription) {
                   finalDescription = "Pre-launch Offer (No Deduction)";
               } else if (!finalDescription.includes("(Pre-launch Offer)")) {
@@ -138,7 +133,6 @@ const WalletHistory = () => {
               colorStyle = { color: "#dc2626", fontWeight: "bold" }; 
               operator = "-";
             }
-            
           } else { 
             mathImpact = 0; 
             colorStyle = { color: "#333", fontWeight: "normal" }; 
@@ -159,11 +153,19 @@ const WalletHistory = () => {
       let displayTypeUI = (txn.type || "unknown").replace(/_/g, " ").toUpperCase();
       if (txn.type === "manual_credit") displayTypeUI = "DEPOSIT";
       if (txn.type === "manual_debit") displayTypeUI = "DEDUCTION";
-      if (txn.type === "credit") displayTypeUI = "REWARD"; // 🔥 3. YAHAN ADD KIYA (Taaki UI par 'Type' column me REWARD dikhe)
+      
+      // 🔥 UI ko clear banane ke liye
+      if (txn.type === "credit") {
+        if (txn.source === "internal_transfer") {
+          displayTypeUI = "WALLET CREDIT"; // Withdrawal split yahan dikhega
+        } else {
+          displayTypeUI = "REWARD";
+        }
+      }
 
       return {
         ...txn, 
-        description: finalDescription, // ✅ Updated description wapas bhejega
+        description: finalDescription, 
         balance: balance.toFixed(2),
         colorStyle,
         formattedAmount: `${operator}$${amount.toFixed(2)}`,
@@ -172,7 +174,7 @@ const WalletHistory = () => {
     });
   };
 
-const allowedDisplayTypes = ["deposit", "manual_credit", "manual_debit", "credit_to_wallet", "transfer", "topup", "debit_topup", "credit"];
+  const allowedDisplayTypes = ["deposit", "manual_credit", "manual_debit", "credit_to_wallet", "transfer", "topup", "debit_topup", "credit"];
 
   const filtered = calculateBalances().filter(txn => {
     if (!allowedDisplayTypes.includes(txn.type)) return false;
@@ -276,14 +278,10 @@ const allowedDisplayTypes = ["deposit", "manual_credit", "manual_debit", "credit
                 return (
                   <tr key={`${txn._id}-${txn.date}-${txn.type}-${idx}`} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9" }}>
                     <td style={tdStyle}>{serialNumber}</td>
-                    
-                    {/* ✅ YAHAN TABLE MEIN SIRF 'DEPOSIT' DIKHEGA */}
-                    <td style={tdStyle}>{txn.displayTypeUI}</td>
-                    
+                    <td style={tdStyle}><strong>{txn.displayTypeUI}</strong></td>
                     <td style={{ ...tdStyle, ...txn.colorStyle }}>
                       {txn.formattedAmount}
                     </td>
-
                     <td style={tdStyle}>{String(txn.fromUserId) === String(userId) ? "You" : txn.fromUserId || "-"}</td>
                     <td style={tdStyle}>{String(txn.toUserId) === String(userId) ? "You" : txn.toUserId || "-"}</td>
                     <td style={tdStyle}>{txn.description || "-"}</td>

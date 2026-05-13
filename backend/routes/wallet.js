@@ -336,8 +336,6 @@ router.get("/withdrawable/:userId", async (req, res) => {
 
 router.post("/withdraw", authMiddleware, async (req, res) => {
   try {
-    // 🔥 CHANGE: Ab hum single amount ki jagah 'items' ka array lenge.
-    // Frontend se aayega: { transactionPassword: "xxx", items: [{source: "direct", amount: 3}, {source: "plan0", package: 10, level: 1, amount: 2}] }
     const { items, transactionPassword } = req.body;
 
     const user = await User.findOne({ userId: req.user.userId });
@@ -366,7 +364,6 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
     // =========================================================
     // 🔥 STEP 1: PRE-CHECK LOGIC (ALL OR NOTHING GATEKEEPER)
     // =========================================================
-    // Ye loop sirf check karega, database se kuch nahi katega.
     let simPending = { ...(user.pendingWithdrawals || {}) };
     let simWallets = {}; 
 
@@ -383,13 +380,12 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
         if (simWallets[balanceField] < amt) {
           return res.status(400).json({ message: `Insufficient balance in ${item.source.toUpperCase()} wallet.` });
         }
-        simWallets[balanceField] -= amt; // Simulate deduction
+        simWallets[balanceField] -= amt; 
 
       } else {
-        // 📦 PACKAGE & LEVEL CHECKS
+        // 📦 PACKAGE & LEVEL CHECKS (plan0 to plan6)
         const pkgAmt = parseFloat(item.package);
 
-        // $10 Package Rule
         if (pkgAmt === 10) {
           const userTopUpAmount = parseFloat(user.topUpAmount || 0);
           if (userTopUpAmount < 30) {
@@ -401,12 +397,10 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
         if (!pkg) return res.status(400).json({ message: `Package ${item.source} is not active.` });
         if (item.level === undefined) return res.status(400).json({ message: `Level missing for package ${item.source}.` });
 
-        // Ensure packageEarnings and getLevelUnlockData exist in your scope
         const earningsArray = packageEarnings[pkgAmt];
-const { isUnlocked } = getLevelUnlockData(pkg, item.level, user.packages);
+        const { isUnlocked } = getLevelUnlockData(pkg, item.level, user.packages);
         if (!isUnlocked) return res.status(400).json({ message: `Level ${item.level} is locked for ${item.source}. Wait for the timer to complete.` });
 
-        // Calculate Available Balance for this Level
         let withdrawnTotal = simPending[item.source] || 0;
         let totalAvailable = 0;
         for (let i = 0; i <= item.level; i++) {
@@ -419,57 +413,103 @@ const { isUnlocked } = getLevelUnlockData(pkg, item.level, user.packages);
           return res.status(400).json({ message: `Amount exceeds available Level balance in ${item.source}.` });
         }
 
-        // Add to simulated pending so next loop iteration (if same package) sees correct balance
         simPending[item.source] = (simPending[item.source] || 0) + amt;
       }
     }
 
     // =========================================================
-    // 🔥 STEP 2: REAL DEDUCTION & DATABASE UPDATE
+    // 🔥 STEP 2: REAL DEDUCTION & SPLIT DATABASE UPDATE
     // =========================================================
-    // Agar ek bhi error hota, toh code yahan tak nahi aata. Ab safe hai paise katna.
     
     for (let item of items) {
       const amt = Math.floor(parseFloat(item.amount));
       const isOtherIncome = ["direct", "level", "reward", "spin", "pool", "usdt"].includes(item.source);
 
+      // 1. Source wallet se pura amount deduct karo
       if (isOtherIncome) {
         const balanceField = `${item.source}Income`; 
         user[balanceField] -= amt;
       } else {
+        // Yahan par package (plan) ki pending withdrawal update hoti hai taaki agla calculation sahi ho
         user.pendingWithdrawals = user.pendingWithdrawals || {};
         user.pendingWithdrawals[item.source] = (user.pendingWithdrawals[item.source] || 0) + amt;
       }
 
-      user.totalWithdrawn = (user.totalWithdrawn || 0) + amt;
+      // 🔥 NEW SPLIT LOGIC
+      let usdtPercent = 100; // Default 100% USDT
+      let walletPercent = 0;
 
-      // Withdrawal Record create karna
-      await Withdrawal.create({
-        userId: user.userId,
-        source: item.source, 
-        grossAmount: amt,
-        fee: amt * 0.10, // 10% deduction
-        netAmount: amt * 0.90,
-        walletAddress: user.walletAddress,
-        status: "pending",
-        date: new Date()
-      });
+      // Rules:
+      if (item.source === "reward" || item.source === "direct") {
+        usdtPercent = 50;
+        walletPercent = 50;
+      } 
+      // 👇 YAHAN MAINE PACKAGES (plan0, plan1, etc.) KO ADD KAR DIYA HAI
+      else if (item.source === "pool" || item.source.startsWith("plan")) {
+        usdtPercent = 80;
+        walletPercent = 20;
+      }
 
-      // Transaction History create karna
-      await Transaction.create({
-        userId: user.userId,
-        type: "withdrawal",
-        source: item.source, 
-        amount: amt,
-        description: `Withdrawal from ${item.source.toUpperCase()}`,
-        status: "pending"
-      });
+      // Calculation (amt = 100 hone par: usdtGross = 80, walletGross = 20)
+      const usdtGross = (amt * usdtPercent) / 100;
+      const walletGross = (amt * walletPercent) / 100;
+
+      // 10% Fee calculate karo dono pe (usdtFee = 8, walletFee = 2)
+      const usdtFee = usdtGross * 0.10;
+      const walletFee = walletGross * 0.10;
+
+      // Final net amount (usdtNet = 72, walletNet = 18)
+      const usdtNet = usdtGross - usdtFee;
+      const walletNet = walletGross - walletFee;
+
+      // ---------------------------------------------------------
+      // PART A: USDT WITHDRAWAL RECORD
+      // ---------------------------------------------------------
+      if (usdtGross > 0) {
+        user.totalWithdrawn = (user.totalWithdrawn || 0) + usdtGross; 
+
+        await Withdrawal.create({
+          userId: user.userId,
+          source: item.source, 
+          grossAmount: usdtGross,
+          fee: usdtFee,
+          netAmount: usdtNet,
+          walletAddress: user.walletAddress,
+          status: "pending",
+          date: new Date()
+        });
+
+        await Transaction.create({
+          userId: user.userId,
+          type: "withdrawal",
+          source: item.source, 
+          amount: usdtGross,
+          description: `Withdrawal request from ${item.source.toUpperCase()} (USDT Portion)`,
+          status: "pending"
+        });
+      }
+
+      // ---------------------------------------------------------
+      // PART B: INTERNAL WALLET CREDIT
+      // ---------------------------------------------------------
+      if (walletGross > 0) {
+        user.walletBalance = (user.walletBalance || 0) + walletNet; 
+
+        await Transaction.create({
+          userId: user.userId,
+          type: "credit",
+          source: "internal_transfer", 
+          amount: walletNet,
+          description: `Credited from ${item.source.toUpperCase()} withdrawal split (Net after 10% fee)`,
+          status: "success"
+        });
+      }
     }
 
     // Saare changes ek sath DB me save kardo
     await user.save();
 
-    return res.json({ success: true, message: `Withdrawal request for $${totalAmt} submitted successfully.` });
+    return res.json({ success: true, message: `Withdrawal request for $${totalAmt} processed successfully.` });
 
   } catch (err) {
     console.error("Withdraw Error:", err);
@@ -587,11 +627,11 @@ router.get('/wallet-history/:userId', async (req, res) => {
       return res.status(400).json({ message: 'Invalid user ID' });
     }
 
-    // Fetch transactions but ignore topup with "PROMOTION"
+    // 🔥 FIX: Added 'credit', 'manual_credit', 'manual_debit' in the array
     const txs = await Transaction.find({
       userId,
       $or: [
-        { type: { $in: ['deposit', 'transfer'] } },
+        { type: { $in: ['deposit', 'transfer', 'credit', 'manual_credit', 'manual_debit', 'credit_to_wallet'] } },
         { 
           type: 'topup',
           description: { $exists: true, $ne: null, $not: /PROMOTION/i } // ignore promo topups

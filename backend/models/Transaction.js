@@ -38,7 +38,7 @@ const transactionSchema = new mongoose.Schema(
         "direct",
         "level",
         "plan",
-        "plan0", // 🔥 YAHAN ADD KIYE HAIN SAARE PLANS
+        "plan0", 
         "plan1",
         "plan2",
         "plan3",
@@ -46,7 +46,7 @@ const transactionSchema = new mongoose.Schema(
         "plan5",
         "plan6",
         "plan7",
-        "pool",  // 🔥 Pool bhi add kar diya safety ke liye
+        "pool",  
         "spin",
         "buy_spin",
         "use_spin",
@@ -65,6 +65,7 @@ const transactionSchema = new mongoose.Schema(
         "manager_level_7",
         "manager_level_8",
         "manager_level_9",
+        "internal_transfer", // 🔥 YAHAN ADD KIYA: internal_transfer
         null,
       ],
       default: null,
@@ -93,7 +94,7 @@ const transactionSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["pending", "completed", "failed"],
+      enum: ["pending", "completed", "failed", "success"], // 🔥 YAHAN ADD KIYA: success
       default: "completed",
     },
 
@@ -116,8 +117,6 @@ const transactionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-
 
 // ✅ Indexes
 transactionSchema.index({ userId: 1, type: 1, plan: 1, level: 1 });
