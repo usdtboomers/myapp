@@ -82,15 +82,15 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
             return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
         }
 
-        // ✅ IP Limit Wapas Laga Di (Default 5)
-        const allowedLimit = (rule && rule.limit) ? rule.limit : 5;
-        const totalRegisteredFromIP = await User.countDocuments({ ipAddress: userIP });
+        // // ✅ IP Limit Wapas Laga Di (Default 5)
+        // const allowedLimit = (rule && rule.limit) ? rule.limit : 5;
+        // const totalRegisteredFromIP = await User.countDocuments({ ipAddress: userIP });
 
-        if (totalRegisteredFromIP >= allowedLimit) {
-            return res.status(403).json({ 
-                message: `Access Denied: You have reached the maximum limit of ${allowedLimit} accounts per network.` 
-            });
-        }
+        // if (totalRegisteredFromIP >= allowedLimit) {
+        //     return res.status(403).json({ 
+        //         message: `Access Denied: You have reached the maximum limit of ${allowedLimit} accounts per network.` 
+        //     });
+        // }
     }
 
     // 🚀 DEVICE FINGERPRINT CHECK (5 Accounts Per Device + Admin Block)
