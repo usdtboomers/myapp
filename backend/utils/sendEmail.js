@@ -3,6 +3,9 @@ const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
   try {
+    console.log("Checking Email User:", process.env.EMAIL_USER);
+    console.log("Checking Email Pass:", process.env.EMAIL_PASS ? "Password mil gaya" : "Password khali hai!");
+    
    const transporter = nodemailer.createTransport({
   host: "mail.privateemail.com",   // ✅ Namecheap SMTP
   port: 465,                       // ✅ SSL Port
