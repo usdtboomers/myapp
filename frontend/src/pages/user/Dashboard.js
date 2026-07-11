@@ -20,15 +20,98 @@ import RewardProgress from "./RewardProgress";
 import TelegramPopup from "../../components/TelegramPopup";
 import { Send, ShieldCheck, CheckCircle, Loader2 } from 'lucide-react';
 
+// =========================================================================
+// 🔴🔴🔴 MAIN SWITCH FOR MAINTENANCE MODE 🔴🔴🔴
+// =========================================================================
+const IS_UNDER_MAINTENANCE = true; 
+const MAINTENANCE_END_DATE = new Date("2026-07-13T18:30:00").getTime(); 
+// =========================================================================
+
+// --- Maintenance Screen Component (FIXED TEXT VISIBILITY) ---
+const MaintenanceScreen = ({ logout }) => {
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = MAINTENANCE_END_DATE - now;
+
+      if (distance > 0) {
+        setTimeLeft({
+          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+          seconds: Math.floor((distance % (1000 * 60)) / 1000),
+        });
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden selection:bg-yellow-500/30">
+      <style>{`
+        .bg-pattern-main {
+            background-color: #020617; 
+            background-image: radial-gradient(#334155 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+      `}</style>
+      
+      <div className="absolute inset-0 bg-pattern-main opacity-50 z-0"></div>
+      
+      <div className="relative z-10 bg-[#0f172a] backdrop-blur-md p-8 md:p-12 rounded-2xl border border-yellow-500/30 text-center max-w-xl w-full shadow-[0_0_50px_rgba(234,179,8,0.15)]">
+        <Loader2 className="w-16 h-16 text-yellow-500 animate-spin mx-auto mb-6" />
+        <h1 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: '#ffffff' }}>System Upgrade</h1>
+        
+        {/* 🔥 Fixed Text Color for Paragraph 🔥 */}
+        <p className="mb-10 text-sm md:text-base leading-relaxed" style={{ color: '#e2e8f0' }}>
+          We are currently upgrading our systems to bring you exciting new features and better performance. The dashboard will be back online in:
+        </p>
+        
+        {/* Countdown Timer */}
+        <div className="flex justify-center gap-3 sm:gap-6 mb-10">
+          {[
+            { label: 'Days', value: timeLeft.days },
+            { label: 'Hours', value: timeLeft.hours },
+            { label: 'Mins', value: timeLeft.minutes },
+            { label: 'Secs', value: timeLeft.seconds },
+          ].map((item, idx) => (
+            <div key={idx} className="flex flex-col items-center">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#1e293b] rounded-xl flex items-center justify-center text-2xl sm:text-3xl font-bold text-yellow-500 border border-slate-700 shadow-inner">
+                {item.value.toString().padStart(2, '0')}
+              </div>
+              {/* 🔥 Fixed Text Color for Timer Labels 🔥 */}
+              <span className="text-[10px] sm:text-xs mt-3 uppercase tracking-wider font-semibold" style={{ color: '#94a3b8' }}>
+                {item.label}
+              </span>
+            </div>
+          ))}
+        </div>
+        
+        {/* 🔥 Fixed Text Color and Background for Button 🔥 */}
+        <button 
+          onClick={logout} 
+          className="px-6 py-2.5 rounded-lg text-sm font-medium transition-all shadow-lg border border-gray-600 hover:border-gray-400"
+          style={{ backgroundColor: '#1e293b', color: '#ffffff' }}
+        >
+          Logout Securely
+        </button>
+      </div>
+    </div>
+  );
+};
+// ---------------------------------------------------------
+
+
 const Dashboard = () => {
   const { user, token, setUser, logout } = useAuth();
   const navigate = useNavigate(); 
   const [showSidebar, setShowSidebar] = useState(false); 
 
   const [walletRefreshKey, setWalletRefreshKey] = useState(0);
-  const [loading, setLoading] = useState(false); // Dashboard Loading
+  const [loading, setLoading] = useState(false); 
   
-  // 🔥 ADDED: Telegram Verification ke liye alag state (Taaki pura page load na ho)
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState({ type: '', msg: '' });
 
@@ -55,18 +138,17 @@ const Dashboard = () => {
   });
 
    const hasFetched = useRef(false);
-
   const [recentTransactions, setRecentTransactions] = useState({ deposits: [], withdrawals: [] });
 
   const fetchUserData = async () => {
+    if (IS_UNDER_MAINTENANCE) return;
+
     if (!token || !user?.userId) return;
     try {
         setLoading(true);
-        // 1. User details fetch karna
         const userRes = await api.get(`/user/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
         setUser(userRes.data.user); 
  
-        // 2. Wallet/Income fetch karna
         const incomeRes = await api.get(`/wallet/${user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
         setIncome({
           directIncome: incomeRes.data.directIncome || 0,
@@ -74,7 +156,6 @@ const Dashboard = () => {
           dailyIncome: incomeRes.data.planIncome || 0,
           spinIncome: incomeRes.data.spinIncome || 0,
           rewardIncome: incomeRes.data.rewardIncome || 0,
-
           totalDirectIncome: incomeRes.data.income?.totalDirectIncome || 0,
           totalLevelIncome: incomeRes.data.income?.totalLevelIncome || 0,
           totalRewardIncome: incomeRes.data.income?.totalRewardIncome || 0,
@@ -113,7 +194,6 @@ const Dashboard = () => {
       hasFetched.current = true;
       fetchUserData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.userId, token]); 
 
   const handleTopUpSuccess = async (amount = 0, userId = "") => {
@@ -140,7 +220,6 @@ const Dashboard = () => {
     }
   };
 
-  // 🔥 ADDED: Telegram Verification Function (Sirf Button ke liye)
   const handleManualCheck = async () => {
       setVerifyLoading(true);
       setVerifyStatus({ type: '', msg: '' }); 
@@ -161,14 +240,16 @@ const Dashboard = () => {
       }
   };
 
+  if (IS_UNDER_MAINTENANCE) {
+    return <MaintenanceScreen logout={logout} />;
+  }
+
   if (!user || !token) return <SpinnerOverlay />;
 
   const referralLink = `${window.location.origin}/register?ref=${user.userId}`;
 
   return (
     <div className="relative min-h-screen bg-slate-950 text-slate-200 overflow-x-hidden font-sans selection:bg-yellow-500/30">
-      
-      {/* --- PREMIUM STYLES --- */}
       <style>{`
         .bg-pattern {
             background-color: #020617; 
@@ -186,111 +267,34 @@ const Dashboard = () => {
       <PreLaunchPromo />
       <TeamPromoPopup />
 
-      {/* TopNav ko popup se bhi upar rakhein */}
       <div className="relative z-[100000000]"> 
         <TopNav onHamburgerClick={() => setShowSidebar(true)} />
       </div>
 
-      {/* Main Layout Container */}
       <div className="pt-1 p-2 md:p-0 flex gap-1 h-screen box-border bg-pattern">
         
-        {/* Sidebar */}
         <Sidebar user={user} isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
 
-        {/* Main Content Area */}
         <main className="flex-1 w-full max-w-full overflow-y-auto pb-20 custom-scroll rounded-2xl bg-slate-900/40 backdrop-blur-md p-2 md:p-6 shadow-[0_0_40px_rgba(0,0,0,0.5)] lg:mt-2">
           
-          {/* ========================================== */}
-          {/* 1. HEADER SECTION (Welcome & Badge) */}
-          {/* ========================================== */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-  <div>
-    <div className="flex flex-col items-start gap-1.5">
-      <h1 className="text-2xl md:text-3xl font-bold text-white">
-        Welcome{" "}
-        <span className="text-yellow-500 font-bold">
-          {user?.name || "User"}
-        </span>
-      </h1>
-
-      {/* 🛡️ Status Badge (ABHI KE LIYE HIDE KIYA HAI) */}
-      {/* {user?.isTelegramJoined ? (
-        <div className="flex items-center gap-1 bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/40 shadow-lg shadow-green-500/20" style={{ height: 'fit-content' }}>
-          <CheckCircle size={12} />
-          <span className="text-[10px] font-bold tracking-wider uppercase">Telegram Verified</span>
+          <div>
+            <div className="flex flex-col items-start gap-1.5">
+              <h1 className="text-2xl md:text-3xl font-bold text-white">
+                Welcome{" "}
+                <span className="text-yellow-500 font-bold">
+                  {user?.name || "User"}
+                </span>
+              </h1>
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="flex items-center gap-1 bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30 animate-pulse" style={{ height: 'fit-content' }}>
-          <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-          <span className="text-[10px] font-bold tracking-wider uppercase">Unverified</span>
-        </div>
-      )}
-      */}
-    </div>
-  </div>
-</div>
-
-{/* ========================================== */}
-{/* 2. 🔥 COMPACT TELEGRAM VERIFICATION BANNER (ABHI KE LIYE HIDE KIYA HAI) 🔥 */}
-{/* ========================================== */}
-{/* {!user?.isTelegramJoined && (
-  <div className="bg-[#0f172a] border border-red-500/30 rounded-xl p-4 mb-8 relative overflow-hidden shadow-lg shadow-red-500/5">
-    <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
-    
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div className="pl-2">
-        <h3 className="text-red-400 font-bold text-sm flex items-center gap-2">
-          ⚠️ Action Required: Verify Telegram
-        </h3>
-        
-        <div className="mt-2.5 space-y-1.5 text-xs text-gray-300">
-          <p className="flex items-start gap-2">
-            <span className="font-bold text-red-300 whitespace-nowrap">Step 1:</span> 
-            <span>Click and Join the official Telegram Channel.</span>
-          </p>
-          <p className="flex items-start gap-2">
-            <span className="font-bold text-red-300 whitespace-nowrap">Step 2:</span> 
-            <span>Start the bot.</span>
-          </p>
-          <p className="flex items-start gap-2">
-            <span className="font-bold text-red-300 whitespace-nowrap">Step 3:</span> 
-            <span>Click on "Verify Now" button to complete process.</span>
-          </p>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
-        <button onClick={() => window.open('https://t.me/usdt_boomers', '_blank')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: '#229ED9', color: '#ffffff', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 2px 5px rgba(34, 158, 217, 0.4)' }}>
-          <Send size={15} /> 1. Join Channel
-        </button>
-
-        <button onClick={() => window.open(`https://t.me/Usdt_Boomers_Bot?start=${user?.userId || user?._id}`, '_blank')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: '#229ED9', color: '#ffffff', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 2px 5px rgba(34, 158, 217, 0.4)' }}>
-          <ShieldCheck size={15} /> 2. Start Bot
-        </button>
-
-        <button onClick={handleManualCheck} disabled={verifyLoading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: '#16a34a', color: '#ffffff', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', border: 'none', cursor: verifyLoading ? 'not-allowed' : 'pointer', opacity: verifyLoading ? 0.7 : 1, boxShadow: '0 2px 5px rgba(22, 163, 74, 0.4)' }}>
-          {verifyLoading ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
-          Verify Now
-        </button>
-      </div>
-    </div>
-
-    {verifyStatus.msg && (
-      <div className={`mt-3 pl-2 text-xs font-medium flex items-center gap-1 ${verifyStatus.type === 'error' ? 'text-red-400' : 'text-green-400'}`}>
-        {verifyStatus.msg}
-      </div>
-    )}
-  </div>
-)} 
-*/}
 
           <div className="space-y-8">
-            {/* Wallet Balance */}
             <section className="relative z-10">
                <WalletBalance userId={user.userId} refreshKey={walletRefreshKey} />
             </section>
 
-            {/* Quick Actions */}
             <section>
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <span className="w-1 h-6 bg-yellow-500 rounded-full"></span> Quick Actions
@@ -304,7 +308,6 @@ const Dashboard = () => {
                 />
             </section>
 
-            {/* Income Summary & Binary */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                <div className="bg-slate-800/40 p-1 rounded-xl h-full border border-slate-700/50">
                <IncomeSummary 
@@ -316,9 +319,7 @@ const Dashboard = () => {
                   <ReferralLink link={referralLink} />
                </div>
 
-               {/* RECENT DEPOSITS & WITHDRAWALS PREVIEW */}
                <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Deposits Preview */}
                   <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -356,7 +357,6 @@ const Dashboard = () => {
                     )}
                   </div>
 
-                  {/* Withdrawals Preview */}
                   <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -405,7 +405,6 @@ const Dashboard = () => {
            </section>
           </div>
 
-          {/* General Modals */}
           <Modals
             user={user}
             modalState={modalState}
@@ -414,7 +413,6 @@ const Dashboard = () => {
             onTopUpSuccess={handleTopUpSuccess}
           />
 
-          {/* Success Modal */}
           <SuccessModal
             isOpen={successModal.isOpen}
             userId={successModal.userId}
@@ -422,7 +420,6 @@ const Dashboard = () => {
             onClose={() => setSuccessModal((prev) => ({ ...prev, isOpen: false }))}
           />
 
-          {/* TopUp Modal */}
           {modalState.showTopUpForm && (
             <TopUpModalWithInput
               onClose={() => setModalState((prev) => ({ ...prev, showTopUpForm: false }))}
@@ -430,7 +427,6 @@ const Dashboard = () => {
             />
           )}
 
-          {/* Credit to Wallet Modal */}
           {modalState.showCreditToWallet && (
             <CreditToWalletModal
               userId={user.userId}
